@@ -115,9 +115,7 @@ git clone https://github.com/yourusername/esp32-keypad-keyboard.git
 3. You can modify the key mappings and sequences in the source code to suit your specific application.
 
 ## License 
-This project is licensed under the MIT License - see the [LICENSE]()  file for details.
+This project is licensed under the GNU General Public License - see the [LICENSE]()  file for details.
 
 ---
 
-
-Feel free to modify the content to suit your specific project requirements.
