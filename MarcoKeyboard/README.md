@@ -143,9 +143,9 @@ https://github.com/mctainsh/Esp32/tree/main/MarcoKeyboard/MarcoKeyboard
 4. If you type an incorrect sequence, wait 2.5 seconds and the command builder will reset. The keys will remain on the screen as this may have been your intention?
 
 ## License 
-This project is licensed under the GNU General Public License - see the [LICENSE]()  file for details.
+This project is licensed under the GNU General Public License - see the [LICENSE](https://github.com/mctainsh/Esp32/blob/main/LICENSE)  file for details.
 
-
+## More photos
 ![Back](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadBack.jpg?raw=true)
 
 
