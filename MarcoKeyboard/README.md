@@ -4,13 +4,14 @@
 
 This project turns an ESP32-S2 Mini microcontroller connected to a 4x3 Matrix Keypad into a fully functioning USB keyboard emulator. It allows the user to press key combinations (e.g., `*1`) on the keypad, which the ESP32 processes and sends predefined key sequences to a connected computer via USB.
 
+I have included an STL for a very snug 3D printed housing 
+
 
 ## Table of Contents 
  
 - [Project Overview](#project-overview)
 - [Hardware](#hardware)  
   - [Components](#components)
-
   - [Wiring Diagram](#wiring-diagram) 
 - [Software](#software)  
   - [Features](#features)
@@ -43,24 +44,30 @@ This project enables an ESP32-S2 Mini to act as a keyboard by interpreting key p
  
 4. **Jumper Wires**  - For connecting the keypad to the ESP32.
 
-### Wiring Diagram 
-| Keypad Pin | ESP32-S2 Pin | 
-| --- | --- | 
-| R1 | GPIO 10 | 
-| R2 | GPIO 1 | 
-| R3 | GPIO 2 | 
-| R4 | GPIO 6 | 
-| C1 | GPIO 8 | 
-| C2 | GPIO 13 | 
-| C3 | GPIO 4 | 
+### Wiring Diagram (4x3)
+| Keypad Pin | ESP32-S2 Pin | Keypad pin |
+| --- | --- | --- |
+| X | | NC |
+| R2 | GPIO 1 | 7 |
+| R3 | GPIO 2 | 6 |
+| C3 | GPIO 4 | 5 |
+| R4 | GPIO 6 | 4 |
+| C1 | GPIO 8 | 3 |
+| R1 | GPIO 10 | 2 |
+| C2 | GPIO 13 | 1 |
+| X | GPIO 14 | NC |
 
 - **R1 - R4** : Rows of the matrix keypad
  
 - **C1 - C3** : Columns of the matrix keypad
 
-It is a happy conicidence that the ESP32 can be soldered directly to the back of the keypad and the pinouts will align
+It is a happy conicidence that the ESP32 can be soldered directly to the back of the keypad and the pinouts will align. However, be sure to align pins GPIO 1 to 14. There is two empty (NC) pins on a 4 x 3 board. Check that GPIO 14 goes into the right NC pin. Left NC pin has no connection (This is when keypad viewed from the BACK. Really should have taken a photo of this)
+
+![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeyPadPinOuts.png?raw=true)
+![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/4x3Physical.jpg?raw=true)
 
 ![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadBackDetail.jpg?raw=true)
+##### I just not noticed pin 10 is not soldered (Doh)
 
 ![Front](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/S2%20from%20side.jpg?raw=true)
 
@@ -133,6 +140,8 @@ https://github.com/mctainsh/Esp32/tree/main/MarcoKeyboard/MarcoKeyboard
 
 3. You can modify the key mappings and sequences in the source code to suit your specific application.
 
+4. If you type an incorrect sequence, wait 2.5 seconds and the command builder will reset. The keys will remain on the screen as this may have been your intention?
+
 ## License 
 This project is licensed under the GNU General Public License - see the [LICENSE]()  file for details.
 
@@ -140,7 +149,7 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 ![Back](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadBack.jpg?raw=true)
 
 
-![Front](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadFront.jpg?raw=true)
+![Front](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadFront.JPG?raw=true)
 
 
 

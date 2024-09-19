@@ -24,10 +24,9 @@ const byte COLS = 4;
 // byte _rowPins[ROWS] = { 1, 2, 4, 6 };
 // byte _colPins[COLS] = { 8, 10, 13, 14 };
 
-//  >>> 4 x 3 (_colPins[3] is unused)
+//  >>> 4 x 3 (_colPins[3] is N/C) 
 byte _rowPins[ROWS] = { 10, 1, 2, 6 };
 byte _colPins[COLS] = { 8, 13, 4 };
-
 
 // Define the symbols on the buttons of the keypad
 const char KEY_MATRIX[ROWS][COLS] = {
