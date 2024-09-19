@@ -1,24 +1,29 @@
 # ESP32-S2 Mini Keypad to Keyboard Emulator 
+
+![Keypad](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/Finished.jpg?raw=true)
+
 This project turns an ESP32-S2 Mini microcontroller connected to a 4x3 Matrix Keypad into a fully functioning USB keyboard emulator. It allows the user to press key combinations (e.g., `*1`) on the keypad, which the ESP32 processes and sends predefined key sequences to a connected computer via USB.
+
+
 ## Table of Contents 
  
-- [Project Overview](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#project-overview)
+- [Project Overview](#project-overview)
  
-- [Hardware](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#hardware)  
-  - [Components](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#components)
+- [Hardware](#hardware)  
+  - [Components](#components)
  
-  - [Wiring Diagram](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#wiring-diagram)
+  - [Wiring Diagram](#wiring-diagram)
  
-- [Software](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#software)  
-  - [Features](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#features)
+- [Software](#software)  
+  - [Features](#features)
  
-  - [Key Mappings](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#key-mappings)
+  - [Key Mappings](#key-mappings)
  
-  - [Setup & Installation](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#setup--installation)
+  - [Setup & Installation](#setup--installation)
  
-  - [Usage](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#usage)
+  - [Usage](#usage)
  
-- [License](https://chatgpt.com/c/66eb69a1-9ed4-8002-abd4-45e5a42d8ec5#license)
+- [License](#license)
 
 ## Project Overview 
 
@@ -36,9 +41,9 @@ This project enables an ESP32-S2 Mini to act as a keyboard by interpreting key p
 
 ### Components 
  
-1. **ESP32-S2 Mini**  - The microcontroller that processes key inputs and sends USB keyboard signals.
+1. **ESP32-S2 Mini**  - The microcontroller that processes key inputs and sends USB keyboard signals. I got it from AliExpress for about $3.00 [Not affiliate link](https://www.aliexpress.com/item/1005005024560671.html)
  
-2. **4x3 Matrix Keypad**  - The input device with 12 buttons (numbered 0-9, `*`, and `#`).
+2. **4x3 Matrix Keypad**  - The input device with 12 buttons (numbered 0-9, `*`, and `#`). I got this for AliExpress for $4.00. [Not an affiliate link](https://www.aliexpress.com/item/4001135475068.html)
  
 3. **USB Cable**  - Connects the ESP32 to the computer for both power and communication.
  
