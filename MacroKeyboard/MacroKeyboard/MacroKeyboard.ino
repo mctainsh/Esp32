@@ -13,8 +13,6 @@
 //	http://www.arduino.cc/en/Tutorial/KeyboardMessage
 //////////////////////////////////////////////////////////////////////////////
 
-void ProcessCommandPair(char key2);
-
 // Define the number of rows and columns of the keypad
 const byte ROWS = 4;
 const byte COLS = 4;
