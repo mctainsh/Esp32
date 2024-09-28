@@ -16,3 +16,4 @@ const char* WIFI_PASSWORD = "MyPassword";
  // RTK Connection details
  const char* RTF_SERVER_ADDRESS = "ntrip.data.gnss.ga.gov.au";
  const int RTF_SERVER_PORT = 2101;
+ const char* RTF_MOUNT_POINT = "CLEV00AUS0";	//  "PTHL00AUS0"      // Port headland

@@ -36,6 +36,9 @@ class NTRIPClient
 			//	built += static_cast<char>(_pSocketBuffer[n]);
 			//Serial.printf("%d %s\r\n", buffSize, built.c_str());
 			_display.IncrementRtkPackets(completePackets);
+
+			// record we had some data so do not try to reconnect straight away
+			_wifiConnectTime = millis();
 		}
 		else
 		{
@@ -44,19 +47,19 @@ class NTRIPClient
 	}
   private:
 	WiFiClient _client;
-	uint16_t _wifiReconnectTime = 0;
-	byte _pSocketBuffer[SOCKET_BUFFER_MAX];
-	MyDisplay& _display;
-	GNSSParser _gnssParser;
+	uint16_t _wifiConnectTime = 0;			 // Time we last had good data to prevent reconnects too fast
+	byte _pSocketBuffer[SOCKET_BUFFER_MAX];	 // Build buffer
+	MyDisplay& _display;					 // Display for updatig packet count
+	GNSSParser _gnssParser;					 // Parser for extracting RTK
 
 	////////////////////////////////////////////////////////////////////////////////
 	void Reconnect()
 	{
 		// Limit how soon the connection is retried
-		if( (millis() - _wifiReconnectTime) < 10000 )
+		if ((millis() - _wifiConnectTime) < 10000)
 			return;
 
-		_wifiReconnectTime = millis();
+		_wifiConnectTime = millis();
 
 		// Start the connection process
 		Serial.printf("RTK Not connecting to %s %d\r\n", RTF_SERVER_ADDRESS, RTF_SERVER_PORT);
@@ -69,8 +72,7 @@ class NTRIPClient
 
 		// Send the startup credentials
 		//_client.write("GET / HTTP/1.1");			// Load the source table
-		_client.write("GET /CLEV00AUS0 HTTP/1.1\r\n");	// Cleveland
-														//_client.write("GET /PTHL00AUS0 HTTP/1.1");       // Port headland
+		_client.write(StringPrintf("GET /%s HTTP/1.1\r\n", RTF_MOUNT_POINT).c_str());  // Cleveland																			 
 		_client.write(StringPrintf("Host: %s:%d\r\n", RTF_SERVER_ADDRESS, RTF_SERVER_PORT).c_str());
 
 		// Add credentials

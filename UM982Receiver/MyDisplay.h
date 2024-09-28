@@ -1,6 +1,7 @@
-#include "hal/uart_ll.h"
-#include <string>
 #pragma once
+
+// Handy RGB565 colour picker at https://chrishewett.com/blog/true-rgb565-colour-picker/
+// IMage converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
 #include "HandyString.h"
 
@@ -23,36 +24,49 @@ class MyDisplay
 	{
 		_tft.init();
 		_tft.setRotation(3);
-		_tft.fillScreen(TFT_BLUE);
-
-		// The standard ADAFruit font still works as before
-		_tft.setTextColor(TFT_BLACK);
-		_tft.setCursor(12, 5);
-		_tft.print(StringPrintf("X %d Y %d", _tft.width(), _tft.height()).c_str());
+		//_img = TFT_eSprite(&_tft);
+		_img.createSprite(10, 40);
+		_background.createSprite(50, 50);
+		RefreshScreen();
 	}
 
-	/////////////////////////////////////////////////////////////////////////////
-	// Simple functions to update display
-	void SetCount(int n)
+	// Do we currently have a location
+	bool HasLocation() const
 	{
-		SetValue(n, &_count, 170, 5, 64, 2);
+		return _lat != 0.0 && _lng != 0.0;
 	}
-	void SetTime(const std::string t)
+
+	// ************************************************************************//
+	// Page 0
+	// ************************************************************************//
+	void Animate()
 	{
-		SetValue(t, &_time, 2, ROW4, 124, 4);
+		if (_currentPage != 0)
+			return;
+		if (_animationAngle++ % 10 == 0)
+		{
+			_background.fillSprite(TFT_BLACK);
+			_img.fillSprite(TFT_BLACK);
+			_img.drawWedgeLine(5, 0, 5, 20, 1, 5, TFT_RED);
+			//_img.drawArc()
+			_img.pushRotated(&_background, _animationAngle / 10);
+			_background.pushSprite(160, 10);
+		}
 	}
-	void SetWebStatus( std::string status)
-	{
-		SetValue(status, &_webStatus, 2, 3, 164, 2);
-	}
+
+	// ************************************************************************//
+	// Page 1
+	// ************************************************************************//
 	void SetPosition(double lng, double lat)
 	{
+		if (_currentPage != 1)
+			return;
 		if (_deltaMode)
 		{
 			// Calculate the
 			if (_lng != lng || _lat != lat)
 			{
-				double metres = HaversineMetres(_lat, _lng, _latSaved, _lngSaved);
+				double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
 				_lng = lng;
 				_lat = lat;
 				uint16_t clr = TFT_GREEN;
@@ -70,59 +84,20 @@ class MyDisplay
 		}
 		else
 		{
-			//SetValueFormatted(lng, &_lng, StringPrintf("%.9lf", lng), 3, 18, 236, 4);
-			SetValueFormatted(lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
+			SetValueFormatted(1, lng, &_lng, StringPrintf("%.9lf", lng), 3, 24, 236, 4);
+			SetValueFormatted(1, lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
 		}
 	}
 
-	/////////////////////////////////////////////////////////////////////////////
-	// Saver location if necessary
-	void ToggleDeltaMode()
-	{
-		_deltaMode = !_deltaMode;
-		_lngSaved = _lng;
-		_latSaved = _lat;
-
-		RefreshScreen();
-	}
-
-	///////////////////////////////////////////////////////////////////////////
-	// Draw everything back on the screen
-	void RefreshScreen()
-	{
-		// Clear the working area
-		_tft.fillScreen(TFT_BLUE);
-
-		// Redraw
-		double lng = _lng, lat = _lat;
-		SetPosition(lng + 10, lat + 10);
-		SetPosition(lng, lat);
-
-		int8_t n = _fixMode;
-		SetFixMode(n + 1);
-		SetFixMode(n);
-
-		std::string s = _webStatus;
-		SetWebStatus(_webStatus + "?");
-		SetWebStatus(s);
-
-		n = _satellites;
-		SetSatellites(n + 1);
-		SetSatellites(n);
-
-		_gpsPacketCount--;
-		IncrementGpsPackets();
-		_rtkPacketCount--;
-		IncrementRtkPackets(1);
-	}
-
-	/////////////////////////////////////////////////////////////////////////////
-	// FIx mode indicates if we have a location and if itr is RTK corrected
 	void SetFixMode(int8_t n)
 	{
 		if (_fixMode == n)
 			return;
 		_fixMode = n;
+
+		if (_currentPage != 1)
+			return;
+
 		std::string text = " ";
 		if (_fixMode != -1)
 			text = std::to_string(_fixMode);
@@ -152,16 +127,37 @@ class MyDisplay
 		DrawCell(text.c_str(), 240 - 38, ROW4, 34, 7, fg, bg);
 	}
 
-	/////////////////////////////////////////////////////////////////////////////
+	void SetTime(const std::string t)
+	{
+		SetValue(1, t, &_time, 2, ROW4, 124, 4);
+	}
+
 	void SetSatellites(int8_t n)
 	{
 		if (_satellites == n)
 			return;
 		_satellites = n;
+
+		if (_currentPage != 1)
+			return;
+
 		std::string text = " ";
 		if (_satellites != -1)
 			text = std::to_string(_satellites);
 		DrawCell(text.c_str(), 240 - 38 - 72, ROW4, 68, 7);
+	}
+
+	// ************************************************************************//
+	// Page 2
+	// ************************************************************************//
+	void SetWebStatus(std::string status)
+	{
+		SetValue(2, status, &_webStatus, 2, 24, 236, 4);
+	}
+
+	void SetLoopsPerSecond(int n)
+	{
+		SetValue(2, n, &_loopsPerSecond, 2, 54, 236, 4);
 	}
 
 	void IncrementGpsPackets()
@@ -169,37 +165,118 @@ class MyDisplay
 		_gpsPacketCount++;
 		if (_gpsPacketCount > 32000)
 			_gpsPacketCount = 10000;
-		DrawCell(std::to_string(_gpsPacketCount).c_str(), 2, ROW4 + 32, 60, 2);
+		if (_currentPage != 2)
+			return;
+		DrawCell(std::to_string(_gpsPacketCount).c_str(), 2, ROW4, 116, 4);
 	}
 
 	void IncrementRtkPackets(int completePackets)
 	{
-		_rtkPacketCount+= completePackets;
+		_rtkPacketCount += completePackets;
 		if (_rtkPacketCount > 32000)
 			_rtkPacketCount = 10000;
-		DrawCell(std::to_string(_rtkPacketCount).c_str(), 64, ROW4 + 32, 60, 2);
+		if (_currentPage != 2)
+			return;
+		DrawCell(std::to_string(_rtkPacketCount).c_str(), 122, ROW4, 116, 4);
 	}
+
+
+	/////////////////////////////////////////////////////////////////////////////
+	// Saver location if necessary
+	void ToggleDeltaMode()
+	{
+		_deltaMode = !_deltaMode;
+		_lngSaved = _lng;
+		_latSaved = _lat;
+		Serial.printf("Save X,Y %.9lf, %.9lf\r\n", _lng, _lat);
+		RefreshScreen();
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Move to the next page
+	void NextPage()
+	{
+		_currentPage++;
+		if (_currentPage > 2)
+			_currentPage = 0;
+		RefreshScreen();
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Draw everything back on the screen
+	void RefreshScreen()
+	{
+		const char* title = "Unknown";
+		_tft.setTextDatum(TL_DATUM);
+		_tft.setTextColor();
+		// Clear the working area
+		switch (_currentPage)
+		{
+			case 0:
+				_tft.fillScreen(0x8610);
+				title = "Status";
+				_tft.drawString("Version", 5, 50 , 4);
+				_tft.drawString(APP_VERSION, 105, 50 , 4);
+				break;
+			case 1:
+				_tft.fillScreen(TFT_GREEN);
+				title = "Location";
+				break;
+			case 2:
+				_tft.fillScreen(TFT_YELLOW);
+				title = "System";
+				break;
+		}
+		DrawCell(title, 2, 2, 236, 2);
+
+		// Redraw
+		double lng = _lng,
+			   lat = _lat;
+		SetPosition(lng + 10, lat + 10);
+		SetPosition(lng, lat);
+
+		int8_t n = _fixMode;
+		SetFixMode(n + 1);
+		SetFixMode(n);
+
+		std::string s = _webStatus;
+		SetWebStatus(_webStatus + "?");
+		SetWebStatus(s);
+
+		n = _satellites;
+		SetSatellites(n + 1);
+		SetSatellites(n);
+
+		_gpsPacketCount--;
+		IncrementGpsPackets();
+		_rtkPacketCount--;
+		IncrementRtkPackets(1);
+	}
+
 
 	/////////////////////////////////////////////////////////////////////////////
 	template<typename T>
-	void SetValue(T n, T* pMember, int32_t x, int32_t y, int width, uint8_t font)
+	void SetValue(int page, T n, T* pMember, int32_t x, int32_t y, int width, uint8_t font)
 	{
 		if (*pMember == n)
 			return;
 		*pMember = n;
 
+		if (page != _currentPage)
+			return;
 		std::ostringstream oss;
 		oss << *pMember;
 		DrawCell(oss.str().c_str(), x, y, width, font);
 	}
 
 	template<typename T>
-	void SetValueFormatted(T n, T* pMember, const std::string text, int32_t x, int32_t y, int width, uint8_t font)
+	void SetValueFormatted(int page, T n, T* pMember, const std::string text, int32_t x, int32_t y, int width, uint8_t font)
 	{
 		if (*pMember == n)
 			return;
 		*pMember = n;
-
+		if (_currentPage != page)
+			return;
 		DrawCell(text.c_str(), x, y, width, font);
 	}
 
@@ -222,18 +299,21 @@ class MyDisplay
 	}
 
   private:
-
-	TFT_eSPI _tft = TFT_eSPI();	  // Invoke library, pins defined in User_Setup.h
+	TFT_eSPI _tft = TFT_eSPI();	 // Invoke library, pins defined in User_Setup.h
+	TFT_eSprite _background = TFT_eSprite(&_tft);
+	TFT_eSprite _img = TFT_eSprite(&_tft);
+	int _currentPage = 1;		  // Page we are currently displaying
 	int8_t _fixMode = -1;		  // Fix mode for RTK
 	int8_t _satellites = -1;	  // Number of satellites
 	int16_t _gpsPacketCount = 0;  // Number of packets received
 	int16_t _rtkPacketCount = 0;  // Number of packets received
 	std::string _time;			  // GPS time in minutes and seconds
 	double _lng;				  // Longitude
-	double _lat;				  // Latitude
-	double _lngSaved;			  // Longitude  saved
-	double _latSaved;			  // Latitude saved
+	double _lat;				  // ..
+	double _lngSaved;			  // Longitude saved for deltas
+	double _latSaved;			  // ..
 	bool _deltaMode = false;	  // True if displaying delta
-	int _count;
-	std::string _webStatus;		// Status of connection
+	int _animationAngle;		  // Animated wheel
+	int _loopsPerSecond;		  // How many loop occur per second
+	std::string _webStatus;		  // Status of connection
 };

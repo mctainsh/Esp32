@@ -16,29 +16,27 @@ Add
   ###### DON'T FORGET TO UPDATE THE User_Setup.h FILE IN THE LIBRARY ######
   #########################################################################
 */
+#define BUTTON_1 0
+#define BUTTON_2 35
+#define APP_VERSION "1.08"
 
 #include "HandyString.h"
 #include "MyDisplay.h"
 #include "GpsParser.h"
-#include "Credentials.h"
+#include "CredentialPrivate.h"
 #include "NTRIPClient.h"
-
-
-#define BUTTON_1 0
-#define BUTTON_2 35
 
 MyDisplay _display;
 GpsParser _gpsParser(_display);
 NTRIPClient _ntripClient(_display);
 
-unsigned long targetTime = 0;
-int _count;
+unsigned long _loopWaitTime = 0;  // Time of last second
+int _loopPersSecondCount = 0;	  // Number of times the main loops runs in a second
 
 uint8_t _button1Current = HIGH;
 uint8_t _button2Current = HIGH;
 
 bool IsButtonReleased(uint8_t button, uint8_t* pCurrent);
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
@@ -52,7 +50,9 @@ void setup(void)
 
 	_display.Setup();
 	Serial.println("Startup Complete");
-	Serial2.println("freset");
+
+	// Reset the device
+	//Serial2.println("freset");
 }
 
 
@@ -60,6 +60,16 @@ void setup(void)
 // Loop here
 void loop()
 {
+	// Trigger someting every second
+	int t = millis();
+	_loopPersSecondCount++;
+	if ((t - _loopWaitTime) > 1000)
+	{
+		_loopWaitTime = t;
+		_display.SetLoopsPerSecond(_loopPersSecondCount);
+		_loopPersSecondCount = 0;
+	}
+
 	// Is the WIFI connected?
 	if (WiFi.status() != WL_CONNECTED)
 	{
@@ -74,7 +84,7 @@ void loop()
 		{
 			_display.SetWebStatus(StringPrintf("WiFi %d %d", beginState, countDown));
 			delay(500);
-			if( countDown-- < 1 )
+			if (countDown-- < 1)
 			{
 				Serial.println("E311 - WIFI Connect timmed out");
 				_display.SetWebStatus("NO WIFI!!!");
@@ -87,27 +97,18 @@ void loop()
 	// Check for new data GPS serial data
 	_gpsParser.ReadDataFromSerial(Serial2);
 
-	// CHeck for new RTK corrections
-	_ntripClient.Loop();
+	// Check for new RTK corrections if we have a location already
+	if (_display.HasLocation())
+		_ntripClient.Loop();
 
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
 		_display.ToggleDeltaMode();
-	//if (IsButtonReleased(BUTTON_2, &_button2Current))
-	//	n--;
+	if (IsButtonReleased(BUTTON_2, &_button2Current))
+		_display.NextPage();
 
-	_count++;
-
-
-	if (targetTime > millis())
-		return;
-
-	targetTime = millis() + 1000;
-
-	_display.SetCount(_count);
-	//_display.OnDraw();
-
-	_count = 0;
+	// Update animations
+	_display.Animate();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
