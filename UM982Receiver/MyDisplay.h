@@ -1,15 +1,24 @@
+#include "HardwareSerial.h"
 #pragma once
 
 // Handy RGB565 colour picker at https://chrishewett.com/blog/true-rgb565-colour-picker/
 // IMage converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
 #include "HandyString.h"
+#include "MyFiles.h"
 
 #include <TFT_eSPI.h>  // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 //#include "Free_Fonts.h" // Include the header file attached to this sketch
 #define ROW4 (135 - 54)
+
+#define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
+
+extern MyFiles _myFiles;
 
 class MyDisplay
 {
@@ -22,9 +31,22 @@ class MyDisplay
 	// Setup this display
 	void Setup()
 	{
+		// Load last lat long
+		std::string llText;
+		if (_myFiles.ReadFile(SAVE_LNG_LAT_FILE, llText))
+		{
+			Serial.printf("\tRead LL '%s'\r\n", llText.c_str());
+			std::stringstream ss(llText);
+			ss >> _lngSaved >> _latSaved;
+			if (ss.fail())
+				Serial.println("\tE341 - Cannot read saved Lng Lat");
+			else
+				Serial.printf("\tRecovered LL %.9lf,%.9lf\r\n", _lngSaved, _latSaved);
+		}
+
+		// Setup screen
 		_tft.init();
 		_tft.setRotation(3);
-		//_img = TFT_eSprite(&_tft);
 		_img.createSprite(10, 40);
 		_background.createSprite(50, 50);
 		RefreshScreen();
@@ -44,12 +66,12 @@ class MyDisplay
 		const int W = 240;
 		const int H = 19;
 		const int CIRF = (2 * (W + H));
-		const uint16_t COLORS[] = {TFT_RED, TFT_GREEN, TFT_BLUE, TFT_BLACK, TFT_WHITE };
+		const uint16_t COLORS[] = { TFT_RED, TFT_GREEN, TFT_BLUE, TFT_BLACK, TFT_WHITE };
 		const int COLORS_SIZE = 5;
 
 		// Draw the dynamic frame around the titlebar. First loop is grren second is red
 		int t = (_animationAngle++ / 20) % (COLORS_SIZE * CIRF);
-		uint16_t clr = COLORS[t/CIRF];
+		uint16_t clr = COLORS[t / CIRF];
 
 		t = t % CIRF;
 
@@ -63,7 +85,7 @@ class MyDisplay
 		else
 			_tft.drawLine(2, 0, t, 0, clr);
 
-		// Rotating compass only appears on page 
+		// Rotating compass only appears on page
 		if (_currentPage != 0)
 			return;
 		if (_animationAngle % 10 == 0)
@@ -83,7 +105,7 @@ class MyDisplay
 	// ************************************************************************//
 	void SetPosition(double lng, double lat)
 	{
-		if( _currentPage == 1)
+		if (_currentPage == 1)
 		{
 			SetValueFormatted(1, lng, &_lng, StringPrintf("%.9lf", lng), 3, 24, 236, 4);
 			SetValueFormatted(1, lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
@@ -117,7 +139,7 @@ class MyDisplay
 			return;
 		_fixMode = n;
 
-		if (_currentPage != 1)
+		if (_currentPage != 1 && _currentPage != 2)
 			return;
 
 		std::string text = " ";
@@ -160,7 +182,7 @@ class MyDisplay
 			return;
 		_satellites = n;
 
-		if (_currentPage != 1)
+		if (_currentPage != 1 && _currentPage != 2)
 			return;
 
 		std::string text = " ";
@@ -207,16 +229,31 @@ class MyDisplay
 		DrawCell(std::to_string(_rtkPacketCount).c_str(), 122, ROW4, 116, 4);
 	}
 
-
 	/////////////////////////////////////////////////////////////////////////////
-	// Saver location if necessary
-	void ToggleDeltaMode()
+	// Depen ds on page currently shown
+	void ActionButton()
 	{
-		if( _currentPage != 2 )
-			return;
-		_lngSaved = _lng;
-		_latSaved = _lat;
-		Serial.printf("Save X,Y %.9lf, %.9lf\r\n", _lng, _lat);
+		switch (_currentPage)
+		{
+			// Save current location
+			case 2:
+					if (!HasLocation())
+						return;
+					_lngSaved = _lng;
+					_latSaved = _lat;
+					{
+					std::string saveText = StringPrintf("%.9lf %.9lf", _lng, _lat);
+					Serial.printf("Saving X,Y %s\r\n", saveText.c_str());
+					_myFiles.WriteFile(SAVE_LNG_LAT_FILE, saveText.c_str());
+					}
+				break;
+
+			// Reset GPS
+			case 3:
+				Serial2.println("freset");
+				break;
+		}
+
 		RefreshScreen();
 	}
 
@@ -334,7 +371,7 @@ class MyDisplay
 	TFT_eSPI _tft = TFT_eSPI();	 // Invoke library, pins defined in User_Setup.h
 	TFT_eSprite _background = TFT_eSprite(&_tft);
 	TFT_eSprite _img = TFT_eSprite(&_tft);
-	int _currentPage = 3;		  // Page we are currently displaying
+	int _currentPage = 1;		  // Page we are currently displaying
 	int8_t _fixMode = -1;		  // Fix mode for RTK
 	int8_t _satellites = -1;	  // Number of satellites
 	int16_t _gpsPacketCount = 0;  // Number of packets received

@@ -18,14 +18,17 @@ Add
 */
 #define BUTTON_1 0
 #define BUTTON_2 35
-#define APP_VERSION "1.18"
+
+#define APP_VERSION "1.28"
 
 #include "HandyString.h"
 #include "MyDisplay.h"
 #include "GpsParser.h"
 #include "CredentialPrivate.h"
 #include "NTRIPClient.h"
+#include "MyFiles.h"
 
+MyFiles _myFiles;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
 NTRIPClient _ntripClient(_display);
@@ -33,8 +36,8 @@ NTRIPClient _ntripClient(_display);
 unsigned long _loopWaitTime = 0;  // Time of last second
 int _loopPersSecondCount = 0;	  // Number of times the main loops runs in a second
 
-uint8_t _button1Current = HIGH;
-uint8_t _button2Current = HIGH;
+uint8_t _button1Current = HIGH;	 // Top button on left
+uint8_t _button2Current = HIGH;	 // Bottom button when
 
 bool IsButtonReleased(uint8_t button, uint8_t* pCurrent);
 bool IsWifiConnected();
@@ -49,11 +52,19 @@ void setup(void)
 	pinMode(BUTTON_1, INPUT_PULLUP);
 	pinMode(BUTTON_2, INPUT_PULLUP);
 
+	// Verify file IO
+	if (_myFiles.Setup())
+	{
+		//_myFiles.WriteFile("/hello.txt", "Hello ");
+		//_myFiles.AppendFile("/hello.txt", "World!\r\n");
+		
+		//std::string response;
+		//_myFiles.ReadFile("/hello.txt", response);
+		//Serial.println(response.c_str());
+	}
+
 	_display.Setup();
 	Serial.println("Startup Complete");
-
-	// Reset the device
-	//Serial2.println("freset");
 }
 
 
@@ -86,7 +97,7 @@ void loop()
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
 		_display.NextPage();
 	if (IsButtonReleased(BUTTON_2, &_button2Current))
-		_display.ToggleDeltaMode();
+		_display.ActionButton();
 
 	// Update animations
 	_display.Animate();
