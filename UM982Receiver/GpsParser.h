@@ -1,3 +1,4 @@
+#include "esp32-hal.h"
 #pragma once
 
 #include <iostream>
@@ -58,10 +59,17 @@ class GpsParser
 			// Build the buffer
 			_buildBuffer += ch;
 		}
+
+		// Check for timeouts
+		if( (millis() - _timeOfLastMessage) > 2500 )
+		{
+			_timeOfLastMessage = millis();
+			_commandQueue.StartInitialiseProcess();
+		}
 	}
   private:
+	unsigned long _timeOfLastMessage = 0;		// Millis of last good message
 
-	bool _firstSendGGA = true;
 	///////////////////////////////////////////////////////////////////////////
 	// Process a GPS line
 	//		$GNGGA,020816.00,2734.21017577,S,15305.98006651,E,4,34,0.6,34.9570,M,41.1718,M,1.0,0*4A
@@ -75,6 +83,8 @@ class GpsParser
 			Serial.println("W700 - Too short");
 			return;
 		}
+
+		_timeOfLastMessage = millis();
 
 		Serial.printf("Processing UN98x %s\r\n", line.c_str());
 
@@ -98,14 +108,6 @@ class GpsParser
 			return;
 
 		std::vector<std::string> parts = Split(line, ",");
-
-		// Ask gor GGA if reset
-		if (line == "$devicename,COM1*67" && _firstSendGGA)
-		{
-			Serial2.println("GNGGA 1");
-			_firstSendGGA = false;
-			return;
-		}
 
 		// Skip unused types
 		if (!EndsWith(parts.at(0), "GGA"))

@@ -18,7 +18,7 @@ Add
 */
 #define BUTTON_1 0
 #define BUTTON_2 35
-#define APP_VERSION "1.08"
+#define APP_VERSION "1.18"
 
 #include "HandyString.h"
 #include "MyDisplay.h"
@@ -37,6 +37,7 @@ uint8_t _button1Current = HIGH;
 uint8_t _button2Current = HIGH;
 
 bool IsButtonReleased(uint8_t button, uint8_t* pCurrent);
+bool IsWifiConnected();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
@@ -70,42 +71,22 @@ void loop()
 		_loopPersSecondCount = 0;
 	}
 
-	// Is the WIFI connected?
-	if (WiFi.status() != WL_CONNECTED)
-	{
-		Serial.println("E310 - No WIFI");
-		WiFi.mode(WIFI_STA);
-		wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-		Serial.printf("WiFi Connecting %d \r\n", beginState);
-
-		// Wait 20 seconds to connect
-		int countDown = 40;
-		while (WiFi.status() != WL_CONNECTED)
-		{
-			_display.SetWebStatus(StringPrintf("WiFi %d %d", beginState, countDown));
-			delay(500);
-			if (countDown-- < 1)
-			{
-				Serial.println("E311 - WIFI Connect timmed out");
-				_display.SetWebStatus("NO WIFI!!!");
-				return;
-			}
-		}
-		_display.SetWebStatus(WiFi.localIP().toString().c_str());
-	}
-
 	// Check for new data GPS serial data
 	_gpsParser.ReadDataFromSerial(Serial2);
 
-	// Check for new RTK corrections if we have a location already
-	if (_display.HasLocation())
-		_ntripClient.Loop();
+	// WIFI related functions
+	if (IsWifiConnected())
+	{
+		// Check for new RTK corrections if we have a location already
+		if (_display.HasLocation())
+			_ntripClient.Loop();
+	}
 
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
-		_display.ToggleDeltaMode();
-	if (IsButtonReleased(BUTTON_2, &_button2Current))
 		_display.NextPage();
+	if (IsButtonReleased(BUTTON_2, &_button2Current))
+		_display.ToggleDeltaMode();
 
 	// Update animations
 	_display.Animate();
@@ -122,4 +103,35 @@ bool IsButtonReleased(uint8_t button, uint8_t* pCurrent)
 		return *pCurrent == HIGH;
 	}
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Check Wifi and reconnect
+bool IsWifiConnected()
+{
+	// Is the WIFI connected?
+	if (WiFi.status() == WL_CONNECTED)
+		return true;
+
+	// start the connection process
+	Serial.println("E310 - No WIFI");
+	WiFi.mode(WIFI_STA);
+	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	Serial.printf("WiFi Connecting %d \r\n", beginState);
+
+	// Wait 20 seconds to connect
+	int countDown = 40;
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		_display.SetWebStatus(StringPrintf("WiFi %d %d", beginState, countDown));
+		delay(500);
+		if (countDown-- < 1)
+		{
+			Serial.println("E311 - WIFI Connect timmed out");
+			_display.SetWebStatus("NO WIFI!!!");
+			return false;
+		}
+	}
+	_display.SetWebStatus(WiFi.localIP().toString().c_str());
+	return true;
 }

@@ -51,8 +51,21 @@ class GpsCommandQueue
 		_strings.push_back("CONFIG RTK TIMEOUT 10");
 		_strings.push_back("GNGGA 1");
 
-		SendTopCommand();
+		StartInitialiseProcess();
 		return true;
+	}
+	void StartInitialiseProcess()
+	{
+		// Load the commands
+		Serial.println("StartInitialiseProcess");
+		_strings.clear();
+		_strings.push_back("version");
+		_strings.push_back("config signalgroup 3 6");
+		_strings.push_back("MODE ROVER");
+		_strings.push_back("CONFIG RTK TIMEOUT 10");
+		_strings.push_back("GNGGA 1");
+
+		SendTopCommand();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
