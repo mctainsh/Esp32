@@ -46,7 +46,7 @@ std::vector<std::string> Split(const std::string& s, const std::string delimiter
 }
 
 
-void formatNumber(int number, int width, std::string& result)
+void FormatNumber(int number, int width, std::string& result)
 {
 	std::ostringstream oss;
 	oss << std::setw(width) << std::setfill('0') << number;
@@ -145,6 +145,24 @@ bool IsValidHex(const std::string& str)
 	return true;
 }
 
+bool IsValidDouble(const char* str, double *pVal)
+{
+	if (str == NULL || *str == '\0')
+		return false;
+
+	char* endptr;
+	*pVal = strtod(str, &endptr);
+
+	// Check if the entire string was converted
+	if (*endptr != '\0')
+		return false;
+
+	// Check for special cases like NaN and infinity
+	if (*pVal == 0.0 && endptr == str)
+		return false;
+
+	return true;
+}
 
 static const char base64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const int mod_table[] = { 0, 2, 1 };

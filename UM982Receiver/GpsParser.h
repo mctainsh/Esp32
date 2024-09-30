@@ -1,3 +1,4 @@
+#include <string>
 #include "esp32-hal.h"
 #pragma once
 
@@ -69,6 +70,7 @@ class GpsParser
 	}
   private:
 	unsigned long _timeOfLastMessage = 0;		// Millis of last good message
+	std::string _buildBuffer;
 
 	///////////////////////////////////////////////////////////////////////////
 	// Process a GPS line
@@ -144,9 +146,18 @@ class GpsParser
 		if (quality.length() > 0)
 			_display.SetFixMode(std::stoi(quality));
 
+		// Location
 		double lat = ParseLatLong(parts.at(2), 2, parts.at(3) == "S");
 		double lng = ParseLatLong(parts.at(4), 3, parts.at(3) == "E");
-		_display.SetPosition(lng, lat);
+
+		// Height
+		double height = 0;
+		if( !IsValidDouble( parts.at(9).c_str(), &height) )
+			height = -1;
+
+		_display.SetPosition(lng, lat, height);
+
+		//
 		//Serial.printf("\tLL %.10lf, %.10lf\r\n", lat, lng);
 		//Serial.print("\t LL ");
 		//Serial.print(lat);
@@ -173,17 +184,4 @@ class GpsParser
 		double value = std::stod(degree) + (std::stod(minutes) / 60.0);
 		return isNegative ? value * -1 : value;
 	}
-
-
-	std::string _buildBuffer;
-	/*const std::string DUMMY_DATA[] = {
-		"$GNGGA,020813.00,2734.21017606,S",
-		",15305.98006887,E,4,33,0.6,34.94",
-		"32,M,41.1718,M,1.0,0*4F\r\n",
-		"$GNGGA,020814.00,2734.21017450,S",
-		", 15305.98006438, E, 4, 34, 0.6, 34.97",
-		"13,M,41.1718,M,1.0,0*46\r\n$GNGGA,020815.00,2734.21017375,S",
-		",15305.98006392,E,4,34,0.6,34.9470,M,41.1718,M,1.0,0*46\r\n$GNGGA,020816.00,2734.21017577,S,15305.98006651,E,4,34,0.6,34.9570,M,41.1718,M,1.0,0*4A\r\n",
-		"$GNGGA,020817.00,2734.21017373,S,15305.98006743,E,4,34,0.6,34.9398,M,41.1718,M,1.0,0*4B\r\n"
-	};*/
 };

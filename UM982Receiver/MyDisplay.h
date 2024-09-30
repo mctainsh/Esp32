@@ -37,11 +37,11 @@ class MyDisplay
 		{
 			Serial.printf("\tRead LL '%s'\r\n", llText.c_str());
 			std::stringstream ss(llText);
-			ss >> _lngSaved >> _latSaved;
+			ss >> _lngSaved >> _latSaved >> _heightSaved;
 			if (ss.fail())
 				Serial.println("\tE341 - Cannot read saved Lng Lat");
 			else
-				Serial.printf("\tRecovered LL %.9lf,%.9lf\r\n", _lngSaved, _latSaved);
+				Serial.printf("\tRecovered LL %.9lf,%.9lf, %.3lf m\r\n", _lngSaved, _latSaved, _heightSaved);
 		}
 
 		// Setup screen
@@ -103,21 +103,25 @@ class MyDisplay
 	// ************************************************************************//
 	// Page 1 - CurrentGPS
 	// ************************************************************************//
-	void SetPosition(double lng, double lat)
+	void SetPosition(double lng, double lat, double height)
 	{
 		if (_currentPage == 1)
 		{
 			SetValueFormatted(1, lng, &_lng, StringPrintf("%.9lf", lng), 3, 24, 236, 4);
 			SetValueFormatted(1, lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
+			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", lat), 3, 110, 120, 4);
 		}
 		if (_currentPage == 2)
 		{
 			// Calculate the
 			if (_lng != lng || _lat != lat)
 			{
-				double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
 				_lng = lng;
 				_lat = lat;
+				_height = height;
+				DrawCell(StringPrintf("%.3lf", _height - _heightSaved).c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
+
+				double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
 				uint16_t clr = TFT_GREEN;
 				std::string text = StringPrintf("%.3lf", metres);
 				if (text.length() > 7)
@@ -237,15 +241,16 @@ class MyDisplay
 		{
 			// Save current location
 			case 2:
-					if (!HasLocation())
-						return;
-					_lngSaved = _lng;
-					_latSaved = _lat;
-					{
-					std::string saveText = StringPrintf("%.9lf %.9lf", _lng, _lat);
+				if (!HasLocation())
+					return;
+				_lngSaved = _lng;
+				_latSaved = _lat;
+				_heightSaved = _height;
+				{
+					std::string saveText = StringPrintf("%.9lf %.9lf %.3lf", _lng, _lat, _height);
 					Serial.printf("Saving X,Y %s\r\n", saveText.c_str());
 					_myFiles.WriteFile(SAVE_LNG_LAT_FILE, saveText.c_str());
-					}
+				}
 				break;
 
 			// Reset GPS
@@ -299,10 +304,9 @@ class MyDisplay
 		DrawCell(title, 0, 0, 240, 2);
 
 		// Redraw
-		double lng = _lng,
-			   lat = _lat;
-		SetPosition(lng + 10, lat + 10);
-		SetPosition(lng, lat);
+		double lng = _lng,  lat = _lat, h = _height;
+		SetPosition(lng + 10, lat + 10, h + 10);
+		SetPosition(lng, lat, _height);
 
 		int8_t n = _fixMode;
 		SetFixMode(n + 1);
@@ -379,8 +383,10 @@ class MyDisplay
 	std::string _time;			  // GPS time in minutes and seconds
 	double _lng;				  // Longitude
 	double _lat;				  // ..
+	double _height;				  // ..
 	double _lngSaved;			  // Longitude saved for deltas
 	double _latSaved;			  // ..
+	double _heightSaved;		  // ..
 	int _animationAngle;		  // Animated wheel
 	int _loopsPerSecond;		  // How many loop occur per second
 	std::string _webStatus;		  // Status of connection
