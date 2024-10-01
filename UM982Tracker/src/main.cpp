@@ -4,15 +4,15 @@
 //	  ###### DON'T FORGET TO UPDATE THE User_Setup.h FILE IN THE LIBRARY ######
 //	  #########################################################################
 //	 
-//	 Mac (Or local .poi folder)
-//		/Users/{Username}/Documents/Arduino/libraries/TFT_eSPI/User_Setup_Select.h
-//	Windows (Or local .poi folder)
-//		C:\Code\Arduino\libraries\TFT_eSPI\User_Setup_Select.h (Different on new install)
-//	Comment out
+//	To use the TTGO T-Display with the TFT_eSPI library, you need to make the following changes to 
+//	the User_Setup.h file in the library.
+//		.pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h
+//
+//	1. Comment out the default setup file
 //		//#include <User_Setup.h>           // Default setup is root library folder
-//	Uncomment
+//	2. Uncomment the TTGO T-Display setup file
 //		#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
-//	Add 
+//	3. Add the following line to the start of the file
 //		#define DISABLE_ALL_LIBRARY_WARNINGS
 ///////////////////////////////////////////////////////////////////////////////
 
