@@ -2,7 +2,7 @@
 #pragma once
 
 // Handy RGB565 colour picker at https://chrishewett.com/blog/true-rgb565-colour-picker/
-// IMage converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
+// Image converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
 #include "HandyString.h"
 #include "MyFiles.h"
@@ -15,6 +15,17 @@
 
 // #include "Free_Fonts.h" // Include the header file attached to this sketch
 #define ROW4 (135 - 54)
+
+// Font size 4 with 4 rows
+#define R1F4 20
+#define R2F4 50
+#define R3F4 80
+#define R4F4 110
+
+// Columns
+#define COL1 5
+#define COL2_P0 60
+#define COL2_P0_W 178
 
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
@@ -204,7 +215,13 @@ public:
 	// ************************************************************************//
 	void SetWebStatus(std::string status)
 	{
-		SetValue(3, status, &_webStatus, 2, 24, 236, 4);
+		if( _webStatus == status )
+			return;
+		_webStatus = status;
+		if( _currentPage != 0)
+			return;
+
+		DrawML(status.c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
 	}
 
 	void SetLoopsPerSecond(int n)
@@ -268,6 +285,7 @@ public:
 		_currentPage++;
 		if (_currentPage > 3)
 			_currentPage = 0;
+		Serial.printf("Switch to page %d\r\n", _currentPage);
 		RefreshScreen();
 	}
 
@@ -277,15 +295,25 @@ public:
 	{
 		const char *title = "Unknown";
 		_tft.setTextDatum(TL_DATUM);
-		_tft.setTextColor(TFT_BLACK, TFT_WHITE, true);
 		// Clear the working area
+
 		switch (_currentPage)
 		{
 		case 0:
-			_tft.fillScreen(0x8610);
+			_bg = 0x07eb;
+			_tft.fillScreen(_bg);
 			title = "Status";
-			_tft.drawString("Version", 5, 50, 4);
-			_tft.drawString(APP_VERSION, 105, 50, 4);
+
+			DrawLabel("Wi-Fi", COL1, R1F4, 2);
+			DrawLabel("GPS", COL1, R2F4, 2);
+			DrawLabel("Transmitter", COL1, R3F4, 2);
+			DrawLabel("Version", COL1, R4F4, 2);
+
+			
+			DrawML("CONN", COL2_P0, R2F4, COL2_P0_W, 4);
+			DrawML("READY", COL2_P0, R3F4, COL2_P0_W, 4);
+			DrawML(APP_VERSION, COL2_P0, R4F4, COL2_P0_W, 4);
+
 			break;
 		case 1:
 			_tft.fillScreen(TFT_GREEN);
@@ -353,7 +381,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////
 	// NOTE: Font 6 is only numbers
-	void DrawCell(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK)
+	void DrawCell(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK, uint8_t datum = MC_DATUM)
 	{
 		// Fill background
 		int height = _tft.fontHeight(font);
@@ -362,18 +390,44 @@ public:
 		// Draw text
 		_tft.setFreeFont(&FreeMono18pt7b);
 		_tft.setTextColor(fgColour, bgColour, true);
-		_tft.setTextDatum(MC_DATUM);
-		_tft.drawString(pstr, x + width / 2, y + (height / 2) + 2, font);
+		_tft.setTextDatum(datum);
+		if( datum == ML_DATUM)
+			_tft.drawString(pstr, x+2, y + (height / 2) + 2, font);
+		else
+			_tft.drawString(pstr, x + width / 2, y + (height / 2) + 2, font);
 
 		// Frame it
 		_tft.drawRoundRect(x, y, width, height + 3, 5, TFT_YELLOW);
+	}
+	void DrawML(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK)
+	{
+		DrawCell(pstr, x, y, width, font, fgColour, bgColour, ML_DATUM);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// NOTE: Font 6 is only numbers
+	void DrawLabel(const char *pstr, int32_t x, int32_t y, uint8_t font)
+	{
+		// Fill background
+		int height = _tft.fontHeight(font);
+		//_tft.fillRoundRect(x, y, width, height + 3, 5, bgColour);
+
+		// Draw text
+		_tft.setFreeFont(&FreeMono18pt7b);
+		_tft.setTextColor(TFT_BLACK, _bg, true);
+		_tft.setTextDatum(ML_DATUM);
+		_tft.drawString(pstr, x, y + (height / 2) + 2, font);
+
+		// Frame it
+		//_tft.drawRoundRect(x, y, width, height + 3, 5, TFT_YELLOW);
 	}
 
 private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
 	TFT_eSprite _background = TFT_eSprite(&_tft);
 	TFT_eSprite _img = TFT_eSprite(&_tft);
-	int _currentPage = 1;		 // Page we are currently displaying
+	uint16_t _bg = 0x8610;		 // Background colour
+	int _currentPage = 0;		 // Page we are currently displaying
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
 	int16_t _gpsPacketCount = 0; // Number of packets received

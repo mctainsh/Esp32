@@ -141,19 +141,20 @@ bool IsWifiConnected()
 	Serial.println("E310 - No WIFI");
 	WiFi.mode(WIFI_STA);
 	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	//_display.SetWebStatus(WifiStatus(beginState));
 	Serial.printf("WiFi Connecting %d %s", beginState, WifiStatus(beginState));
 
 	// Wait 20 seconds to connect
 	int countDown = 40;
-	while (WiFi.status() != WL_CONNECTED)
+	while ((beginState = WiFi.status()) != WL_CONNECTED)
 	{
-		_display.SetWebStatus(StringPrintf("WiFi %d %d", beginState, countDown));
+		_display.SetWebStatus(StringPrintf("%d %s", countDown, WifiStatus(beginState)));
 		CheckButtons();
 		delay(500);
 		Serial.print(".");
 		if (countDown-- < 1)
 		{
-			Serial.println("E311 - WIFI Connect timed out");
+			Serial.println("\r\nE311 - WIFI Connect timed out");
 			_display.SetWebStatus("NO WIFI!!!");
 			return false;
 		}

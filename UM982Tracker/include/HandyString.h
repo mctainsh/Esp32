@@ -202,14 +202,14 @@ const char* WifiStatus(wl_status_t status)
 {
 	switch (status)
 	{
-		case WL_NO_SHIELD: return "NO_SHIELD";
-		case WL_IDLE_STATUS: return "IDLE_STATUS";
-		case WL_NO_SSID_AVAIL: return "NO_SSID_AVAIL";
-		case WL_SCAN_COMPLETED: return "SCAN_COMPLETED";
-		case WL_CONNECTED: return "CONNECTED";
-		case WL_CONNECT_FAILED: return "CONNECT_FAILED";
-		case WL_CONNECTION_LOST: return "CONNECTION_LOST";
-		case WL_DISCONNECTED: return "DISCONNECTED";
+		case WL_NO_SHIELD: return "No shield";
+		case WL_IDLE_STATUS: return "Idle status";
+		case WL_NO_SSID_AVAIL: return "No SSID Avail.";
+		case WL_SCAN_COMPLETED: return "Scan Complete";
+		case WL_CONNECTED: return "Connected";
+		case WL_CONNECT_FAILED: return "Connect failed";
+		case WL_CONNECTION_LOST: return "Lost connection";
+		case WL_DISCONNECTED: return "Disconnected";
 	}
 	return "Unknown";
 }
