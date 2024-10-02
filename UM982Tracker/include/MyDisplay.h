@@ -6,6 +6,7 @@
 
 #include "HandyString.h"
 #include "MyFiles.h"
+#include "MyDisplayGraphics.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -58,8 +59,7 @@ public:
 		// Setup screen
 		_tft.init();
 		_tft.setRotation(3);
-		_img.createSprite(10, 40);
-		_background.createSprite(50, 50);
+		_graphics.Setup();
 		RefreshScreen();
 	}
 
@@ -74,41 +74,7 @@ public:
 	// ************************************************************************//
 	void Animate()
 	{
-		const int W = 240;
-		const int H = 19;
-		const int CIRF = (2 * (W + H));
-		const uint16_t COLORS[] = {TFT_RED, TFT_GREEN, TFT_BLUE, TFT_BLACK, TFT_WHITE};
-		const int COLORS_SIZE = 5;
-
-		// Draw the dynamic frame around the titlebar. First loop is green second is red
-		int t = (_animationAngle++ / 20) % (COLORS_SIZE * CIRF);
-		uint16_t clr = COLORS[t / CIRF];
-
-		t = t % CIRF;
-
-		// Draw the lines
-		if (t > W + H + W)
-			_tft.drawLine(0, H - 1, 0, H - (t - W - H - W), clr);
-		else if (t > W + H)
-			_tft.drawLine(W, H - 1, W - (t - W - H), H - 1, clr);
-		else if (t > W)
-			_tft.drawLine(W - 1, 0, W - 1, t - W, clr);
-		else
-			_tft.drawLine(2, 0, t, 0, clr);
-
-		// Rotating compass only appears on page
-		if (_currentPage != 0)
-			return;
-		if (_animationAngle % 10 == 0)
-		{
-			_background.fillSprite(TFT_BLACK);
-			_img.fillSprite(TFT_BLACK);
-			_img.drawWedgeLine(5, 0, 5, 20, 1, 5, TFT_RED);
-			//_img.drawArc()
-			_img.pushRotated(&_background, _animationAngle / 10);
-
-			_background.pushSprite(190, 60);
-		}
+		_graphics.Animate();
 	}
 
 	// ************************************************************************//
@@ -213,15 +179,35 @@ public:
 	// ************************************************************************//
 	// Page 3 - System detail
 	// ************************************************************************//
-	void SetWebStatus(std::string status)
+	void SetWebStatus(wl_status_t status)
 	{
-		if( _webStatus == status )
+		if (_webStatus == status)
 			return;
 		_webStatus = status;
-		if( _currentPage != 0)
+		_graphics.SetWebStatus(status);
+		if (_currentPage != 0)
 			return;
-
-		DrawML(status.c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+	}
+	void SetWebRtkStatus(std::string status)
+	{
+		if (_webRtkStatus == status)
+			return;
+		_webRtkStatus = status;
+		_graphics.SetRtkStatus(status);
+		if (_currentPage != 0)
+			return;
+		DrawML(status.c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+	}
+	void SetWebTxStatus(std::string status)
+	{
+		if (_webTxStatus == status)
+			return;
+		_webTxStatus = status;
+		_graphics.SetTxStatus(status);
+		if (_currentPage != 0)
+			return;
+		DrawML(status.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 	}
 
 	void SetLoopsPerSecond(int n)
@@ -290,7 +276,20 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
 	// Draw everything back on the screen
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////
 	void RefreshScreen()
 	{
 		const char *title = "Unknown";
@@ -302,33 +301,30 @@ public:
 		case 0:
 			_bg = 0x07eb;
 			_tft.fillScreen(_bg);
-			title = "Status";
+			title = "  Network";
 
 			DrawLabel("Wi-Fi", COL1, R1F4, 2);
-			DrawLabel("GPS", COL1, R2F4, 2);
-			DrawLabel("Transmitter", COL1, R3F4, 2);
+			DrawLabel("RTK", COL1, R2F4, 2);
+			DrawLabel("TX", COL1, R3F4, 2);
 			DrawLabel("Version", COL1, R4F4, 2);
 
-			
-			DrawML("CONN", COL2_P0, R2F4, COL2_P0_W, 4);
-			DrawML("READY", COL2_P0, R3F4, COL2_P0_W, 4);
 			DrawML(APP_VERSION, COL2_P0, R4F4, COL2_P0_W, 4);
 
 			break;
 		case 1:
 			_tft.fillScreen(TFT_GREEN);
-			title = "Location";
+			title = "  Location";
 			break;
 		case 2:
 			_tft.fillScreen(TFT_RED);
-			title = "Location offset";
+			title = "  Location offset";
 			break;
 		case 3:
 			_tft.fillScreen(TFT_YELLOW);
-			title = "System";
+			title = "  System";
 			break;
 		}
-		DrawCell(title, 0, 0, 240, 2);
+		DrawML(title, 20, 0, 200, 2);
 
 		// Redraw
 		double lng = _lng, lat = _lat, h = _height;
@@ -339,9 +335,15 @@ public:
 		SetFixMode(n + 1);
 		SetFixMode(n);
 
-		std::string s = _webStatus;
-		SetWebStatus(_webStatus + "?");
-		SetWebStatus(s);
+		wl_status_t ws = _webStatus;
+		SetWebStatus(static_cast<wl_status_t>(ws + 1));
+		SetWebStatus(ws);
+		std::string s = _webRtkStatus;
+		SetWebRtkStatus(_webRtkStatus + "?");
+		SetWebRtkStatus(s);
+		s = _webTxStatus;
+		SetWebTxStatus(_webTxStatus + "?");
+		SetWebTxStatus(s);
 
 		n = _satellites;
 		SetSatellites(n + 1);
@@ -391,8 +393,8 @@ public:
 		_tft.setFreeFont(&FreeMono18pt7b);
 		_tft.setTextColor(fgColour, bgColour, true);
 		_tft.setTextDatum(datum);
-		if( datum == ML_DATUM)
-			_tft.drawString(pstr, x+2, y + (height / 2) + 2, font);
+		if (datum == ML_DATUM)
+			_tft.drawString(pstr, x + 2, y + (height / 2) + 2, font);
 		else
 			_tft.drawString(pstr, x + width / 2, y + (height / 2) + 2, font);
 
@@ -424,8 +426,7 @@ public:
 
 private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
-	TFT_eSprite _background = TFT_eSprite(&_tft);
-	TFT_eSprite _img = TFT_eSprite(&_tft);
+	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
 	uint16_t _bg = 0x8610;		 // Background colour
 	int _currentPage = 0;		 // Page we are currently displaying
 	int8_t _fixMode = -1;		 // Fix mode for RTK
@@ -441,5 +442,7 @@ private:
 	double _heightSaved;		 //
 	int _animationAngle;		 // Animated wheel
 	int _loopsPerSecond;		 // How many loop occur per second
-	std::string _webStatus;		 // Status of connection
+	wl_status_t _webStatus;		 // WIFI Status of connection to hot spot
+	std::string _webRtkStatus;	 // RTK connection status
+	std::string _webTxStatus;	 // Transmitting of data status
 };

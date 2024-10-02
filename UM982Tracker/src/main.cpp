@@ -19,9 +19,12 @@
 #define BUTTON_1 0
 #define BUTTON_2 35
 
-#define APP_VERSION "1.28"
+#define APP_VERSION "1.38"
 
 #include <WiFi.h>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 #include "HandyString.h"
 #include "MyDisplay.h"
@@ -41,7 +44,6 @@ int _loopPersSecondCount = 0;	  // Number of times the main loops runs in a seco
 uint8_t _button1Current = HIGH;	 // Top button on left
 uint8_t _button2Current = HIGH;	 // Bottom button when
 
-void CheckButtons();
 bool IsButtonReleased(uint8_t button, uint8_t* pCurrent);
 bool IsWifiConnected();
 
@@ -86,7 +88,16 @@ void loop()
 	}
 
 	// Check for push buttons
-	CheckButtons();
+	if (IsButtonReleased(BUTTON_1, &_button1Current))
+	{
+		Serial.println("Button 1");
+		_display.NextPage();
+	}
+	if (IsButtonReleased(BUTTON_2, &_button2Current))
+	{
+		Serial.println("Button 2");
+		_display.ActionButton();
+	}
 
 	// Check for new data GPS serial data
 	_gpsParser.ReadDataFromSerial(Serial2);
@@ -117,48 +128,71 @@ bool IsButtonReleased(uint8_t button, uint8_t* pCurrent)
 }
 void CheckButtons()
 {
-	if (IsButtonReleased(BUTTON_1, &_button1Current))
-	{
-		Serial.println("Button 1");
-		_display.NextPage();
-	}
-	if (IsButtonReleased(BUTTON_2, &_button2Current))
-	{
-		Serial.println("Button 2");
-		_display.ActionButton();
-	}
+
 }
+
+
+#define WIFI_STARTUP_TIMEOUT 20000
+unsigned long _wifiFullResetTime = -WIFI_STARTUP_TIMEOUT;
+wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Check Wifi and reconnect
 bool IsWifiConnected()
 {
 	// Is the WIFI connected?
-	if (WiFi.status() == WL_CONNECTED)
+	wl_status_t status = WiFi.status();
+	if( _lastWifiStatus != status)
+	{
+		_lastWifiStatus = status;
+		Serial.printf("Wifi Status %d %s\r\n", status, WifiStatus(status));
+		_display.SetWebStatus(status);
+	}
+		
+	if (status == WL_CONNECTED)
 		return true;
 
-	// start the connection process
-	Serial.println("E310 - No WIFI");
+	// Start the connection process
+	//Serial.println("E310 - No WIFI");
+	unsigned long t = millis();
+	unsigned long tDelta = t - _wifiFullResetTime;
+	if (tDelta < WIFI_STARTUP_TIMEOUT)
+	{
+		
+		//if( status != WL_DISCONNECTED)
+		//	Serial.println(stateTitle.c_str());
+		//_display.SetWebStatus(stateTitle.c_str());
+
+		// Create a string of dots to show progress. 1 dot per second
+		std::string dotsStr(tDelta/1000, '.');
+		_display.SetWebRtkStatus(dotsStr.c_str());
+
+		return false;
+	}
+
+	// Reset the WIFI
+	_wifiFullResetTime = t;	
 	WiFi.mode(WIFI_STA);
 	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	//_display.SetWebStatus(WifiStatus(beginState));
-	Serial.printf("WiFi Connecting %d %s", beginState, WifiStatus(beginState));
+	Serial.printf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+
+	return false;
 
 	// Wait 20 seconds to connect
-	int countDown = 40;
-	while ((beginState = WiFi.status()) != WL_CONNECTED)
-	{
-		_display.SetWebStatus(StringPrintf("%d %s", countDown, WifiStatus(beginState)));
-		CheckButtons();
-		delay(500);
-		Serial.print(".");
-		if (countDown-- < 1)
-		{
-			Serial.println("\r\nE311 - WIFI Connect timed out");
-			_display.SetWebStatus("NO WIFI!!!");
-			return false;
-		}
-	}
-	_display.SetWebStatus(WiFi.localIP().toString().c_str());
-	return true;
+	//int countDown = 40;
+	//while ((beginState = WiFi.status()) != WL_CONNECTED)
+	//{
+	//	_display.SetWebStatus(StringPrintf("%d %s", countDown, WifiStatus(beginState)));
+	//	delay(500);
+	//	Serial.print(".");
+	//	if (countDown-- < 1)
+	//	{
+	//		Serial.println("\r\nE311 - WIFI Connect timed out");
+	//		_display.SetWebStatus("NO WIFI!!!");
+	//		return false;
+	//	}
+	//}
+	//_display.SetWebStatus(WiFi.localIP().toString().c_str());
+	//return true;
 }

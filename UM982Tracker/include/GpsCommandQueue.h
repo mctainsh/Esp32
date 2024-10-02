@@ -57,7 +57,7 @@ class GpsCommandQueue
 	void StartInitialiseProcess()
 	{
 		// Load the commands
-		Serial.println("StartInitialiseProcess");
+		Serial.println("GPS Queue StartInitialiseProcess");
 		_strings.clear();
 		_strings.push_back("version");
 		_strings.push_back("config signalgroup 3 6");

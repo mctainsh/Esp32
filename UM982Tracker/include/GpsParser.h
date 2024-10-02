@@ -62,7 +62,7 @@ class GpsParser
 		}
 
 		// Check for timeouts
-		if( (millis() - _timeOfLastMessage) > 2500 )
+		if( (millis() - _timeOfLastMessage) > 5000 )
 		{
 			_timeOfLastMessage = millis();
 			_commandQueue.StartInitialiseProcess();
