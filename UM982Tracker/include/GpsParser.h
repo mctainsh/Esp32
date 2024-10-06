@@ -14,6 +14,7 @@ class GpsParser
   public:
 	MyDisplay& _display;
 	GpsCommandQueue _commandQueue;
+	bool _gpsConnected = false;	// Are we receiving GPS data from GPS unit (Does not mean we have location)
 
 	GpsParser(MyDisplay& display)
 	  : _display(display)
@@ -23,7 +24,7 @@ class GpsParser
 
 	///////////////////////////////////////////////////////////////////////////
 	// Return the number of lines
-	void ReadDataFromSerial(Stream& stream)
+	bool ReadDataFromSerial(Stream& stream)
 	{
 		int count = 0;
 		while (stream.available() > 0)
@@ -64,9 +65,11 @@ class GpsParser
 		// Check for timeouts
 		if( (millis() - _timeOfLastMessage) > 5000 )
 		{
+			_gpsConnected = false;
 			_timeOfLastMessage = millis();
 			_commandQueue.StartInitialiseProcess();
 		}
+		return _gpsConnected;
 	}
   private:
 	unsigned long _timeOfLastMessage = 0;		// Millis of last good message
@@ -124,12 +127,13 @@ class GpsParser
 			return;
 		}
 
-		// Skip unused tyles
+		// Skip unused types
 		if (parts.at(0) != "$GNGGA")
 		{
 			Serial.printf("\tNot GGA %s\r\n", line.c_str());
 			return;
 		}
+		_gpsConnected = true;
 
 		// Read time
 		std::string time = parts.at(1);

@@ -114,16 +114,25 @@ public:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// Draw the GPS connected tick box
+	void SetGpsConnected(bool connected)
+	{
+		if( _gpsConnected == connected)
+			return;
+		_gpsConnected = connected;
+		_graphics.SetGpsConnected(_gpsConnected);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Fix mode appears big ON GPS pages and tiny on all pages
 	void SetFixMode(int8_t n)
 	{
 		if (_fixMode == n)
 			return;
 		_fixMode = n;
 
-		if (_currentPage != 1 && _currentPage != 2)
-			return;
-
-		std::string text = " ";
+		std::string text = "-";
 		if (_fixMode != -1)
 			text = std::to_string(_fixMode);
 
@@ -149,7 +158,10 @@ public:
 			fg = TFT_BLACK;
 			bg = TFT_GREEN;
 		}
-		DrawCell(text.c_str(), 240 - 38, ROW4, 34, 7, fg, bg);
+		DrawCell(text.c_str(), 240 - 20, 0, 20, 2, fg, bg);
+
+		if (_currentPage == 1 || _currentPage == 2)
+			DrawCell(text.c_str(), 240 - 38, ROW4, 34, 7, fg, bg);
 	}
 
 	void SetTime(const std::string t)
@@ -189,7 +201,7 @@ public:
 			return;
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
 	}
-	void SetWebRtkStatus(std::string status)
+	void SetRtkStatus(std::string status)
 	{
 		if (_webRtkStatus == status)
 			return;
@@ -226,12 +238,13 @@ public:
 	}
 
 	void IncrementRtkPackets(int completePackets)
-	{
+	{		
 		_rtkPacketCount += completePackets;
 		if (_rtkPacketCount > 32000)
 			_rtkPacketCount = 10000;
 		if (_currentPage != 3)
 			return;
+		_graphics.SetRtkStatus("Connected");
 		DrawCell(std::to_string(_rtkPacketCount).c_str(), 122, ROW4, 116, 4);
 	}
 
@@ -331,6 +344,7 @@ public:
 		SetPosition(lng + 10, lat + 10, h + 10);
 		SetPosition(lng, lat, _height);
 
+		_graphics.SetGpsConnected(_gpsConnected);
 		int8_t n = _fixMode;
 		SetFixMode(n + 1);
 		SetFixMode(n);
@@ -339,8 +353,8 @@ public:
 		SetWebStatus(static_cast<wl_status_t>(ws + 1));
 		SetWebStatus(ws);
 		std::string s = _webRtkStatus;
-		SetWebRtkStatus(_webRtkStatus + "?");
-		SetWebRtkStatus(s);
+		SetRtkStatus(_webRtkStatus + "?");
+		SetRtkStatus(s);
 		s = _webTxStatus;
 		SetWebTxStatus(_webTxStatus + "?");
 		SetWebTxStatus(s);
@@ -429,6 +443,7 @@ private:
 	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
 	uint16_t _bg = 0x8610;		 // Background colour
 	int _currentPage = 0;		 // Page we are currently displaying
+	bool _gpsConnected;			 // GPS connected
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
 	int16_t _gpsPacketCount = 0; // Number of packets received

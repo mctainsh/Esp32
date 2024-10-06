@@ -24,6 +24,13 @@ std::string StringPrintf(const std::string& format, Args... args)
 	return std::string(buf.get(), buf.get() + size - 1);  // We don't want the '\0' inside
 }
 
+bool StartsWith(const std::string& fullString, const std::string& startString)
+{
+	if (startString.length() > fullString.length())
+		return false;
+	return std::equal(startString.begin(), startString.end(), fullString.begin());
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Split the string

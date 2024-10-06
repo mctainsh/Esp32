@@ -12,6 +12,7 @@
 // Box size
 #define CW 20
 #define CH 20
+#define SPACE 23
 
 class MyDisplayGraphics
 {
@@ -89,21 +90,29 @@ public:
 	// Wi-Fi Status indicator
 	void SetWebStatus(wl_status_t status)
 	{
-		DrawBoxTick(240 - CW, 0, status == wl_status_t::WL_CONNECTED);
+		DrawBoxTick(240 - SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
 	}
 	
+	/////////////////////////////////////////////////////////////////////////////
+	// GPS connected status
+	void SetGpsConnected(bool connected)
+	{
+		DrawBoxTick(240 - 2*SPACE - CW, 0, connected);
+	}
+
 	/////////////////////////////////////////////////////////////////////////////
 	// RTK server connection indicator
 	void SetRtkStatus(std::string status)
 	{
-		DrawBoxTick(240 - 30 - CW, 0, false);
+		bool connected = StartsWith(status, "Conn");
+		DrawBoxTick(240 - 3*SPACE - CW, 0, false);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// Transmitting data indicator
 	void SetTxStatus(std::string status)
 	{
-		DrawBoxTick(240 - 60 - CW, 0, true);
+		DrawBoxTick(240 - 4*SPACE - CW, 0, false);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -120,7 +129,7 @@ public:
 		{
 			clr = TFT_BLACK;
 			x0 = x + G;
-			y0 = y + CH / 2 - G;
+			y0 = y + CH / 4 * 3 - G;
 			x1 = x + CW / 2;
 			y1 = y + CH - G;
 			x2 = x1;

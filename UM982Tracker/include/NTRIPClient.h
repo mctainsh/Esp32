@@ -40,6 +40,7 @@ class NTRIPClient
 		}
 		else
 		{
+			_display.SetRtkStatus("Disconnected");
 			Reconnect();
 		}
 	}
