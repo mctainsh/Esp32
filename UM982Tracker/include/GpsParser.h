@@ -107,7 +107,7 @@ class GpsParser
 		}
 
 		// Verify checksum
-		// .. checksum fails for non-$G... recponses. This is the case in the following version
+		// .. checksum fails for non-$G... responses. This is the case in the following version
 		// .. #VERSION,95,GPS,FINE,2333,435235000,0,0,18,906;UM982,R4.10Build11826,HRPT00-S10C-P,...-...,...,2023/11/24*8281e0fb
 		if (!VerifyChecksum(line))
 			return;
@@ -175,9 +175,9 @@ class GpsParser
 
 
 	///////////////////////////////////////////////////////////////////////////
-	// Parse the longitude or latitlue from
+	// Parse the longitude or latitude from
 	//		Latitude   = 2734.21017577,S,
-	//		Longituide = 15305.98006651,E,
+	//		Longitude = 15305.98006651,E,
 	double ParseLatLong(const std::string& text, int degreeDigits, bool isNegative)
 	{
 		if (text.length() < degreeDigits)

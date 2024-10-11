@@ -96,7 +96,8 @@ public:
 				_lng = lng;
 				_lat = lat;
 				_height = height;
-				DrawCell(StringPrintf("%.3lf", _height - _heightSaved).c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
+				std::string heightDiff = StringPrintf("%.3lf", _height - _heightSaved).substr(0,4);
+				DrawCell(heightDiff.c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
 
 				double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
 				uint16_t clr = TFT_GREEN;

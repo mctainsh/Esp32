@@ -71,7 +71,7 @@ bool EndsWith(const std::string& fullString, const std::string& ending)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Verify the check sum in the NMEA sentance
+// Verify the check sum in the NMEA sentence
 bool VerifyChecksum(const std::string& nmeaSentence)
 {
 	// Check starts with $
