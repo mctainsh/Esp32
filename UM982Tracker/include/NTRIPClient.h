@@ -19,6 +19,12 @@ class NTRIPClient
 		// Wifi check interval
 		if (_client.connected())
 		{
+			if( !_wasConnected )
+			{
+				_display.SetRtkStatus("Connected");
+				_display.ResetRtk();
+				_wasConnected = true;
+			}
 			// Check for new data
 			int buffSize = _client.available();
 			if (buffSize < 1)
@@ -40,6 +46,7 @@ class NTRIPClient
 		}
 		else
 		{
+			_wasConnected = false;
 			_display.SetRtkStatus("Disconnected");
 			Reconnect();
 		}
@@ -50,6 +57,7 @@ class NTRIPClient
 	byte _pSocketBuffer[SOCKET_BUFFER_MAX];	 // Build buffer
 	MyDisplay& _display;					 // Display for updating packet count
 	GNSSParser _gnssParser;					 // Parser for extracting RTK
+	bool _wasConnected = false;				 // Was connected last time
 
 	////////////////////////////////////////////////////////////////////////////////
 	void Reconnect()

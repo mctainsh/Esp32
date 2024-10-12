@@ -95,7 +95,10 @@ class GpsParser
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
+		{
+			_display.ResetGps();
 			return;
+		}
 		if (_commandQueue.IsCommandResponse(line))
 			return;
 

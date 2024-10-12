@@ -105,7 +105,7 @@ public:
 	void SetRtkStatus(std::string status)
 	{
 		bool connected = StartsWith(status, "Conn");
-		DrawBoxTick(240 - 3*SPACE - CW, 0, false);
+		DrawBoxTick(240 - 3*SPACE - CW, 0, connected);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////

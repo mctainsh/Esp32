@@ -228,6 +228,12 @@ public:
 		SetValue(3, n, &_loopsPerSecond, 2, 54, 236, 4);
 	}
 
+	void ResetGps()
+	{
+		_gpsResetCount++;
+		_gpsPacketCount--;
+		IncrementGpsPackets();
+	}
 	void IncrementGpsPackets()
 	{
 		_gpsPacketCount++;
@@ -235,9 +241,14 @@ public:
 			_gpsPacketCount = 10000;
 		if (_currentPage != 3)
 			return;
-		DrawCell(std::to_string(_gpsPacketCount).c_str(), 2, ROW4, 116, 4);
+		DrawCell( StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 2, ROW4, 116, 4);
 	}
 
+	void ResetRtk()
+	{
+		_rtkResetCount++;
+		IncrementRtkPackets(0);
+	}
 	void IncrementRtkPackets(int completePackets)
 	{		
 		_rtkPacketCount += completePackets;
@@ -246,7 +257,7 @@ public:
 		if (_currentPage != 3)
 			return;
 		_graphics.SetRtkStatus("Connected");
-		DrawCell(std::to_string(_rtkPacketCount).c_str(), 122, ROW4, 116, 4);
+		DrawCell(StringPrintf("%d - %d", _rtkResetCount, _rtkPacketCount ).c_str(), 122, ROW4, 116, 4);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -447,7 +458,9 @@ private:
 	bool _gpsConnected;			 // GPS connected
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
-	int16_t _gpsPacketCount = 0; // Number of packets received
+	int16_t _gpsResetCount = 0; // Number GPS resets
+	int16_t _gpsPacketCount = 0; // Number GPS of packets received
+	int16_t _rtkResetCount = 0; // Number RTK restarts
 	int16_t _rtkPacketCount = 0; // Number of packets received
 	std::string _time;			 // GPS time in minutes and seconds
 	double _lng;				 // Longitude
