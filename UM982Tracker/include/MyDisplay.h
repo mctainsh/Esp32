@@ -15,6 +15,8 @@
 #include <string>
 
 // #include "Free_Fonts.h" // Include the header file attached to this sketch
+#define ROW2 (24)
+#define ROW3 (54)
 #define ROW4 (135 - 54)
 
 // Font size 4 with 4 rows
@@ -88,30 +90,32 @@ public:
 			SetValueFormatted(1, lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
 			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", lat), 3, 110, 120, 4);
 		}
+
+		// Save new value
+		if (_lng == lng || _lat == lat)
+			return;
+		_lng = lng;
+		_lat = lat;
+		_height = height;
+
 		if (_currentPage == 2)
 		{
 			// Calculate the
-			if (_lng != lng || _lat != lat)
-			{
-				_lng = lng;
-				_lat = lat;
-				_height = height;
-				std::string heightDiff = StringPrintf("%.3lf", _height - _heightSaved).substr(0,4);
-				DrawCell(heightDiff.c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
+			std::string heightDiff = StringPrintf("%.3lf", _height - _heightSaved).substr(0, 4);
+			DrawCell(heightDiff.c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
 
-				double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
-				uint16_t clr = TFT_GREEN;
-				std::string text = StringPrintf("%.3lf", metres);
-				if (text.length() > 7)
-				{
-					text = StringPrintf("%.0lf", metres);
-					clr = TFT_YELLOW;
-				}
-				if (text.length() > 6)
-					text = "---";
-				if (lat != 0 && lng != 0)
-					DrawCell(text.c_str(), 3, 24, 234, 7, TFT_BLACK, clr);
+			double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
+			uint16_t clr = TFT_GREEN;
+			std::string text = StringPrintf("%.3lf", metres);
+			if (text.length() > 7)
+			{
+				text = StringPrintf("%.0lf", metres);
+				clr = TFT_YELLOW;
 			}
+			if (text.length() > 6)
+				text = "---";
+			if (lat != 0 && lng != 0)
+				DrawCell(text.c_str(), 3, 24, 234, 7, TFT_BLACK, clr);
 		}
 	}
 
@@ -119,7 +123,7 @@ public:
 	// Draw the GPS connected tick box
 	void SetGpsConnected(bool connected)
 	{
-		if( _gpsConnected == connected)
+		if (_gpsConnected == connected)
 			return;
 		_gpsConnected = connected;
 		_graphics.SetGpsConnected(_gpsConnected);
@@ -212,16 +216,6 @@ public:
 			return;
 		DrawML(status.c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 	}
-	void SetWebTxStatus(std::string status)
-	{
-		if (_webTxStatus == status)
-			return;
-		_webTxStatus = status;
-		_graphics.SetTxStatus(status);
-		if (_currentPage != 0)
-			return;
-		DrawML(status.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
-	}
 
 	void SetLoopsPerSecond(int n)
 	{
@@ -241,7 +235,7 @@ public:
 			_gpsPacketCount = 10000;
 		if (_currentPage != 3)
 			return;
-		DrawCell( StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 2, ROW4, 116, 4);
+		DrawCell(StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 2, ROW4, 116, 4);
 	}
 
 	void ResetRtk()
@@ -250,14 +244,40 @@ public:
 		IncrementRtkPackets(0);
 	}
 	void IncrementRtkPackets(int completePackets)
-	{		
+	{
 		_rtkPacketCount += completePackets;
 		if (_rtkPacketCount > 32000)
 			_rtkPacketCount = 10000;
 		if (_currentPage != 3)
 			return;
 		_graphics.SetRtkStatus("Connected");
-		DrawCell(StringPrintf("%d - %d", _rtkResetCount, _rtkPacketCount ).c_str(), 122, ROW4, 116, 4);
+		DrawCell(StringPrintf("%d - %d", _rtkResetCount, _rtkPacketCount).c_str(), 122, ROW4, 116, 4);
+	}
+
+	void IncrementSendGood(int httpCode)
+	{
+		_sendGood++;
+		DrawSendStats(httpCode);
+	}
+
+	void IncrementSendBad(int httpCode)
+	{
+		_sendBad++;
+		DrawSendStats(httpCode);
+	}
+	void DrawSendStats(int httpCode)
+	{
+		_httpCode = httpCode;
+		_graphics.SetTxStatus(httpCode);
+		if (_currentPage == 3)
+			DrawCell(StringPrintf("G:%d B:%d", _sendGood, _sendBad).c_str(), 2, ROW2, 116, 4);
+		if (_currentPage == 0)
+		{
+			std::string status = StringPrintf("E:%d", _httpCode);
+			if (_httpCode == 200)
+				status = "OK";
+			DrawML(status.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -367,9 +387,6 @@ public:
 		std::string s = _webRtkStatus;
 		SetRtkStatus(_webRtkStatus + "?");
 		SetRtkStatus(s);
-		s = _webTxStatus;
-		SetWebTxStatus(_webTxStatus + "?");
-		SetWebTxStatus(s);
 
 		n = _satellites;
 		SetSatellites(n + 1);
@@ -379,6 +396,9 @@ public:
 		IncrementGpsPackets();
 		_rtkPacketCount--;
 		IncrementRtkPackets(1);
+
+		DrawSendStats(_httpCode + 1);
+		DrawSendStats(_httpCode);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -458,10 +478,13 @@ private:
 	bool _gpsConnected;			 // GPS connected
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
-	int16_t _gpsResetCount = 0; // Number GPS resets
+	int16_t _gpsResetCount = 0;	 // Number GPS resets
 	int16_t _gpsPacketCount = 0; // Number GPS of packets received
-	int16_t _rtkResetCount = 0; // Number RTK restarts
+	int16_t _rtkResetCount = 0;	 // Number RTK restarts
 	int16_t _rtkPacketCount = 0; // Number of packets received
+	int _sendGood = 0;			 // Number of good sends
+	int _sendBad = 0;			 // Number of bad sends
+	int _httpCode = 0;			 // Last HTTP code
 	std::string _time;			 // GPS time in minutes and seconds
 	double _lng;				 // Longitude
 	double _lat;				 // ..

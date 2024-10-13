@@ -8,16 +8,17 @@
 #include "MyDisplay.h"
 #include "GpsCommandQueue.h"
 #include "HandyString.h"
+#include "GpsSender.h"
 
 class GpsParser
 {
   public:
 	MyDisplay& _display;
 	GpsCommandQueue _commandQueue;
+	GpsSender _gpsSender;
 	bool _gpsConnected = false;	// Are we receiving GPS data from GPS unit (Does not mean we have location)
 
-	GpsParser(MyDisplay& display)
-	  : _display(display)
+	GpsParser(MyDisplay& display)  : _display(display), _gpsSender(display)
 	{
 	}
 
@@ -150,8 +151,12 @@ class GpsParser
 
 		// Read GPS Quality
 		std::string quality = parts.at(6);
+		int nQuality = 0;
 		if (quality.length() > 0)
-			_display.SetFixMode(std::stoi(quality));
+		{
+			nQuality = std::stoi(quality);
+			_display.SetFixMode(nQuality);
+		}
 
 		// Location
 		double lat = ParseLatLong(parts.at(2), 2, parts.at(3) == "S");
@@ -172,8 +177,14 @@ class GpsParser
 
 		// Satellite count
 		std::string satellites = parts.at(7);
+		int sat = 0;
 		if (satellites.length() > 0)
-			_display.SetSatellites(std::stoi(satellites));
+		{
+			sat = std::stoi(satellites);
+			_display.SetSatellites(sat);
+		}
+
+		_gpsSender.SendHttpData(lat, lng, height, sat, nQuality);
 	}
 
 

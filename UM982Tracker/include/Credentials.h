@@ -17,3 +17,11 @@ const char* WIFI_PASSWORD = "MyPassword";
  const char* RTF_SERVER_ADDRESS = "ntrip.data.gnss.ga.gov.au";
  const int RTF_SERVER_PORT = 2101;
  const char* RTF_MOUNT_POINT = "CLEV00AUS0";	//  "PTHL00AUS0"      // Port headland
+
+
+// Sending data to server
+const char *SERVER_URL = "https://www.thewebsite.net/api/weatherforecast/SaveLocation";
+const char *SERVER_IP = "127.0.0.1";
+const uint16_t SERVER_PORT = 22392;
+const char *DEVICE_ID = "800015552555310";
+const char *DEVICE_NAME = "UM982";

@@ -198,7 +198,7 @@ class GNSSParser
 		// Is it too long?
 		if (_lengthInHex.length() > MAX_LENGTH_BYTES)
 		{
-			Serial.printf("E900 - MAX Lenght HIT %d\r\n", _lengthInHex);
+			Serial.printf("E900 - MAX Length HIT %d\r\n", _lengthInHex);
 			_lengthInHex = "";
 			return;
 		}

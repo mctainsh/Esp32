@@ -19,7 +19,7 @@
 #define BUTTON_1 0
 #define BUTTON_2 35
 
-#define APP_VERSION "1.78"
+#define APP_VERSION "1.88"
 
 #include <WiFi.h>
 #include <iostream>

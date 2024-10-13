@@ -110,9 +110,9 @@ public:
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// Transmitting data indicator
-	void SetTxStatus(std::string status)
+	void SetTxStatus(int httpCode)
 	{
-		DrawBoxTick(240 - 4*SPACE - CW, 0, false);
+		DrawBoxTick(240 - 4*SPACE - CW, 0, httpCode == 200);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
