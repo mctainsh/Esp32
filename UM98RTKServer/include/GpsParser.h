@@ -22,8 +22,8 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////
-	// Return the number of lines
-	bool ReadDataFromSerial(Stream &stream, NTRIPServer &ntripServer)
+	// Read the latest GPS data and check for timeouts
+	bool ReadDataFromSerial(Stream &stream, NTRIPServer &ntripServer0, NTRIPServer &ntripServer1)
 	{
 		int count = 0;
 
@@ -34,45 +34,42 @@ public:
 			int available = stream.available();
 			if (available > 0)
 			{
+				// TODO Just use a single buffer over and over
 				std::unique_ptr<byte[]> byteArray(new byte[available + 1]);
 				stream.readBytes(byteArray.get(), available);
 
 				// Is this an all ASCII packet
-				if (IsAllAscii(byteArray.get(), available))
+				if (available > 78 && byteArray[available - 2] == 0x0D && byteArray[available - 1] == 0x0A && IsAllAscii(byteArray.get(), available))
 				{
 					byteArray[available] = 0;
-					Serial.printf("IN %s\r\n", byteArray.get());
+					const char *pStr = (const char *)byteArray.get();
+					// Does it end in a CR or LF
+					if (StartsWith(pStr, "Write bb expinfo") ||
+						StartsWith(pStr, "board is restarting") ||
+						StartsWith(pStr, "..........") ||
+						StartsWith(pStr, "$devicename,COM"))
+					{
+						Logf("SKIPPING Special command %s\r\n", pStr);
+						return _gpsConnected;
+					}
 				}
-				else
-				{
-					_buildBuffer.clear();
 
-					// Send to RTK Casters
-					ntripServer.Loop(byteArray.get(), available);
+				// Process the binary data
+				_buildBuffer.clear();
 
+				// Send to RTK Casters
+				ntripServer0.Loop(byteArray.get(), available);
+				ntripServer1.Loop(byteArray.get(), available);
 
-					_timeOfLastMessage = millis();
+				_timeOfLastMessage = millis();
 
-					// Write the byte array as hex text to serial
+				// Write the byte array as hex text to serial
 				//	for (int n = 0; n < available; n++)
 				//	{
-				//		Serial.printf("%02x ", byteArray[n]);
+				//		Logf("%02x ", byteArray[n]);
 				//	}
-				//	Serial.println();
-				}
+				//	Logln();
 			}
-			/*
-			Write bb expinfo
-			board is restarting
-			..........
-			$devicename,COM1*67
-
-			77 72 69 74 65 20 62 62 20 65 78 70 69 6e 66 6f 0d 0a
-			62 6f 61 72 64 20 69 73 20 72 65 73 74 61 72 74 69 6e 67 0d 0a
-			2e 2e 2e 2e 2e 2e 2e 2e 2e 2e 0d 0a
-			24 64 65 76 69 63 65 6e 61 6d 65 2c 43 4f 4d 31 2a 36 37 0d 0a
-
-			*/
 		}
 		else
 		{
@@ -95,7 +92,7 @@ public:
 				// Is the line too long
 				if (_buildBuffer.length() > 254)
 				{
-					Serial.printf("Overflowing %s\r\n", _buildBuffer.c_str());
+					Logf("Overflowing %s\r\n", _buildBuffer.c_str());
 					_buildBuffer.clear();
 					continue;
 				}
@@ -146,13 +143,13 @@ private:
 	{
 		if (line.length() < 1)
 		{
-			Serial.println("W700 - Too short");
+			Logln("W700 - Too short");
 			return;
 		}
 
 		_timeOfLastMessage = millis();
 
-		Serial.printf("Processing UN98x %s\r\n", line.c_str());
+		Logf("Processing UN98x %s\r\n", line.c_str());
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))

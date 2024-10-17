@@ -1,50 +1,65 @@
 #pragma once
 
-#define SOCKET_BUFFER_MAX 300
+#define SOCKET_BUFFER_MAX 100
 
 #include "MyDisplay.h"
-#include "CredentialPrivate.h"
+#include "HandyLog.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class manages the connection to the RTK Service client
 class NTRIPServer
 {
 public:
-	NTRIPServer(MyDisplay &display)
-		: _display(display)
+	NTRIPServer(MyDisplay &display, int index,
+				const char *szAddress, int port,
+				const char *szCredential,
+				const char *szPassword)
+		: _display(display), _index(index),
+		  _szAddress(szAddress), _port(port),
+		  _szCredential(szCredential), _szPassword(szPassword)
 	{
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	// Loop called when we have new data to send
 	void Loop(const byte *pBytes, int length)
 	{
+		// Check the index is valid
+		if (_index > RTK_SERVERS)
+		{
+			Logf("E500 - RTK Server index %d too high\r\n", index);
+			return;
+		}
+
 		// Wifi check interval
 		if (_client.connected())
 		{
 			if (!_wasConnected)
 			{
-				_display.SetRtkStatus("Connected");
-				_display.ResetRtk();
+				_display.SetRtkStatus(_index, "Connected");
+				_display.ResetRtk(_index);
 				_wasConnected = true;
 			}
 
 			// Send what we have received
-			if( length > 0)
+			if (length > 0)
 			{
 				int sent = _client.write(pBytes, length);
-				if( sent != length)
+				if (sent != length)
 				{
-					Serial.printf("E500 - RTK Not sending all data %d of %d\r\n", sent, length);
+					Logf("E500 - RTK Not sending all data %d of %d\r\n", sent, length);
 					_client.stop();
 					return;
 				}
 				else
 				{
-					Serial.printf("RTK Sent %d OK      \r", sent );
+					Logf("RTK %s Sent %d OK\r\n", _szAddress, sent);
+					_wifiConnectTime = millis();
+					_display.IncrementRtkPackets(_index, 1);
 				}
 			}
 
-
-			// Check for new data
+			// Check for new data (Not expecting much)
 			int buffSize = _client.available();
 			if (buffSize < 1)
 				return;
@@ -53,38 +68,35 @@ public:
 			_client.read(_pSocketBuffer, buffSize);
 
 			_pSocketBuffer[buffSize] = 0;
-			Serial.printf("TCP IN '%s'  ->", _pSocketBuffer);
+			std::string str = "TCP IN '";
+			str.append( (const char*)_pSocketBuffer );
+			str += "'  ->";
+
 			// Write the byte array as hex text to serial
 			for (int n = 0; n < buffSize; n++)
-				Serial.printf("%02x ", _pSocketBuffer[n]);
-			Serial.println();
-			Serial.println();
-
-			// int completePackets = _gnssParser.Parse(_pSocketBuffer, buffSize);
-
-			// std::string built;
-			// for (int n = 0; n < buffSize; n++)
-			//	built += static_cast<char>(_pSocketBuffer[n]);
-			// Serial.printf("%d %s\r\n", buffSize, built.c_str());
-			//_display.IncrementRtkPackets(completePackets);
-
-			// record we had some data so do not try to reconnect straight away
-			_wifiConnectTime = millis();
+				str.append( StringPrintf("%02x ", _pSocketBuffer[n]));
+			Logln(str.c_str());
 		}
 		else
 		{
 			_wasConnected = false;
-			_display.SetRtkStatus("Disconnected");
+			_display.SetRtkStatus(_index, "Disconnected");
 			Reconnect();
 		}
 	}
 
 private:
-	WiFiClient _client;
+	WiFiClient _client;							// Socket connection
 	uint16_t _wifiConnectTime = 0;				// Time we last had good data to prevent reconnects too fast
 	byte _pSocketBuffer[SOCKET_BUFFER_MAX + 1]; // Build buffer
 	MyDisplay &_display;						// Display for updating packet count
 	bool _wasConnected = false;					// Was connected last time
+	const int _index;							// Index of the server used when updating display
+
+	const char *_szAddress;
+	const int _port;
+	const char *_szCredential;
+	const char *_szPassword;
 
 	////////////////////////////////////////////////////////////////////////////////
 	void Reconnect()
@@ -96,16 +108,16 @@ private:
 		_wifiConnectTime = millis();
 
 		// Start the connection process
-		Serial.printf("RTK Connecting to %s %d\r\n", ONOCOY_ADDRESS, ONOCOY_PORT);
-		_client.connect(ONOCOY_ADDRESS, ONOCOY_PORT);
+		Logf("RTK Connecting to %s %d\r\n", _szAddress, _port);
+		int status = _client.connect(_szAddress, _port);
 		if (!_client.connected())
 		{
-			Serial.println("E500 - RTK Not connecting");
+			Logf("E500 - RTK %s Not connected %d\r\n", _szAddress, status);
 			return;
 		}
-		Serial.println("Connected OK");
+		Logf("Connected %s OK\r\n", _szAddress);
 
-		_client.write(StringPrintf("SOURCE %s %s\r\n", ONOCOY_PASSWORD, ONOCOY_CREDENTIAL).c_str());
+		_client.write(StringPrintf("SOURCE %s %s\r\n", _szPassword, _szCredential).c_str());
 		_client.write("Source-Agent: NTRIP UM98XX/ESP32_S2_Mini\r\n");
 		_client.write("STR: \r\n");
 		_client.write("\r\n");

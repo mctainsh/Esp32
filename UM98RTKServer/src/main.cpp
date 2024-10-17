@@ -18,14 +18,16 @@
 
 #define BUTTON_1 0
 #define BUTTON_2 35
+#define RTK_SERVERS 2
 
-#define APP_VERSION "1.08"
+#define APP_VERSION "1.18"
 
 #include <WiFi.h>
 #include <iostream>
 #include <sstream>
 #include <string>
 
+#include "HandyLog.h"
 #include "HandyString.h"
 #include "MyDisplay.h"
 #include "GpsParser.h"
@@ -36,7 +38,8 @@
 MyFiles _myFiles;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
-NTRIPServer _ntripServer(_display);
+NTRIPServer _ntripServer0(_display, 0, ONOCOY_ADDRESS, ONOCOY_PORT, ONOCOY_CREDENTIAL, ONOCOY_PASSWORD);
+NTRIPServer _ntripServer1(_display, 1, RTK2GO_ADDRESS, RTK2GO_PORT, RTK2GO_CREDENTIAL, RTK2GO_PASSWORD);
 
 unsigned long _loopWaitTime = 0;  // Time of last second
 int _loopPersSecondCount = 0;	  // Number of times the main loops runs in a second
@@ -70,11 +73,11 @@ void setup(void)
 		
 		//std::string response;
 		//_myFiles.ReadFile("/hello.txt", response);
-		//Serial.println(response.c_str());
+		//Logln(response.c_str());
 	}
 
 	_display.Setup();
-	Serial.println("Startup Complete");
+	Logln("Startup Complete");
 }
 
 
@@ -95,19 +98,19 @@ void loop()
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
 	{
-		Serial.println("Button 1");
+		Logln("Button 1");
 		_display.NextPage();
 	}
 	if (IsButtonReleased(BUTTON_2, &_button2Current))
 	{
-		Serial.println("Button 2");
+		Logln("Button 2");
 		_display.ActionButton();
 	}
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
 	{
-		_gpsParser.ReadDataFromSerial(Serial2, _ntripServer);
+		_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1);
 	}
 	//_display.SetGpsConnected( _gpsParser.ReadDataFromSerial(Serial2) );
 
@@ -146,29 +149,29 @@ bool IsWifiConnected()
 	if( _lastWifiStatus != status)
 	{
 		_lastWifiStatus = status;
-		Serial.printf("Wifi Status %d %s\r\n", status, WifiStatus(status));
+		Logf("Wifi Status %d %s\r\n", status, WifiStatus(status));
 		_display.SetWebStatus(status);
 		if( status == WL_CONNECTED)
-			_display.SetRtkStatus("GPS Pending");
+			_display.SetRtkStatus(0, "GPS Pending");
 	}
 		
 	if (status == WL_CONNECTED)
 		return true;
 
 	// Start the connection process
-	//Serial.println("E310 - No WIFI");
+	//Logln("E310 - No WIFI");
 	unsigned long t = millis();
 	unsigned long tDelta = t - _wifiFullResetTime;
 	if (tDelta < WIFI_STARTUP_TIMEOUT)
 	{
 		
 		//if( status != WL_DISCONNECTED)
-		//	Serial.println(stateTitle.c_str());
+		//	Logln(stateTitle.c_str());
 		//_display.SetWebStatus(stateTitle.c_str());
 
 		// Create a string of dots to show progress. 1 dot per second
 		std::string dotsStr(tDelta/1000, '.');
-		_display.SetRtkStatus(dotsStr.c_str());
+		_display.SetRtkStatus(0, dotsStr.c_str());
 
 		return false;
 	}
@@ -178,7 +181,7 @@ bool IsWifiConnected()
 	WiFi.mode(WIFI_STA);
 	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	//_display.SetWebStatus(WifiStatus(beginState));
-	Serial.printf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+	Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
 
 	return false;
 }

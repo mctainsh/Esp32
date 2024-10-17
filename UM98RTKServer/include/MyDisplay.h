@@ -18,6 +18,7 @@
 #define ROW2 (24)
 #define ROW3 (54)
 #define ROW4 (135 - 54)
+#define ROW5 (135 - 24)
 
 // Font size 4 with 4 rows
 #define R1F4 20
@@ -49,13 +50,13 @@ public:
 		std::string llText;
 		if (_myFiles.ReadFile(SAVE_LNG_LAT_FILE, llText))
 		{
-			Serial.printf("\tRead LL '%s'\r\n", llText.c_str());
+			Logf("\tRead LL '%s'\r\n", llText.c_str());
 			std::stringstream ss(llText);
 			ss >> _lngSaved >> _latSaved >> _heightSaved;
 			if (ss.fail())
-				Serial.println("\tE341 - Cannot read saved Lng Lat");
+				Logln("\tE341 - Cannot read saved Lng Lat");
 			else
-				Serial.printf("\tRecovered LL %.9lf,%.9lf, %.3lf m\r\n", _lngSaved, _latSaved, _heightSaved);
+				Logf("\tRecovered LL %.9lf,%.9lf, %.3lf m\r\n", _lngSaved, _latSaved, _heightSaved);
 		}
 
 		// Setup screen
@@ -193,9 +194,6 @@ public:
 	// Page 1 - Delta GPS
 	// ************************************************************************//
 
-	// ************************************************************************//
-	// Page 3 - System detail
-	// ************************************************************************//
 	void SetWebStatus(wl_status_t status)
 	{
 		if (_webStatus == status)
@@ -206,20 +204,23 @@ public:
 			return;
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
 	}
-	void SetRtkStatus(std::string status)
+	void SetRtkStatus(int index, std::string status)
 	{
-		if (_webRtkStatus == status)
+		if (_webRtkStatus[index] == status)
 			return;
-		_webRtkStatus = status;
+		_webRtkStatus[index] = status;
 		_graphics.SetRtkStatus(status);
 		if (_currentPage != 0)
 			return;
-		DrawML(status.c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		DrawML(status.c_str(), COL2_P0, index ? R3F4 : R2F4, COL2_P0_W, 4);
 	}
 
+	// ************************************************************************//
+	// Page 3 - System detail
+	// ************************************************************************//
 	void SetLoopsPerSecond(int n)
 	{
-		SetValue(3, n, &_loopsPerSecond, 2, 54, 236, 4);
+		SetValue(3, n, &_loopsPerSecond, 2, ROW2, 236, 4);
 	}
 
 	void ResetGps()
@@ -235,49 +236,24 @@ public:
 			_gpsPacketCount = 10000;
 		if (_currentPage != 3)
 			return;
-		DrawCell(StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 2, ROW4, 116, 4);
+		DrawCell(StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 22, ROW3, 216, 4);
 	}
 
-	void ResetRtk()
+	void ResetRtk(int index)
 	{
-		_rtkResetCount++;
-		IncrementRtkPackets(0);
+		_rtkResetCount[index]++;
+		IncrementRtkPackets(index, 0);
 	}
-	void IncrementRtkPackets(int completePackets)
+	void IncrementRtkPackets(int index, int completePackets)
 	{
-		_rtkPacketCount += completePackets;
-		if (_rtkPacketCount > 32000)
-			_rtkPacketCount = 10000;
+		_rtkPacketCount[index] += completePackets;
+		if (_rtkPacketCount[index] > 32000)
+			_rtkPacketCount[index] = 10000;
 		if (_currentPage != 3)
 			return;
 		_graphics.SetRtkStatus("Connected");
-		DrawCell(StringPrintf("%d - %d", _rtkResetCount, _rtkPacketCount).c_str(), 122, ROW4, 116, 4);
-	}
-
-	void IncrementSendGood(int httpCode)
-	{
-		_sendGood++;
-		DrawSendStats(httpCode);
-	}
-
-	void IncrementSendBad(int httpCode)
-	{
-		_sendBad++;
-		DrawSendStats(httpCode);
-	}
-	void DrawSendStats(int httpCode)
-	{
-		_httpCode = httpCode;
-		_graphics.SetTxStatus(httpCode);
-		if (_currentPage == 3)
-			DrawCell(StringPrintf("G:%d B:%d", _sendGood, _sendBad).c_str(), 2, ROW2, 116, 4);
-		if (_currentPage == 0)
-		{
-			std::string status = StringPrintf("E:%d", _httpCode);
-			if (_httpCode == 200)
-				status = "OK";
-			DrawML(status.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
-		}
+		DrawCell(StringPrintf("%d - %d", _rtkResetCount[index], _rtkPacketCount[index]).c_str(), 22, 
+			index ? ROW5 : ROW4, 216, 4);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -295,7 +271,7 @@ public:
 			_heightSaved = _height;
 			{
 				std::string saveText = StringPrintf("%.9lf %.9lf %.3lf", _lng, _lat, _height);
-				Serial.printf("Saving X,Y %s\r\n", saveText.c_str());
+				Logf("Saving X,Y %s\r\n", saveText.c_str());
 				_myFiles.WriteFile(SAVE_LNG_LAT_FILE, saveText.c_str());
 			}
 			break;
@@ -316,7 +292,7 @@ public:
 		_currentPage++;
 		if (_currentPage > 3)
 			_currentPage = 0;
-		Serial.printf("Switch to page %d\r\n", _currentPage);
+		Logf("Switch to page %d\r\n", _currentPage);
 		RefreshScreen();
 	}
 
@@ -349,8 +325,8 @@ public:
 			title = "  Network";
 
 			DrawLabel("Wi-Fi", COL1, R1F4, 2);
-			DrawLabel("RTK", COL1, R2F4, 2);
-		//	DrawLabel("TX", COL1, R3F4, 2);
+			DrawLabel("RTK 0", COL1, R2F4, 2);
+			DrawLabel("RTK 1", COL1, R3F4, 2);
 			DrawLabel("Version", COL1, R4F4, 2);
 
 			DrawML(APP_VERSION, COL2_P0, R4F4, COL2_P0_W, 4);
@@ -384,9 +360,13 @@ public:
 		wl_status_t ws = _webStatus;
 		SetWebStatus(static_cast<wl_status_t>(ws + 1));
 		SetWebStatus(ws);
-		std::string s = _webRtkStatus;
-		SetRtkStatus(_webRtkStatus + "?");
-		SetRtkStatus(s);
+
+		std::string s = _webRtkStatus[0];
+		SetRtkStatus(0, _webRtkStatus[0] + "?");
+		SetRtkStatus(0, s);
+		s = _webRtkStatus[1];
+		SetRtkStatus(1, _webRtkStatus[1] + "?");
+		SetRtkStatus(1, s);
 
 		n = _satellites;
 		SetSatellites(n + 1);
@@ -394,11 +374,11 @@ public:
 
 		_gpsPacketCount--;
 		IncrementGpsPackets();
-		_rtkPacketCount--;
-		IncrementRtkPackets(1);
 
-		DrawSendStats(_httpCode + 1);
-		DrawSendStats(_httpCode);
+		_rtkPacketCount[0]--;
+		IncrementRtkPackets(0, 1);
+		_rtkPacketCount[1]--;
+		IncrementRtkPackets(1, 1);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -473,28 +453,27 @@ public:
 private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
 	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
-	uint16_t _bg = 0x8610;		 // Background colour
-	int _currentPage = 0;		 // Page we are currently displaying
-	bool _gpsConnected;			 // GPS connected
-	int8_t _fixMode = -1;		 // Fix mode for RTK
-	int8_t _satellites = -1;	 // Number of satellites
-	int16_t _gpsResetCount = 0;	 // Number GPS resets
-	int16_t _gpsPacketCount = 0; // Number GPS of packets received
-	int16_t _rtkResetCount = 0;	 // Number RTK restarts
-	int16_t _rtkPacketCount = 0; // Number of packets received
-	int _sendGood = 0;			 // Number of good sends
-	int _sendBad = 0;			 // Number of bad sends
-	int _httpCode = 0;			 // Last HTTP code
-	std::string _time;			 // GPS time in minutes and seconds
-	double _lng;				 // Longitude
-	double _lat;				 // ..
-	double _height;				 // ..
-	double _lngSaved;			 // Saved for deltas
-	double _latSaved;			 // ..
-	double _heightSaved;		 //
-	int _animationAngle;		 // Animated wheel
-	int _loopsPerSecond;		 // How many loop occur per second
-	wl_status_t _webStatus;		 // WIFI Status of connection to hot spot
-	std::string _webRtkStatus;	 // RTK connection status
-	std::string _webTxStatus;	 // Transmitting of data status
+	uint16_t _bg = 0x8610;				  // Background colour
+	int _currentPage = 0;				  // Page we are currently displaying
+	bool _gpsConnected;					  // GPS connected
+	int8_t _fixMode = -1;				  // Fix mode for RTK
+	int8_t _satellites = -1;			  // Number of satellites
+	int16_t _gpsResetCount = 0;			  // Number GPS resets
+	int16_t _gpsPacketCount = 0;		  // Number GPS of packets received
+	int16_t _rtkResetCount[RTK_SERVERS];  // Number RTK restarts
+	int16_t _rtkPacketCount[RTK_SERVERS]; // Number of packets received
+	int _sendGood = 0;					  // Number of good sends
+	int _sendBad = 0;					  // Number of bad sends
+	int _httpCode = 0;					  // Last HTTP code
+	std::string _time;					  // GPS time in minutes and seconds
+	double _lng;						  // Longitude
+	double _lat;						  // ..
+	double _height;						  // ..
+	double _lngSaved;					  // Saved for deltas
+	double _latSaved;					  // ..
+	double _heightSaved;				  //
+	int _animationAngle;				  // Animated wheel
+	int _loopsPerSecond;				  // How many loop occur per second
+	wl_status_t _webStatus;				  // WIFI Status of connection to hot spot
+	std::string _webRtkStatus[RTK_SERVERS];			  // RTK connection status
 };

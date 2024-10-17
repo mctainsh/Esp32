@@ -31,6 +31,18 @@ bool StartsWith(const std::string& fullString, const std::string& startString)
 	return std::equal(startString.begin(), startString.end(), fullString.begin());
 }
 
+bool StartsWith(const char* szA, const char* szB)
+{
+	while (*szA && *szB)
+	{
+		if (*szA != *szB)
+			return false;
+		szA++;
+		szB++;
+	}
+	return *szB == '\0';
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Split the string
@@ -77,12 +89,12 @@ bool VerifyChecksum(const std::string& nmeaSentence)
 	// Check starts with $
 	if (nmeaSentence.length() < 1)
 	{
-		Serial.println("\tE100 - Too short");
+		Logln("\tE100 - Too short");
 		return false;
 	}
 	if (nmeaSentence[0] != '$' && nmeaSentence[0] != '#')
 	{
-		Serial.println("\tE101 = Missing '$'");
+		Logln("\tE101 = Missing '$'");
 		return false;
 	}
 
@@ -90,7 +102,7 @@ bool VerifyChecksum(const std::string& nmeaSentence)
 	size_t endPos = nmeaSentence.find('*');
 	if (endPos == std::string::npos)
 	{
-		Serial.println("\tE102 - Missing '*'");
+		Logln("\tE102 - Missing '*'");
 		return false;
 	}
 
@@ -108,7 +120,7 @@ bool VerifyChecksum(const std::string& nmeaSentence)
 
 	if (calculatedChecksum != providedChecksum)
 	{
-		Serial.printf("\tE101 %02x != %02x\r\n", calculatedChecksum, providedChecksum);
+		Logf("\tE101 %02x != %02x\r\n", calculatedChecksum, providedChecksum);
 		return false;
 	}
 	return true;
