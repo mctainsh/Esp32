@@ -1,4 +1,3 @@
-#include "esp32-hal.h"
 #pragma once
 
 #include <iostream>
@@ -49,7 +48,7 @@ public:
 						StartsWith(pStr, "..........") ||
 						StartsWith(pStr, "$devicename,COM"))
 					{
-						Logf("SKIPPING Special command %s\r\n", pStr);
+						LogX(StringPrintf("SKIPPING Special command %s", pStr));
 						return _gpsConnected;
 					}
 				}
@@ -92,7 +91,7 @@ public:
 				// Is the line too long
 				if (_buildBuffer.length() > 254)
 				{
-					Logf("Overflowing %s\r\n", _buildBuffer.c_str());
+					LogX(StringPrintf("Overflowing %s\r\n", _buildBuffer.c_str()));
 					_buildBuffer.clear();
 					continue;
 				}
@@ -106,7 +105,7 @@ public:
 		}
 
 		// Check for timeouts
-		if ((millis() - _timeOfLastMessage) > 60000)
+		if (_commandQueue.GotReset() && (millis() - _timeOfLastMessage) > 60000)
 		{
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
@@ -115,9 +114,19 @@ public:
 		return _gpsConnected;
 	}
 
+	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
+	inline const std::string &GetDeviceType() const { return _deviceType; }
+	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
+	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
+
 private:
 	unsigned long _timeOfLastMessage = 0; // Millis of last good message
 	std::string _buildBuffer;			  // Buffer to make the serial packet up to LF or CR
+	std::vector<std::string> _logHistory; // Last few log messages
+	std::string  _deviceType = "UNKNOWN"; // Device type
+	std::string  _deviceFirmware = "UNKNOWN"; // Firmware version
+	std::string _deviceSerial = "UNKNOWN"; // Serial number
+	
 
 	///////////////////////////////////////////////////////////////////////////
 	// Check if the byte array is all ASCII
@@ -139,6 +148,7 @@ private:
 	//		$GNGGA,232306.00,,,,,0,00,9999.0,,,,,,*4E
 	//		$devicename,COM1*67										// Reset response (Checksum is wrong)
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
+	// 		#VERSION,0,GPS,UNKNOWN,0,0,0,0,0,1261;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225104240,ff27289609cf869d,2023/11/24*4d0ec3ba
 	void ProcessLine(const std::string &line)
 	{
 		if (line.length() < 1)
@@ -149,7 +159,7 @@ private:
 
 		_timeOfLastMessage = millis();
 
-		Logf("Processing UN98x %s\r\n", line.c_str());
+		LogX(StringPrintf("GPS '%s'", line.c_str()));
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
@@ -159,21 +169,34 @@ private:
 		}
 		if (_commandQueue.IsCommandResponse(line))
 			return;
-
-		// Add data to a build buffer of binary data
+const char *pStr = line.c_str();
+		// Extract version information
+		if (StartsWith(line, "#VERSION"))
+		{
+			std::vector<std::string> sections = Split(line, ";");
+			if (sections.size() > 1)
+			{
+				std::vector<std::string> parts = Split(sections[1], ",");
+				if (parts.size() > 5)
+				{
+					_deviceType = parts[0];
+					_deviceFirmware = parts[1];
+					_deviceSerial = parts[3];
+				}
+				_display.RefreshScreen();
+			}
+			return;
+		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////
-	// Parse the longitude or latitude from
-	//		Latitude   = 2734.21017577,S,
-	//		Longitude = 15305.98006651,E,
-	double ParseLatLong(const std::string &text, int degreeDigits, bool isNegative)
+	///////////////////////////////////////////////////////////////////////////////
+	// Write to the debug log and keep the last few messages for display
+	void LogX(std::string text)
 	{
-		if (text.length() < degreeDigits)
-			return 0.0;
-		std::string degree = text.substr(0, degreeDigits);
-		std::string minutes = text.substr(degreeDigits);
-		double value = std::stod(degree) + (std::stod(minutes) / 60.0);
-		return isNegative ? value * -1 : value;
+		Logln(text.c_str());
+		_logHistory.push_back(StringPrintf("%d %s", millis(), text.c_str()));
+		if (_logHistory.size() > 10)
+			_logHistory.erase(_logHistory.begin());
+		_display.RefreshRtkLog();
 	}
 };

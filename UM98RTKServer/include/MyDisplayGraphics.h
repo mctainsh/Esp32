@@ -4,6 +4,7 @@
 // Image converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
 #include "MyDisplay.h"
+#include "HandyString.h"
 
 #include <TFT_eSPI.h>
 #include <SPI.h>
@@ -34,19 +35,11 @@ public:
 	void Animate()
 	{
 		_animationAngle++;
-
 		if (_animationAngle % 10 == 0)
 		{
 			_background.fillSprite(TFT_BLACK);
-
-			_img.fillSprite(TFT_RED);
-			//_img.fillSprite(TFT_BLACK);
-			//_img.drawWedgeLine(5, 0, 5, 20, 1, 5, TFT_RED);
-			//_img.drawWedgeLine(2, 0, 2, 10, 1, 2, TFT_RED);
-
-			//_img.drawArc()
+			_img.fillSprite(TFT_ORANGE);			
 			_img.pushRotated(&_background, 360 - (millis() / 5) %360);
-
 			DrawRotatingColouredSnake(&_background);
 			_background.pushSprite(0, 0);
 		}
@@ -65,7 +58,7 @@ public:
 
 		// Draw the dynamic frame around the titlebar. First loop is green second is red
 		int t = (_animationAngle / 500) % (COLORS_SIZE * CIRF);
-		uint16_t clr = COLORS[t / CIRF];
+		uint16_t clr = TFT_GREEN;//COLORS[t / CIRF];
 
 		t = t % CIRF;
 
