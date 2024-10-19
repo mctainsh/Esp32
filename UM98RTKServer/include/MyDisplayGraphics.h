@@ -14,6 +14,7 @@
 #define CW 20
 #define CH 20
 #define SPACE 23
+#define WX (TFT_HEIGHT - 1)
 
 class MyDisplayGraphics
 {
@@ -83,31 +84,24 @@ public:
 	// Wi-Fi Status indicator
 	void SetWebStatus(wl_status_t status)
 	{
-		DrawBoxTick(240 - SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
+		DrawBoxTick(WX - 0*SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// GPS connected status
 	void SetGpsConnected(bool connected)
 	{
-		DrawBoxTick(240 - 2*SPACE - CW, 0, connected);
+		DrawBoxTick(WX - 1*SPACE - CW, 0, connected);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
 	// RTK server connection indicator
-	void SetRtkStatus(std::string status)
+	void SetRtkStatus(int index, std::string status)
 	{
 		bool connected = StartsWith(status, "Conn");
-		DrawBoxTick(240 - 3*SPACE - CW, 0, connected);
+		DrawBoxTick(WX - (index+2)*SPACE - CW, 0, connected);
 	}
 	
-	/////////////////////////////////////////////////////////////////////////////
-	// Transmitting data indicator
-	void SetTxStatus(int httpCode)
-	{
-		DrawBoxTick(240 - 4*SPACE - CW, 0, httpCode == 200);
-	}
-
 	/////////////////////////////////////////////////////////////////////////////
 	// Wi-Fi Status indicator
 	void DrawBoxTick(int x, int y, bool tick)

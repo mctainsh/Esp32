@@ -124,10 +124,9 @@ void loop()
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
-	{
-		_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1);
-	}
-	//_display.SetGpsConnected( _gpsParser.ReadDataFromSerial(Serial2) );
+		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1) );
+	else
+		_display.SetGpsConnected(false);
 
 	// WIFI related functions
 	//	if (IsWifiConnected())
@@ -165,7 +164,7 @@ bool IsWifiConnected()
 		_lastWifiStatus = status;
 		Logf("Wifi Status %d %s\r\n", status, WifiStatus(status));
 	//	_display.SetWebStatus(status);
-		_display.RefreshScreen();
+		_display.RefreshWiFiState();
 //		if (status == WL_CONNECTED)
 //			_display.SetRtkStatus(0, "GPS Pending");
 	}
@@ -197,6 +196,7 @@ bool IsWifiConnected()
 	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	//_display.SetWebStatus(WifiStatus(beginState));
 	Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+	_display.RefreshWiFiState();
 
 	return false;
 }

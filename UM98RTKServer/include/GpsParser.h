@@ -55,6 +55,7 @@ public:
 
 				// Process the binary data
 				_buildBuffer.clear();
+				_gpsConnected = true;
 
 				// Send to RTK Casters
 				ntripServer0.Loop(byteArray.get(), available);
@@ -114,23 +115,9 @@ public:
 		return _gpsConnected;
 	}
 
-	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
-	inline const std::string &GetDeviceType() const { return _deviceType; }
-	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
-	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
-
-private:
-	unsigned long _timeOfLastMessage = 0; // Millis of last good message
-	std::string _buildBuffer;			  // Buffer to make the serial packet up to LF or CR
-	std::vector<std::string> _logHistory; // Last few log messages
-	std::string  _deviceType = "UNKNOWN"; // Device type
-	std::string  _deviceFirmware = "UNKNOWN"; // Firmware version
-	std::string _deviceSerial = "UNKNOWN"; // Serial number
-	
-
 	///////////////////////////////////////////////////////////////////////////
 	// Check if the byte array is all ASCII
-	bool IsAllAscii(const byte *pBytes, int length) const
+	static bool IsAllAscii(const byte *pBytes, int length)
 	{
 		for (int n = 0; n < length; n++)
 		{
@@ -141,6 +128,19 @@ private:
 		}
 		return true;
 	}
+
+	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
+	inline const std::string &GetDeviceType() const { return _deviceType; }
+	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
+	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
+
+private:
+	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
+	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
+	std::vector<std::string> _logHistory;	 // Last few log messages
+	std::string _deviceType = "UNKNOWN";	 // Device type
+	std::string _deviceFirmware = "UNKNOWN"; // Firmware version
+	std::string _deviceSerial = "UNKNOWN";	 // Serial number
 
 	///////////////////////////////////////////////////////////////////////////
 	// Process a GPS line
@@ -153,7 +153,7 @@ private:
 	{
 		if (line.length() < 1)
 		{
-			Logln("W700 - Too short");
+			LogX("W700 - Too short");
 			return;
 		}
 
@@ -169,19 +169,20 @@ private:
 		}
 		if (_commandQueue.IsCommandResponse(line))
 			return;
-const char *pStr = line.c_str();
+		auto pStr = line.c_str();
 		// Extract version information
 		if (StartsWith(line, "#VERSION"))
 		{
-			std::vector<std::string> sections = Split(line, ";");
+			auto sections = Split(line, ";");
 			if (sections.size() > 1)
 			{
-				std::vector<std::string> parts = Split(sections[1], ",");
+				auto parts = Split(sections[1], ",");
 				if (parts.size() > 5)
 				{
 					_deviceType = parts[0];
 					_deviceFirmware = parts[1];
-					_deviceSerial = parts[3];
+					auto serialPart = Split( parts[3], "-");
+					_deviceSerial = serialPart[0];
 				}
 				_display.RefreshScreen();
 			}
@@ -195,8 +196,8 @@ const char *pStr = line.c_str();
 	{
 		Logln(text.c_str());
 		_logHistory.push_back(StringPrintf("%d %s", millis(), text.c_str()));
-		if (_logHistory.size() > 10)
+		if (_logHistory.size() > 15)
 			_logHistory.erase(_logHistory.begin());
-		_display.RefreshRtkLog();
+		_display.RefreshGpsLog();
 	}
 };

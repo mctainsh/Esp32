@@ -31,12 +31,12 @@
 // Columns
 #define COL1 5
 #define COL2_P0 60
-#define COL2_P0_W 178
+#define COL2_P0_W (TFT_HEIGHT - COL2_P0 - 5)
 
 // Three column display on page 4
 #define COL2_P4 60
-#define COL3_P4 180
-#define COL_W_P4 118
+#define COL3_P4 190
+#define COL_W_P4 128
 
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
@@ -74,7 +74,6 @@ void MyDisplay::SetGpsConnected(bool connected)
 	_gpsConnected = connected;
 	_graphics.SetGpsConnected(_gpsConnected);
 }
-
 
 // ************************************************************************//
 // Page 3 - System detail
@@ -145,11 +144,25 @@ void MyDisplay::NextPage()
 	RefreshScreen();
 }
 
+void MyDisplay::RefreshWiFiState()
+{
+	auto status = WiFi.status();
+	_graphics.SetWebStatus(status);
+	if (_currentPage != 0)
+		return;
+	if (status == WL_CONNECTED)
+		DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+	else
+		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+}
+
 void MyDisplay::RefreshRtk(int index)
 {
+	auto pServer = index == 0 ? &_ntripServer0 : &_ntripServer1;
+	_graphics.SetRtkStatus(index, pServer->GetStatus());
+
 	if (_currentPage != 1)
 		return;
-	NTRIPServer *pServer = index == 0 ? &_ntripServer0 : &_ntripServer1;
 	int col = index == 0 ? COL2_P4 : COL3_P4;
 
 	DrawML(pServer->GetStatus(), col, R1F4, COL_W_P4, 4);
@@ -163,6 +176,17 @@ void MyDisplay::RefreshRtkLog()
 	if (_currentPage != 4 && _currentPage != 5)
 		return;
 
+	NTRIPServer *pServer = _currentPage == 4 ? &_ntripServer0 : &_ntripServer1;
+	RefreshLog(pServer->GetLogHistory());
+}
+void MyDisplay::RefreshGpsLog()
+{
+	if (_currentPage != 3)
+		return;
+	RefreshLog(_gpsParser.GetLogHistory());
+}
+void MyDisplay::RefreshLog(const std::vector<std::string> &log)
+{
 	// Clear the background
 	_tft.fillRect(0, R1F4, TFT_HEIGHT, TFT_WIDTH, TFT_BLACK);
 
@@ -171,12 +195,8 @@ void MyDisplay::RefreshRtkLog()
 	_tft.setTextDatum(TL_DATUM);
 	_tft.setTextFont(1);
 
-	if (_currentPage == 4)
-		for (const auto &log : _ntripServer0.GetLogHistory())
-			_tft.println(log.c_str());
-	if (_currentPage == 5)
-		for (const auto &log : _ntripServer1.GetLogHistory())
-			_tft.println(log.c_str());
+	for (auto it = log.rbegin(); it != log.rend(); ++it)
+			_tft.println(it->c_str());	
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -213,15 +233,10 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Serial", COL1, R4F4, 2);
 		DrawLabel("Version", COL1, R5F4, 2);
 
-		if( WiFi.status() == WL_CONNECTED)
-			DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
-		else
-			DrawML(WifiStatus(WiFi.status()), COL2_P0, R1F4, COL2_P0_W, 4);
 		DrawML(_gpsParser.GetDeviceType().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 		DrawML(_gpsParser.GetDeviceFirmware().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 		DrawML(_gpsParser.GetDeviceSerial().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 		DrawML(APP_VERSION, COL2_P0, R5F4, COL2_P0_W, 4);
-		
 
 		break;
 	case 1:
@@ -240,17 +255,16 @@ void MyDisplay::RefreshScreen()
 		_tft.fillScreen(TFT_BLACK);
 		title = "  GPS Log";
 		break;
-	
+
 	case 4:
 		_tft.fillScreen(TFT_BLACK);
-		title = "  RTK 0 Log";
+		title = StringPrintf("  0 - %s", _ntripServer0.GetAddress()).c_str();
 		break;
-	
+
 	case 5:
 		_tft.fillScreen(TFT_BLACK);
-		title = "  RTK 1 Log";
+		title = StringPrintf("  1 - %s", _ntripServer1.GetAddress()).c_str();
 		break;
-	
 	}
 	DrawML(title, 20, 0, 200, 2);
 
@@ -260,8 +274,11 @@ void MyDisplay::RefreshScreen()
 	_gpsPacketCount--;
 	IncrementGpsPackets();
 
+	RefreshWiFiState();
+
 	RefreshRtk(0);
 	RefreshRtk(1);
+	RefreshGpsLog();
 	RefreshRtkLog();
 }
 

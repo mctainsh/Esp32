@@ -13,7 +13,7 @@
 class MyDisplay
 {
 public:
-	MyDisplay(){}
+	MyDisplay() {}
 
 	void Setup();
 	void Animate();
@@ -23,8 +23,11 @@ public:
 	void IncrementGpsPackets();
 	void ActionButton();
 	void NextPage();
+	void RefreshWiFiState();
 	void RefreshRtk(int index);
-	void RefreshRtkLog( );
+	void RefreshLog(const std::vector<std::string> &log);
+	void RefreshGpsLog();
+	void RefreshRtkLog();
 	void RefreshScreen();
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -40,16 +43,16 @@ public:
 private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
 	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
-	uint16_t _bg = 0x8610;				  // Background colour
-	int _currentPage = 0;				  // Page we are currently displaying
-	bool _gpsConnected;					  // GPS connected
-	int16_t _gpsResetCount = 0;			  // Number GPS resets
-	int16_t _gpsPacketCount = 0;		  // Number GPS of packets received
-	int _sendGood = 0;					  // Number of good sends
-	int _sendBad = 0;					  // Number of bad sends
-	int _httpCode = 0;					  // Last HTTP code
-	std::string _time;					  // GPS time in minutes and seconds
-	int _animationAngle;				  // Animated wheel
-	int _loopsPerSecond;				  // How many loop occur per second
-	wl_status_t _webStatus;				  // WIFI Status of connection to hot spot
+	uint16_t _bg = 0x8610;		 // Background colour
+	int _currentPage = 0;		 // Page we are currently displaying
+	bool _gpsConnected;			 // GPS connected
+	int16_t _gpsResetCount = 0;	 // Number GPS resets
+	int16_t _gpsPacketCount = 0; // Number GPS of packets received
+	int _sendGood = 0;			 // Number of good sends
+	int _sendBad = 0;			 // Number of bad sends
+	int _httpCode = 0;			 // Last HTTP code
+	std::string _time;			 // GPS time in minutes and seconds
+	int _animationAngle;		 // Animated wheel
+	int _loopsPerSecond;		 // How many loop occur per second
+	wl_status_t _webStatus;		 // WIFI Status of connection to hot spot
 };
