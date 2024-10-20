@@ -3,6 +3,11 @@
 Collection fun of ESP 32 projects
 
 
+## [UM98x RTK Server](https://github.com/mctainsh/Esp32/tree/main/UM98RTKServer)
+
+Connect a UM98x RTK receiver to a TTGO T-Display-S3 to create a base station server. Server can send RTK connections to two different RTK Casters. (Currently Onocoy and RTK2GO)
+
+
 ## [Marco Keypboard](https://github.com/mctainsh/Esp32/tree/main/MarcoKeyboard)
 
 Simple tool to pump keys into a computer. Handy got repeated thinks you type or even passwords if you want to live dangerously.

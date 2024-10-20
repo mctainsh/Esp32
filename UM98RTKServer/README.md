@@ -131,7 +131,7 @@ https://github.com/mctainsh/Esp32/tree/main/UM98RTKServer/UM98RTKServer
 
 ### Usage 
 
-1. Create the accounts with ![Oncony register](https://console.onocoy.com/auth/register/personal) and ![RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
+1. Create the accounts with [Oncony register](https://console.onocoy.com/auth/register/personal) and [RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
 
 2. Enter details into the `CredentialPrivate.h` (Use the `Credentials.h` as a sample)
 

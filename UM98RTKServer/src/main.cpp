@@ -67,8 +67,8 @@ void setup(void)
 #else
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation)
-	// pinMode(15, OUTPUT);
-	// digitalWrite(15, HIGH);
+	pinMode(15, OUTPUT);
+	digitalWrite(15, HIGH);
 #endif
 
 	Logf("Starting %s\r\n", APP_VERSION);
