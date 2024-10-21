@@ -1,10 +1,12 @@
 # UM982 RTK Server with TTGO T-DisplayESP32-S3
 
-WARNING :  Do not run without real credentials or you IP may be blocked!!
+WARNING :  Do not run without real credentials or your IP may be blocked!!
 
 ![Wiring](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true)
 
-This project connects a UM982 RTK GNSS receiver to a TTGO T-Display ESP32 allow 1cm accuracy positioning.
+This project connects a UM982 RTK GNSS receiver to a TTGO T-Display-S3 allowing you to share RTK correction data with various networks.
+
+NOTE : ALthough the code is able to send data to two RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Minis to handel more casters.
 
 I haven't included the STL for box as it is a mess. When I do a nice one, I will include it.
 
@@ -17,6 +19,8 @@ I haven't included the STL for box as it is a mess. When I do a nice one, I will
 3. Add support for ESP32 S2 Mini and TTGO T-Display-S2
 
 4. Write instructions to install without compiling with PlatformIO (Using ESP32 Upload tool)
+
+5. Make an STL
 
 ## Table of Contents 
  
@@ -33,7 +37,15 @@ I haven't included the STL for box as it is a mess. When I do a nice one, I will
 
 ## Project Overview
 
-This project enables an TTGO T-Display to act as an RTK server sending RTK corrections to both Onocoy and Rtk2Go ()
+This project enables an TTGO T-Display to act as an RTK server sending RTK corrections to two casters. These could be Onocoy, Rtk2Go or RtkDirect.
+
+### Terms
+
+| Name | Description |
+| --- | --- |
+| RTK Client | A device or software that receives RTK correction data from a server to improve positioning accuracy. |
+| RTK Server | A server that processes and distributes RTK correction data to clients. (This project builds a RTK Server) |
+| RTK Caster | A service that broadcasts RTK correction data over the internet using the NTRIP protocol. |
 
 ### Use Cases 
 
@@ -94,14 +106,14 @@ Current config parameters. Kept in  CredentialPrivate.h (Use the Credentials.h a
 | --- | --- | 
 | WIFI_SSID | Your WiFi network name. Note: Not all speed are supported by ESP32 |
 | WIFI_PASSWORD | Your Wifi password |
-| ONOCOY_PORT | Port usually 2101 |
-| ONOCOY_ADDRESS | Usually "servers.onocoy.com" |
-| ONOCOY_PASSWORD | Sign up to get this from Onocoy |
-| ONOCOY_CREDENTIAL | This is the reference station Credential. NOT the Mount point name |
-| RTK2GO_PORT | Port usually 2101 |
-| RTK2GO_ADDRESS | Usually "rtk2go.com" |
-| RTK2GO_PASSWORD | Create this with Rtk2Go signup |
-| RTK2GO_CREDENTIAL | Mount point name |
+| CASTER_0_PORT | Port usually 2101 |
+| CASTER_0_ADDRESS | Usually "servers.onocoy.com" |
+| CASTER_0_PASSWORD | Sign up to get this from Onocoy |
+| CASTER_0_CREDENTIAL | This is the reference station Credential. NOT the Mount point name |
+| CASTER_1_PORT | Port usually 2101 |
+| CASTER_1_ADDRESS | Usually "rtk2go.com" |
+| CASTER_1_PASSWORD | Create this with Rtk2Go signup |
+| CASTER_1_CREDENTIAL | Mount point name |
 
 
 ### Setup & Installation 
@@ -131,7 +143,7 @@ https://github.com/mctainsh/Esp32/tree/main/UM98RTKServer/UM98RTKServer
 
 ### Usage 
 
-1. Create the accounts with [Oncony register](https://console.onocoy.com/auth/register/personal) and [RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
+1. Create the accounts with [Oncony register](https://console.onocoy.com/auth/register/personal), [RtkDirect](https://cloud.rtkdirect.com/) or [RTK2GO](http://rtk2go.com/sample-page/new-reservation/)
 
 2. Enter details into the `CredentialPrivate.h` (Use the `Credentials.h` as a sample)
 

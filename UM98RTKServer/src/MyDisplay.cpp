@@ -81,10 +81,10 @@ void MyDisplay::SetGpsConnected(bool connected)
 void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
 {
 	// Loops per second
-	SetValue(2, n, &_loopsPerSecond, 2, R1F4, 236, 4);
+	SetValue(0, n, &_loopsPerSecond, COL2_P0, R3F4, COL2_P0_W, 4);
 
 	// Uptime
-	if (_currentPage == 2)
+	if (_currentPage == 0)
 	{
 		uint32_t t = millis / 1000;
 		std::string uptime = StringPrintf(":%02d", t % 60);
@@ -94,24 +94,22 @@ void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
 		uptime = StringPrintf("%02d", t % 24) + uptime;
 		t /= 24;
 		uptime = StringPrintf("%dd ", t) + uptime;
-		DrawCell(uptime.c_str(), 2, R5F4, 236, 4);
+		DrawML(uptime.c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 	}
 }
 
-void MyDisplay::ResetGps()
+void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
 {
-	_gpsResetCount++;
-	_gpsPacketCount--;
-	IncrementGpsPackets();
+	if (restart)
+		_gpsResetCount++;
+	if (reinitialize)
+		_gpsReinitialize++;
+	if (_currentPage == 2)
+		DrawML(StringPrintf("R : %d  I : %d", _gpsResetCount, _gpsReinitialize).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 }
 void MyDisplay::IncrementGpsPackets()
 {
-	_gpsPacketCount++;
-	if (_gpsPacketCount > 32000)
-		_gpsPacketCount = 10000;
-	if (_currentPage != 2)
-		return;
-	DrawCell(StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 22, R2F4, 216, 4);
+	SetValue(2, (_gpsPacketCount + 1), &_gpsPacketCount, COL2_P0, R3F4, COL2_P0_W, 4);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -196,7 +194,7 @@ void MyDisplay::RefreshLog(const std::vector<std::string> &log)
 	_tft.setTextFont(1);
 
 	for (auto it = log.rbegin(); it != log.rend(); ++it)
-			_tft.println(it->c_str());	
+		_tft.println(it->c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -218,29 +216,32 @@ void MyDisplay::RefreshScreen()
 {
 	const char *title = "Unknown";
 	_tft.setTextDatum(TL_DATUM);
-	// Clear the working area
+	_fg = TFT_WHITE;
 
 	switch (_currentPage)
 	{
 	case 0:
 		_bg = 0x07eb;
+		_fg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = "  Network";
-
+		title = "  General";
+		
 		DrawLabel("Wi-Fi", COL1, R1F4, 2);
-		DrawLabel("TYPE", COL1, R2F4, 2);
-		DrawLabel("Firmware", COL1, R3F4, 2);
-		DrawLabel("Serial", COL1, R4F4, 2);
-		DrawLabel("Version", COL1, R5F4, 2);
+		DrawLabel("Version", COL1, R2F4, 2);
+		DrawLabel("Up time", COL1, R3F4, 2);
+		DrawLabel("Speed", COL1, R4F4, 2);
+		// DrawLabel("Version", COL1, R5F4, 2);
 
-		DrawML(_gpsParser.GetDeviceType().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
-		DrawML(_gpsParser.GetDeviceFirmware().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
-		DrawML(_gpsParser.GetDeviceSerial().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
-		DrawML(APP_VERSION, COL2_P0, R5F4, COL2_P0_W, 4);
+		DrawML(APP_VERSION, COL2_P0, R2F4, COL2_P0_W, 4);
+		// DrawML(_gpsParser.GetDeviceType().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		// DrawML(_gpsParser.GetDeviceFirmware().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
+		// DrawML(_gpsParser.GetDeviceSerial().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 
 		break;
 	case 1:
-		_tft.fillScreen(TFT_ORANGE);
+		_bg = TFT_ORANGE;
+		_fg = TFT_BLACK;
+		_tft.fillScreen(_bg);
 		title = "  RTK Server";
 		DrawLabel("State", COL1, R1F4, 2);
 		DrawLabel("Reconnects", COL1, R2F4, 2);
@@ -248,21 +249,38 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("us", COL1, R4F4, 2);
 		break;
 	case 2:
-		_tft.fillScreen(TFT_RED);
-		title = "  System State";
+		_bg = TFT_RED;
+		_tft.fillScreen(_bg);
+		title = "  GPS State";
+
+		DrawLabel("Type", COL1, R1F4, 2);
+		DrawLabel("Resets", COL1, R2F4, 2);
+		DrawLabel("Packets", COL1, R3F4, 2);
+		DrawLabel("Serial #", COL1, R4F4, 2);
+		DrawLabel("Firmware", COL1, R5F4, 2);
+
+		DrawML(_gpsParser.GetDeviceType().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		DrawML(_gpsParser.GetDeviceFirmware().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+		DrawML(_gpsParser.GetDeviceSerial().c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
+
 		break;
 	case 3:
+		_bg = TFT_BLACK;
+		_tft.fillScreen(_bg);
 		_tft.fillScreen(TFT_BLACK);
 		title = "  GPS Log";
 		break;
 
 	case 4:
+		_bg = TFT_BLACK;
+		_tft.fillScreen(_bg);
 		_tft.fillScreen(TFT_BLACK);
 		title = StringPrintf("  0 - %s", _ntripServer0.GetAddress()).c_str();
 		break;
 
 	case 5:
-		_tft.fillScreen(TFT_BLACK);
+		_bg = TFT_BLACK;
+		_tft.fillScreen(_bg);
 		title = StringPrintf("  1 - %s", _ntripServer1.GetAddress()).c_str();
 		break;
 	}
@@ -271,6 +289,7 @@ void MyDisplay::RefreshScreen()
 	// Redraw
 	_graphics.SetGpsConnected(_gpsConnected);
 
+	UpdateGpsStarts(false, false);
 	_gpsPacketCount--;
 	IncrementGpsPackets();
 
@@ -349,7 +368,7 @@ void MyDisplay::DrawLabel(const char *pstr, int32_t x, int32_t y, uint8_t font)
 
 	// Draw text
 	_tft.setFreeFont(&FreeMono18pt7b);
-	_tft.setTextColor(TFT_BLACK, _bg, true);
+	_tft.setTextColor(_fg, _bg, true);
 	_tft.setTextDatum(ML_DATUM);
 	_tft.drawString(pstr, x, y + (height / 2) + 2, font);
 

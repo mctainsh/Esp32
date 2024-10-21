@@ -9,14 +9,14 @@ const char* WIFI_SSID = "Not my wifi";
 const char* WIFI_PASSWORD = "Not my password";  
  
 // ONOCOY Details
-const int ONOCOY_PORT = 2101;
-const char* ONOCOY_ADDRESS = "servers.onocoy.com_REMOVE_THIS";
-const char* ONOCOY_PASSWORD = "password";
-const char* ONOCOY_CREDENTIAL = "SOme stuff"; // NOT the Mount point name
+const int CASTER_0_PORT = 2101;
+const char* CASTER_0_ADDRESS = "servers.onocoy.com_REMOVE_THIS";
+const char* CASTER_0_PASSWORD = "password";
+const char* CASTER_0_CREDENTIAL = "SOme stuff"; // NOT the Mount point name
 
 // RTK2GO Details
-const int RTK2GO_PORT = 2101;
-const char* RTK2GO_ADDRESS = "rtk2go.com_REMOVE_THIS";
-const char* RTK2GO_PASSWORD = "password";
-const char* RTK2GO_CREDENTIAL = "ZZ_55_ERT";	// Mount point name
+const int CASTER_1_PORT = 2101;
+const char* CASTER_1_ADDRESS = "rtk2go.com_REMOVE_THIS";
+const char* CASTER_1_PASSWORD = "password";
+const char* CASTER_1_CREDENTIAL = "ZZ_55_ERT";	// Mount point name
 // Expected response:	"ICY 200 OK"

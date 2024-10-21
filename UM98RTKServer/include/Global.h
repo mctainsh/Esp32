@@ -12,4 +12,4 @@
 #define BUTTON_2 0
 #endif
 
-#define APP_VERSION "1.58"
+#define APP_VERSION "1.68"

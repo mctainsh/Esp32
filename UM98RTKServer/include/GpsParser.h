@@ -111,6 +111,7 @@ public:
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
 			_commandQueue.StartInitialiseProcess();
+			_display.UpdateGpsStarts(false, true);
 		}
 		return _gpsConnected;
 	}
@@ -164,7 +165,7 @@ private:
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
 		{
-			_display.ResetGps();
+			_display.UpdateGpsStarts(true, false);
 			return;
 		}
 		if (_commandQueue.IsCommandResponse(line))

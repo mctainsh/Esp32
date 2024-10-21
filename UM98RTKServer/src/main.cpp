@@ -22,7 +22,6 @@
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
 
-
 #include <WiFi.h>
 #include <iostream>
 #include <sstream>
@@ -40,8 +39,8 @@
 MyFiles _myFiles;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
-NTRIPServer _ntripServer0(_display, 0, ONOCOY_ADDRESS, ONOCOY_PORT, ONOCOY_CREDENTIAL, ONOCOY_PASSWORD);
-NTRIPServer _ntripServer1(_display, 1, RTK2GO_ADDRESS, RTK2GO_PORT, RTK2GO_CREDENTIAL, RTK2GO_PASSWORD);
+NTRIPServer _ntripServer0(_display, 0, CASTER_0_ADDRESS, CASTER_0_PORT, CASTER_0_CREDENTIAL, CASTER_0_PASSWORD);
+NTRIPServer _ntripServer1(_display, 1, CASTER_1_ADDRESS, CASTER_1_PORT, CASTER_1_CREDENTIAL, CASTER_1_PASSWORD);
 
 unsigned long _loopWaitTime = 0; // Time of last second
 int _loopPersSecondCount = 0;	 // Number of times the main loops runs in a second
@@ -66,7 +65,7 @@ void setup(void)
 	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #else
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
-	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation)
+	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
 	pinMode(15, OUTPUT);
 	digitalWrite(15, HIGH);
 #endif

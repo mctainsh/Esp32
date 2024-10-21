@@ -20,6 +20,13 @@ NTRIPServer::NTRIPServer(MyDisplay &display, int index,
 // Loop called when we have new data to send
 void NTRIPServer::Loop(const byte *pBytes, int length)
 {
+	// Disable the port if not used
+	if( _port < 1)
+	{
+		_status = "Disabled";
+		return;	
+	}
+
 	// Check the index is valid
 	if (_index > RTK_SERVERS)
 	{
@@ -83,7 +90,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	}
 	else
 	{
-		LogX(StringPrintf("RTK %s Sent %d OK", _szAddress, sent));
+		Logf("RTK %s Sent %d OK\r\n", _szAddress, sent);
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_display.RefreshRtk(_index);
