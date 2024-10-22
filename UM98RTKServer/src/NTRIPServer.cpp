@@ -80,7 +80,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	// Send and record time
 	int startT = micros();
 	int sent = _client.write(pBytes, length);
-	_sendMicroSeconds.push_back(micros() - startT);
+	_sendMicroSeconds.push_back((micros() - startT)*1000/max(1, sent));
 
 	if (sent != length)
 	{

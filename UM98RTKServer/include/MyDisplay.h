@@ -45,7 +45,7 @@ private:
 	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
 	uint16_t _bg = 0x8610;		  // Background colour
 	uint16_t _fg = TFT_WHITE;	  // Foreground for labels
-	int _currentPage = 2;		  // Page we are currently displaying
+	int _currentPage = 0;		  // Page we are currently displaying
 	bool _gpsConnected;			  // GPS connected
 	int32_t _gpsResetCount = 0;	  // Number GPS resets
 	int32_t _gpsReinitialize = 0; // Number GPS initializations

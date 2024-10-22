@@ -27,6 +27,8 @@
 #include <sstream>
 #include <string>
 
+#include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+
 #include "Global.h"
 #include "HandyLog.h"
 #include "HandyString.h"
@@ -35,6 +37,8 @@
 #include "CredentialPrivate.h"
 #include "NTRIPServer.h"
 #include "MyFiles.h"
+
+WiFiManager _wifiManager;
 
 MyFiles _myFiles;
 MyDisplay _display;
@@ -71,6 +75,7 @@ void setup(void)
 #endif
 
 	Logf("Starting %s\r\n", APP_VERSION);
+	WiFi.mode(WIFI_AP_STA); 
 
 	pinMode(BUTTON_1, INPUT_PULLUP);
 	pinMode(BUTTON_2, INPUT_PULLUP);
@@ -93,12 +98,24 @@ void setup(void)
 
 	_display.Setup();
 	Logln("Startup Complete");
+
+	// first parameter is name of access point, second is the password
+	//_wifiManager.resetSettings();
+	auto res = _wifiManager.autoConnect("RTKServer", "Test1234");
+	if (!res)
+	{
+		Serial.println("WiFi : Failed to connect");
+		//ESP.restart();
+	}
+	Logln("Wifi setup complete");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Loop here
 void loop()
 {
+	_wifiManager.process();
+	
 	// Trigger something every second
 	int t = millis();
 	_loopPersSecondCount++;
@@ -106,8 +123,8 @@ void loop()
 	{
 		_loopWaitTime = t;
 		_display.SetLoopsPerSecond(_loopPersSecondCount, t);
-		_loopPersSecondCount = 0;		
-	}	
+		_loopPersSecondCount = 0;
+	}
 
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
@@ -123,17 +140,9 @@ void loop()
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
-		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1) );
+		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1));
 	else
 		_display.SetGpsConnected(false);
-
-	// WIFI related functions
-	//	if (IsWifiConnected())
-	//	{
-	// Check for new RTK corrections if we have a location already
-	//		if (_display.HasLocation())
-	//			_ntripServer.Loop();
-	//	}
 
 	// Update animations
 	_display.Animate();
@@ -162,10 +171,10 @@ bool IsWifiConnected()
 	{
 		_lastWifiStatus = status;
 		Logf("Wifi Status %d %s\r\n", status, WifiStatus(status));
-	//	_display.SetWebStatus(status);
+		//	_display.SetWebStatus(status);
 		_display.RefreshWiFiState();
-//		if (status == WL_CONNECTED)
-//			_display.SetRtkStatus(0, "GPS Pending");
+		//		if (status == WL_CONNECTED)
+		//			_display.SetRtkStatus(0, "GPS Pending");
 	}
 
 	if (status == WL_CONNECTED)
@@ -177,25 +186,15 @@ bool IsWifiConnected()
 	unsigned long tDelta = t - _wifiFullResetTime;
 	if (tDelta < WIFI_STARTUP_TIMEOUT)
 	{
-
-		// if( status != WL_DISCONNECTED)
-		//	Logln(stateTitle.c_str());
-		//_display.SetWebStatus(stateTitle.c_str());
-
-		// Create a string of dots to show progress. 1 dot per second
-	//	std::string dotsStr(tDelta / 1000, '.');
-	//	_display.SetRtkStatus(0, dotsStr.c_str());
-
 		return false;
 	}
 
 	// Reset the WIFI
-	_wifiFullResetTime = t;
-	WiFi.mode(WIFI_STA);
-	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	//_display.SetWebStatus(WifiStatus(beginState));
-	Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
-	_display.RefreshWiFiState();
+	//_wifiFullResetTime = t;
+	// WiFi.mode(WIFI_STA);
+	// wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	// Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+	//_display.RefreshWiFiState();
 
 	return false;
 }

@@ -33,6 +33,7 @@ public:
 			int available = stream.available();
 			if (available > 0)
 			{
+				_display.IncrementGpsPackets();
 				// TODO Just use a single buffer over and over
 				std::unique_ptr<byte[]> byteArray(new byte[available + 1]);
 				stream.readBytes(byteArray.get(), available);
@@ -85,7 +86,6 @@ public:
 						continue;
 					ProcessLine(_buildBuffer);
 					_buildBuffer.clear();
-					_display.IncrementGpsPackets();
 					continue;
 				}
 

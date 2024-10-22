@@ -149,9 +149,14 @@ void MyDisplay::RefreshWiFiState()
 	if (_currentPage != 0)
 		return;
 	if (status == WL_CONNECTED)
+	{
 		DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+	}
 	else
+	{
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
+	}
 }
 
 void MyDisplay::RefreshRtk(int index)
