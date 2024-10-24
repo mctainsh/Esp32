@@ -43,6 +43,7 @@
 extern MyFiles _myFiles;
 extern NTRIPServer _ntripServer0;
 extern NTRIPServer _ntripServer1;
+extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 
 ////////////////////////////////////////////////////////////////////////
@@ -80,9 +81,6 @@ void MyDisplay::SetGpsConnected(bool connected)
 // ************************************************************************//
 void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
 {
-	// Loops per second
-	SetValue(0, n, &_loopsPerSecond, COL2_P0, R3F4, COL2_P0_W, 4);
-
 	// Uptime
 	if (_currentPage == 0)
 	{
@@ -94,8 +92,11 @@ void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
 		uptime = StringPrintf("%02d", t % 24) + uptime;
 		t /= 24;
 		uptime = StringPrintf("%dd ", t) + uptime;
-		DrawML(uptime.c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+		DrawML(uptime.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 	}
+
+	// Loops per second
+	SetValue(0, n, &_loopsPerSecond, COL2_P0, R4F4, COL2_P0_W, 4);
 }
 
 void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
@@ -138,7 +139,7 @@ void MyDisplay::NextPage()
 	_currentPage++;
 	if (_currentPage > 5)
 		_currentPage = 0;
-	Logf("Switch to page %d\r\n", _currentPage);
+	Logf("Switch to page %d", _currentPage);
 	RefreshScreen();
 }
 
@@ -280,14 +281,21 @@ void MyDisplay::RefreshScreen()
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
 		_tft.fillScreen(TFT_BLACK);
-		title = StringPrintf("  0 - %s", _ntripServer0.GetAddress()).c_str();
+		title = StringPrintf("  1 - %s", _ntripServer0.GetAddress().c_str()).c_str();
 		break;
 
 	case 5:
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = StringPrintf("  1 - %s", _ntripServer1.GetAddress()).c_str();
+		title = StringPrintf("  2 - %s", _ntripServer1.GetAddress().c_str()).c_str();
 		break;
+
+	case 6:
+		_bg = TFT_BLACK;
+		_tft.fillScreen(_bg);
+		title = StringPrintf("  3 - %s", _ntripServer2.GetAddress().c_str()).c_str();
+		break;
+
 	}
 	DrawML(title, 20, 0, 200, 2);
 

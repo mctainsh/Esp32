@@ -26,7 +26,7 @@ class MyFiles
 
 	bool WriteFile(const char* path, const char* message)
 	{
-		Logf("Writing file: %s -> '%s'\r\n\t", path, message);
+		Logf("Writing file: %s -> '%s'", path, message);
 		fs::File file = SPIFFS.open(path, FILE_WRITE);
 		if (!file)
 		{
@@ -44,7 +44,7 @@ class MyFiles
 
 	void AppendFile(const char* path, const char* message)
 	{
-		Logf("Appending to file: %s -> '%s'\r\n\t", path, message);
+		Logf("Appending to file: %s -> '%s'", path, message);
 		fs::File file = SPIFFS.open(path, FILE_APPEND);
 		if (!file)
 		{
@@ -65,7 +65,7 @@ class MyFiles
 
 	bool ReadFile(const char* path, std::string& text)
 	{
-		Logf("Reading file: %s\r\n\t", path);
+		Logf("Reading file: %s", path);
 
 		fs::File file = SPIFFS.open(path);
 		if (!file || file.isDirectory())

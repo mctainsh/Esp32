@@ -41,11 +41,6 @@
 
 WiFiManager _wifiManager;
 
-MyFiles _myFiles;
-MyDisplay _display;
-GpsParser _gpsParser(_display);
-NTRIPServer _ntripServer0(_display, 0, CASTER_0_ADDRESS, CASTER_0_PORT, CASTER_0_CREDENTIAL, CASTER_0_PASSWORD);
-NTRIPServer _ntripServer1(_display, 1, CASTER_1_ADDRESS, CASTER_1_PORT, CASTER_1_CREDENTIAL, CASTER_1_PASSWORD);
 unsigned long _loopWaitTime = 0; // Time of last second
 int _loopPersSecondCount = 0;	 // Number of times the main loops runs in a second
 
@@ -54,6 +49,13 @@ WebPortal _webPortal;
 uint8_t _button1Current = HIGH; // Top button on left
 uint8_t _button2Current = HIGH; // Bottom button when
 
+MyFiles _myFiles;
+MyDisplay _display;
+GpsParser _gpsParser(_display);
+NTRIPServer _ntripServer0(_display, 0);
+NTRIPServer _ntripServer1(_display, 1);
+NTRIPServer _ntripServer2(_display, 2);
+
 // WiFi monitoring states
 #define WIFI_STARTUP_TIMEOUT 20000
 unsigned long _wifiFullResetTime = -WIFI_STARTUP_TIMEOUT;
@@ -61,7 +63,6 @@ wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
 bool IsWifiConnected();
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
@@ -77,7 +78,7 @@ void setup(void)
 	digitalWrite(15, HIGH);
 #endif
 
-	Logf("Starting %s\r\n", APP_VERSION);
+	Logf("Starting %s", APP_VERSION);
 	WiFi.mode(WIFI_AP_STA);
 
 	pinMode(BUTTON_1, INPUT_PULLUP);
@@ -99,8 +100,13 @@ void setup(void)
 		Logln("E100 - File IO failed");
 	}
 
+	// Load the NTRIP server settings
+	_ntripServer0.LoadSettings();
+	_ntripServer1.LoadSettings();
+	_ntripServer2.LoadSettings();
+
 	_display.Setup();
-	Logln("Startup Complete");
+	Logf("Display type %d setup complete", USER_SETUP_ID);
 
 	_webPortal.Setup();
 }
@@ -129,22 +135,12 @@ void loop()
 	{
 		Logln("Button 2");
 		_display.ActionButton();
-
-		if (!_wifiManager.startConfigPortal())
-		{
-			Logln("Failed to connect and hit timeout");
-			// ESP.restart();
-		}
-		else
-		{
-			Logln("Connected)");
-		}
 	}
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
 	{
-		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1));
+		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1, _ntripServer2));
 		_webPortal.Loop();
 	}
 	else
@@ -178,7 +174,7 @@ bool IsWifiConnected()
 	if (_lastWifiStatus != status)
 	{
 		_lastWifiStatus = status;
-		Logf("Wifi Status %d %s\r\n", status, WifiStatus(status));
+		Logf("Wifi Status %d %s", status, WifiStatus(status));
 		//	_display.SetWebStatus(status);
 		_display.RefreshWiFiState();
 

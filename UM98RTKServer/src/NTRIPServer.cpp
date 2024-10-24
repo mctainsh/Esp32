@@ -4,16 +4,54 @@
 
 #include "HandyLog.h"
 #include <GpsParser.h>
+#include <MyFiles.h>
 
-NTRIPServer::NTRIPServer(MyDisplay &display, int index,
-						 const char *szAddress, int port,
-						 const char *szCredential,
-						 const char *szPassword)
-	: _display(display), _index(index),
-	  _szAddress(szAddress), _port(port),
-	  _szCredential(szCredential), _szPassword(szPassword)
+extern MyFiles _myFiles;
+
+NTRIPServer::NTRIPServer(MyDisplay &display, int index)
+	: _display(display), _index(index)
 {
-	LogX(StringPrintf("Server %s:%d %s", _szAddress, _port, _szCredential));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Save the setting to the file
+void NTRIPServer::LoadSettings()
+{
+	std::string fileName = StringPrintf("/Caster%d.txt", _index);
+	// Read the server settings from the config file
+	// Load last lat long
+	std::string llText;
+	if (_myFiles.ReadFile(fileName.c_str(), llText))
+	{
+		LogX(StringPrintf(" - Read LL '%s'", llText.c_str()));
+		auto parts = Split(llText, "\n");
+		if( parts.size() > 3)
+		{
+			_szAddress = parts[0];
+			_port = atoi(parts[1].c_str());
+			_szCredential = parts[2];
+			_szPassword = parts[3];
+			LogX(StringPrintf(" - Recovered %s, %d, %s, %s", _szAddress.c_str(), _port, _szCredential.c_str(), _szPassword.c_str()));
+		}
+		else
+		{
+			LogX(StringPrintf(" - E341 - Cannot read saved Server setting %s", llText.c_str()));		
+		}
+	}
+	else
+	{
+		LogX(StringPrintf(" - E342 - Cannot read saved Server setting %s", fileName.c_str()));
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Save the setting to the file
+void NTRIPServer::Save(const char* address, const char* port, const char* credential, const char* password) const
+{
+	std::string llText = StringPrintf("%s\n%s\n%s\n%s", address, port, credential, 
+	strlen(password) < 1 ? _szPassword.c_str() : password);
+	std::string fileName = StringPrintf("/Caster%d.txt", _index);
+	_myFiles.WriteFile(fileName.c_str(), llText.c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -21,10 +59,10 @@ NTRIPServer::NTRIPServer(MyDisplay &display, int index,
 void NTRIPServer::Loop(const byte *pBytes, int length)
 {
 	// Disable the port if not used
-	if( _port < 1)
+	if (_port < 1)
 	{
 		_status = "Disabled";
-		return;	
+		return;
 	}
 
 	// Check the index is valid
@@ -80,7 +118,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	// Send and record time
 	int startT = micros();
 	int sent = _client.write(pBytes, length);
-	_sendMicroSeconds.push_back((micros() - startT)*1000/max(1, sent));
+	_sendMicroSeconds.push_back((micros() - startT) * 1000 / max(1, sent));
 
 	if (sent != length)
 	{
@@ -90,7 +128,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	}
 	else
 	{
-		Logf("RTK %s Sent %d OK\r\n", _szAddress, sent);
+		Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_display.RefreshRtk(_index);
@@ -159,16 +197,16 @@ void NTRIPServer::Reconnect()
 	_wifiConnectTime = millis();
 
 	// Start the connection process
-	LogX(StringPrintf("RTK Connecting to %s %d", _szAddress, _port));
-	int status = _client.connect(_szAddress, _port);
+	LogX(StringPrintf("RTK Connecting to %s %d", _szAddress.c_str(), _port));
+	int status = _client.connect(_szAddress.c_str(), _port);
 	if (!_client.connected())
 	{
-		LogX(StringPrintf("E500 - RTK %s Not connected %d", _szAddress, status));
+		LogX(StringPrintf("E500 - RTK %s Not connected %d", _szAddress.c_str(), status));
 		return;
 	}
-	LogX(StringPrintf("Connected %s OK", _szAddress));
+	LogX(StringPrintf("Connected %s OK", _szAddress.c_str()));
 
-	_client.write(StringPrintf("SOURCE %s %s\r\n", _szPassword, _szCredential).c_str());
+	_client.write(StringPrintf("SOURCE %s %s\r\n", _szPassword.c_str(), _szCredential.c_str()).c_str());
 	_client.write("Source-Agent: NTRIP UM98XX/ESP32_S2_Mini\r\n");
 	_client.write("STR: \r\n");
 	_client.write("\r\n");

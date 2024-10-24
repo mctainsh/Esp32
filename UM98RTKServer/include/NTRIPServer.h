@@ -12,10 +12,9 @@
 class NTRIPServer
 {
 public:
-	NTRIPServer(MyDisplay &display, int index,
-				const char *szAddress, int port,
-				const char *szCredential,
-				const char *szPassword);
+	NTRIPServer(MyDisplay &display, int index);
+	void LoadSettings();
+	void Save(const char* address, const char* port, const char* credential, const char* password) const;
 	void Loop(const byte *pBytes, int length);
 	std::string AverageSendTime();
 
@@ -23,7 +22,10 @@ public:
 	inline const char *GetStatus() const { return _status; }
 	inline int GetReconnects() const { return _reconnects; }
 	inline int GetPacketsSent() const { return _packetsSent; }
-	inline const char *GetAddress() const { return _szAddress; }
+	inline const std::string GetAddress() const { return _szAddress; }
+	inline int GetPort() const { return _port; }
+	inline const std::string GetCredential() const { return _szCredential; }
+	inline const std::string GetPassword() const { return _szPassword; }
 
 private:
 	WiFiClient _client;							// Socket connection
@@ -38,10 +40,10 @@ private:
 	int _reconnects;							// Total number of reconnects
 	int _packetsSent;							// Total number of packets sent
 
-	const char *_szAddress;
-	const int _port;
-	const char *_szCredential;
-	const char *_szPassword;
+	std::string _szAddress;
+	int _port;
+	std::string _szCredential;
+	std::string _szPassword;
 
 	void ConnectedProcessing(const byte *pBytes, int length);
 	void ConnectedProcessingSend(const byte *pBytes, int length);

@@ -6,8 +6,6 @@
 
 #include "MyDisplayGraphics.h"
 
-#define RTK_SERVERS 2
-
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
 class MyDisplay
@@ -39,6 +37,13 @@ public:
 	void DrawML(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK);
 	void DrawMR(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK);
 	void DrawLabel(const char *pstr, int32_t x, int32_t y, uint8_t font);
+
+	inline void GetGpsStats(int32_t &resetCount, int32_t &reinitialize, int32_t &packetCount) const
+	{
+		resetCount = _gpsResetCount;
+		reinitialize = _gpsReinitialize;
+		packetCount = _gpsPacketCount;
+	}
 
 private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h

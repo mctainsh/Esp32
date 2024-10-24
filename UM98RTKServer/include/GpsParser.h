@@ -8,6 +8,7 @@
 #include "GpsCommandQueue.h"
 #include "HandyString.h"
 #include "NTRIPServer.h"
+#include "Global.h"
 
 class GpsParser
 {
@@ -18,11 +19,12 @@ public:
 
 	GpsParser(MyDisplay &display) : _display(display)
 	{
+		_logHistory.reserve(MAX_LOG_LENGTH);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
-	bool ReadDataFromSerial(Stream &stream, NTRIPServer &ntripServer0, NTRIPServer &ntripServer1)
+	bool ReadDataFromSerial(Stream &stream, NTRIPServer &ntripServer0, NTRIPServer &ntripServer1, NTRIPServer &ntripServer2)
 	{
 		int count = 0;
 
@@ -61,6 +63,7 @@ public:
 				// Send to RTK Casters
 				ntripServer0.Loop(byteArray.get(), available);
 				ntripServer1.Loop(byteArray.get(), available);
+				ntripServer2.Loop(byteArray.get(), available);
 
 				_timeOfLastMessage = millis();
 
@@ -160,7 +163,7 @@ private:
 
 		_timeOfLastMessage = millis();
 
-		LogX(StringPrintf("GPS '%s'", line.c_str()));
+		LogX(StringPrintf("GPS <- '%s'", line.c_str()));
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
@@ -182,7 +185,7 @@ private:
 				{
 					_deviceType = parts[0];
 					_deviceFirmware = parts[1];
-					auto serialPart = Split( parts[3], "-");
+					auto serialPart = Split(parts[3], "-");
 					_deviceSerial = serialPart[0];
 				}
 				_display.RefreshScreen();
@@ -197,7 +200,7 @@ private:
 	{
 		Logln(text.c_str());
 		_logHistory.push_back(StringPrintf("%d %s", millis(), text.c_str()));
-		if (_logHistory.size() > 15)
+		if (_logHistory.size() > MAX_LOG_LENGTH)
 			_logHistory.erase(_logHistory.begin());
 		_display.RefreshGpsLog();
 	}

@@ -21,6 +21,6 @@ void Logf(const std::string& format, Args... args)
 	auto size = static_cast<size_t>(size_s);
 	std::unique_ptr<char[]> buf(new char[size]);
 	std::snprintf(buf.get(), size, format.c_str(), args...);
-	Log(std::string(buf.get(), buf.get() + size - 1).c_str());  // We don't want the '\0' inside
+	Logln(std::string(buf.get(), buf.get() + size - 1).c_str());  // We don't want the '\0' inside
 }
 

@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 
+
+extern MyDisplay _display;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Holds a collection of commands
 // Verifies when a response matches the current queue item,
@@ -38,7 +41,7 @@ public:
 		_strings.erase(_strings.begin());
 		if (_gotReset && _strings.empty())
 		{
-			Logf("GPS Startup Commands Complete\r\n");
+			Logf("GPS Startup Commands Complete");
 			_startupComplete = true;
 		}
 		SendTopCommand();
@@ -64,10 +67,11 @@ public:
 	{
 		_startupComplete = false;
 		// Load the commands
-		Logf("GPS Queue StartInitialiseProcess %d\r\n", _gotReset);
+		Logf("GPS Queue StartInitialiseProcess %d", _gotReset);
 		_strings.clear();
 		if (_gotReset)
 		{
+			_display.UpdateGpsStarts(false, true);
 			// Setup RTCM V3
 			_strings.push_back("version");				  // Used to determine device type
 			_strings.push_back("CONFIG SIGNALGROUP 3 6"); // (for UM982)
@@ -83,6 +87,7 @@ public:
 		}
 		else
 		{
+			_display.UpdateGpsStarts(true, false);
 			_strings.push_back("freset");
 		}
 
@@ -103,7 +108,7 @@ public:
 
 		if ((millis() - _timeSent) > 8000)
 		{
-			Logf("E940 - Timeout on %s\r\n", _strings.front().c_str());
+			Logf("E940 - Timeout on %s", _strings.front().c_str());
 			SendTopCommand();
 		}
 	}
@@ -114,7 +119,7 @@ public:
 	{
 		if (_strings.empty())
 			return;
-		Logf("Sending -> '%s'\r\n", _strings.front().c_str());
+		Logf("GPS -> '%s'", _strings.front().c_str());
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
