@@ -10,14 +10,14 @@
 
 #include "HandyLog.h"
 
-bool StartsWith(const std::string& fullString, const std::string& startString)
+bool StartsWith(const std::string &fullString, const std::string &startString)
 {
 	if (startString.length() > fullString.length())
 		return false;
 	return std::equal(startString.begin(), startString.end(), fullString.begin());
 }
 
-bool StartsWith(const char* szA, const char* szB)
+bool StartsWith(const char *szA, const char *szB)
 {
 	while (*szA && *szB)
 	{
@@ -29,10 +29,34 @@ bool StartsWith(const char* szA, const char* szB)
 	return *szB == '\0';
 }
 
+/// @brief Format a the int with thousand separators
+/// @param number
+/// @return 1,234,567
+std::string ToThousands(int number)
+{
+	std::string value = std::to_string(number);
+	int len = value.length();
+	int dlen = 3;
+
+	while (len > dlen)
+	{
+		value.insert(len - dlen, 1, ',');
+		dlen += 4;
+		len += 1;
+	}
+	return value;
+
+
+
+	// std::stringstream ss;
+	// ss.imbue(std::locale("en_US.UTF-8"));
+//	 ss << std::fixed << number;
+	 //return ss.str();
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Split the string
-std::vector<std::string> Split(const std::string& s, const std::string delimiter)
+std::vector<std::string> Split(const std::string &s, const std::string delimiter)
 {
 	size_t pos_start = 0;
 	size_t pos_end;
@@ -51,24 +75,22 @@ std::vector<std::string> Split(const std::string& s, const std::string delimiter
 	return res;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
-void FormatNumber(int number, int width, std::string& result)
+void FormatNumber(int number, int width, std::string &result)
 {
 	std::ostringstream oss;
 	oss << std::setw(width) << std::setfill('0') << number;
 	result = oss.str();
 }
 
-
-bool EndsWith(const std::string& fullString, const std::string& ending)
+bool EndsWith(const std::string &fullString, const std::string &ending)
 {
 	if (ending.size() > fullString.size())
 		return false;
 	return std::equal(ending.rbegin(), ending.rend(), fullString.rbegin());
 }
 
-bool IsValidHex(const std::string& str)
+bool IsValidHex(const std::string &str)
 {
 	if (str.empty())
 		return false;
@@ -80,12 +102,12 @@ bool IsValidHex(const std::string& str)
 	return true;
 }
 
-bool IsValidDouble(const char* str, double *pVal)
+bool IsValidDouble(const char *str, double *pVal)
 {
 	if (str == NULL || *str == '\0')
 		return false;
 
-	char* endptr;
+	char *endptr;
 	*pVal = strtod(str, &endptr);
 
 	// Check if the entire string was converted
@@ -101,18 +123,26 @@ bool IsValidDouble(const char* str, double *pVal)
 
 ///////////////////////////////////////////////////////////////////////////////
 // Convert Wifi Status to const char*
-const char* WifiStatus(wl_status_t status)
+const char *WifiStatus(wl_status_t status)
 {
 	switch (status)
 	{
-		case WL_NO_SHIELD: return "No shield";
-		case WL_IDLE_STATUS: return "Idle status";
-		case WL_NO_SSID_AVAIL: return "No SSID Avail.";
-		case WL_SCAN_COMPLETED: return "Scan Complete";
-		case WL_CONNECTED: return "Connected";
-		case WL_CONNECT_FAILED: return "Connect failed";
-		case WL_CONNECTION_LOST: return "Lost connection";
-		case WL_DISCONNECTED: return "Disconnected";
+	case WL_NO_SHIELD:
+		return "No shield";
+	case WL_IDLE_STATUS:
+		return "Idle status";
+	case WL_NO_SSID_AVAIL:
+		return "No SSID Avail.";
+	case WL_SCAN_COMPLETED:
+		return "Scan Complete";
+	case WL_CONNECTED:
+		return "Connected";
+	case WL_CONNECT_FAILED:
+		return "Connect failed";
+	case WL_CONNECTION_LOST:
+		return "Lost connection";
+	case WL_DISCONNECTED:
+		return "Disconnected";
 	}
 	return "Unknown";
 }

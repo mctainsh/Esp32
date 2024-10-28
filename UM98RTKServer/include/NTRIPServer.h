@@ -16,7 +16,7 @@ public:
 	void LoadSettings();
 	void Save(const char* address, const char* port, const char* credential, const char* password) const;
 	void Loop(const byte *pBytes, int length);
-	std::string AverageSendTime();
+	int AverageSendTime();
 
 	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
 	inline const char *GetStatus() const { return _status; }

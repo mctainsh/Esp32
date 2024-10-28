@@ -137,7 +137,7 @@ void MyDisplay::ActionButton()
 void MyDisplay::NextPage()
 {
 	_currentPage++;
-	if (_currentPage > 5)
+	if (_currentPage > 6)
 		_currentPage = 0;
 	Logf("Switch to page %d", _currentPage);
 	RefreshScreen();
@@ -160,27 +160,41 @@ void MyDisplay::RefreshWiFiState()
 	}
 }
 
+NTRIPServer* GetServer(int index)
+{
+	switch (index)
+	{
+	case 0:
+		return &_ntripServer0;
+	case 1:
+		return &_ntripServer1;
+	default:
+		return &_ntripServer2;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Refresh the RTK server status (Only display first two servers)
 void MyDisplay::RefreshRtk(int index)
 {
-	auto pServer = index == 0 ? &_ntripServer0 : &_ntripServer1;
+	auto pServer = GetServer( index );
 	_graphics.SetRtkStatus(index, pServer->GetStatus());
 
-	if (_currentPage != 1)
+	if (_currentPage != 1 || index > 1)
 		return;
 	int col = index == 0 ? COL2_P4 : COL3_P4;
 
 	DrawML(pServer->GetStatus(), col, R1F4, COL_W_P4, 4);
-	DrawMR(std::to_string(pServer->GetReconnects()).c_str(), col, R2F4, COL_W_P4, 4);
-	DrawMR(std::to_string(pServer->GetPacketsSent()).c_str(), col, R3F4, COL_W_P4, 4);
-	DrawMR(pServer->AverageSendTime().c_str(), col, R4F4, COL_W_P4, 4);
+	DrawMR(ToThousands(pServer->GetReconnects()).c_str(), col, R2F4, COL_W_P4, 4);
+	DrawMR(ToThousands(pServer->GetPacketsSent()).c_str(), col, R3F4, COL_W_P4, 4);
+	DrawMR(ToThousands(pServer->AverageSendTime()).c_str(), col, R4F4, COL_W_P4, 4);
 }
 
 void MyDisplay::RefreshRtkLog()
 {
-	if (_currentPage != 4 && _currentPage != 5)
+	if (4 > _currentPage || _currentPage > 6)
 		return;
-
-	NTRIPServer *pServer = _currentPage == 4 ? &_ntripServer0 : &_ntripServer1;
+	NTRIPServer *pServer = GetServer(_currentPage-4);	
 	RefreshLog(pServer->GetLogHistory());
 }
 void MyDisplay::RefreshGpsLog()
@@ -231,17 +245,13 @@ void MyDisplay::RefreshScreen()
 		_fg = TFT_BLACK;
 		_tft.fillScreen(_bg);
 		title = "  General";
-		
+
 		DrawLabel("Wi-Fi", COL1, R1F4, 2);
 		DrawLabel("Version", COL1, R2F4, 2);
 		DrawLabel("Up time", COL1, R3F4, 2);
 		DrawLabel("Speed", COL1, R4F4, 2);
-		// DrawLabel("Version", COL1, R5F4, 2);
 
 		DrawML(APP_VERSION, COL2_P0, R2F4, COL2_P0_W, 4);
-		// DrawML(_gpsParser.GetDeviceType().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
-		// DrawML(_gpsParser.GetDeviceFirmware().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
-		// DrawML(_gpsParser.GetDeviceSerial().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 
 		break;
 	case 1:
@@ -295,7 +305,6 @@ void MyDisplay::RefreshScreen()
 		_tft.fillScreen(_bg);
 		title = StringPrintf("  3 - %s", _ntripServer2.GetAddress().c_str()).c_str();
 		break;
-
 	}
 	DrawML(title, 20, 0, 200, 2);
 
@@ -324,9 +333,19 @@ void MyDisplay::SetValue(int page, T n, T *pMember, int32_t x, int32_t y, int wi
 
 	if (page != _currentPage)
 		return;
-	std::ostringstream oss;
-	oss << *pMember;
-	DrawCell(oss.str().c_str(), x, y, width, font);
+	
+	std::string text;
+	if (std::is_same<T, int>::value)
+	{
+		text = ToThousands(*pMember);
+	}
+	else
+	{
+		std::ostringstream oss;
+		oss << *pMember;
+		text = oss.str();
+	}
+	DrawCell(text.c_str(), x, y, width, font);
 }
 
 template <typename T>

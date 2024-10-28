@@ -98,6 +98,11 @@ public:
 	// RTK server connection indicator
 	void SetRtkStatus(int index, std::string status)
 	{
+		if( StartsWith(status,"Disabled") )
+		{
+			DrawBoxN_A(WX - (index+2)*SPACE - CW, 0);
+			return;
+		}
 		bool connected = StartsWith(status, "Conn");
 		DrawBoxTick(WX - (index+2)*SPACE - CW, 0, connected);
 	}
@@ -148,6 +153,14 @@ public:
 		_pTft->drawLine(x2, y2, x3, y3, clr);
 		_pTft->drawLine(x0 - 1, y0 + 1, x1 - 1, y1 + 1, clr);
 		_pTft->drawLine(x2 + 1, y2 + 1, x3 + 1, y3 + 1, clr);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////
+	// Yellow N/A box
+	void DrawBoxN_A(int x, int y)
+	{
+		_pTft->fillRoundRect(x, y, CW, CH, 5, TFT_YELLOW);
+		_pTft->drawRoundRect(x, y, CW, CH, 5, TFT_WHITE);		
 	}
 
 private:

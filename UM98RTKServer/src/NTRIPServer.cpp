@@ -59,9 +59,10 @@ void NTRIPServer::Save(const char* address, const char* port, const char* creden
 void NTRIPServer::Loop(const byte *pBytes, int length)
 {
 	// Disable the port if not used
-	if (_port < 1)
+	if (_port < 1 || _szAddress.length() < 1)
 	{
 		_status = "Disabled";
+		_display.RefreshRtk(_index);
 		return;
 	}
 
@@ -128,7 +129,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	}
 	else
 	{
-		Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
+		//Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_display.RefreshRtk(_index);
@@ -166,14 +167,14 @@ void NTRIPServer::ConnectedProcessingReceive()
 
 ///////////////////////////////////////////////////////////////////////////////
 // Get the average send time
-std::string NTRIPServer::AverageSendTime()
+int NTRIPServer::AverageSendTime()
 {
 	if (_sendMicroSeconds.size() < 1)
-		return "-";
+		return 0;
 	int total = 0;
 	for (int n : _sendMicroSeconds)
 		total += n;
-	return StringPrintf("%d", total / _sendMicroSeconds.size());
+	return total / _sendMicroSeconds.size();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

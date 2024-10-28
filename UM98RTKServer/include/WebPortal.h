@@ -100,21 +100,30 @@ void WebPortal::Setup()
 	auto res = _wifiManager.autoConnect(apName.c_str(), "Test1234");
 	if (!res)
 	{
-		Logln("WiFi : Failed to connect");
+		Logln("WiFi : Failed to connect OR is running in non-blocking mode");
 		// ESP.restart();
 	}
 
 	Logln("WebPortal setup complete");
 }
 
+int _loops = 0;
 /// @brief Process the look actions. This is called every loop only if the WiFi connection is available
 void WebPortal::Loop()
-{
-	// Process the WiFi manager (Restart if necessary)
+{	
 	if (!_wifiManager.getConfigPortalActive())
+	{
+		// Process the WiFi manager (Restart if necessary)
 		_wifiManager.startConfigPortal();
+	}
 	else
-		_wifiManager.process();
+	{
+		if (_loops++ > 1000)
+		{
+			_loops = 0;
+			_wifiManager.process();
+		}
+	}
 }
 
 void WebPortal::OnSaveParamsCallback()
@@ -155,18 +164,30 @@ std::string TableRow(int indent, const std::string &name, const char *value)
 }
 std::string TableRow(int indent, const std::string &name, const std::string &value)
 {
-	return "<tr><td>" + I(indent) + name + "</td><td>" + value + "</td></tr>";
+	return TableRow(indent, name, value.c_str());
 }
 
 std::string TableRow(int indent, const std::string &name, int32_t value)
 {
-	return TableRow(indent, name, StringPrintf("%d", value));
+	return "<tr><td>" + I(indent) + name + "</td><td class='r'>" + ToThousands(value) + "</td></tr>";
+}
+
+void ServerStatsHtml(NTRIPServer &server, std::string &html)
+{
+	html += TableRow(1, "Address", server.GetAddress());
+	html += TableRow(2, "Port", server.GetPort());
+	html += TableRow(2, "Credential", server.GetCredential());
+	html += TableRow(2, "Status", server.GetStatus());
+	html += TableRow(2, "Reconnects", server.GetReconnects());
+	html += TableRow(2, "Packets sent", server.GetPacketsSent());
+	html += TableRow(2, "bytes per ms", server.AverageSendTime());
 }
 
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
 	std::string html = "<h3>System Status</h3>";
+	html += "<style>.r{text-align:right;}</style>";
 	html += "<table>";
 	html += TableRow(0, "General", "");
 	html += TableRow(1, "Version", APP_VERSION);
@@ -182,6 +203,11 @@ void WebPortal::ShowStatusHtml()
 	html += TableRow(1, "Reset count", resetCount);
 	html += TableRow(1, "Reinitialize count", reinitialize);
 	html += TableRow(1, "Packet count", packetCount);
+
+	html += TableRow(0, "Caster outputs", "");
+	ServerStatsHtml(_ntripServer0, html);
+	ServerStatsHtml(_ntripServer1, html);
+	ServerStatsHtml(_ntripServer2, html);
 
 	//	html += TableRow("", );
 	html += "</table>";
