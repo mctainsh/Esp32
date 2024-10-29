@@ -11,6 +11,7 @@ extern MyFiles _myFiles;
 NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 	: _display(display), _index(index)
 {
+	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -48,8 +49,7 @@ void NTRIPServer::LoadSettings()
 // Save the setting to the file
 void NTRIPServer::Save(const char* address, const char* port, const char* credential, const char* password) const
 {
-	std::string llText = StringPrintf("%s\n%s\n%s\n%s", address, port, credential, 
-	strlen(password) < 1 ? _szPassword.c_str() : password);
+	std::string llText = StringPrintf("%s\n%s\n%s\n%s", address, port, credential, password);
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
 	_myFiles.WriteFile(fileName.c_str(), llText.c_str());
 }
@@ -113,7 +113,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 		return;
 
 	// Clear out extra send history
-	if (_sendMicroSeconds.size() > 20)
+	if (_sendMicroSeconds.size() >= AVERAGE_SEND_TIMERS)
 		_sendMicroSeconds.erase(_sendMicroSeconds.begin());
 
 	// Send and record time
@@ -144,8 +144,8 @@ void NTRIPServer::ConnectedProcessingReceive()
 	int buffSize = _client.available();
 	if (buffSize < 1)
 		return;
-	if (buffSize > SOCKET_BUFFER_MAX)
-		buffSize = SOCKET_BUFFER_MAX;
+	if (buffSize > SOCKET_IN_BUFFER_MAX)
+		buffSize = SOCKET_IN_BUFFER_MAX;
 	_client.read(_pSocketBuffer, buffSize);
 
 	_pSocketBuffer[buffSize] = 0;

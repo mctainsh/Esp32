@@ -53,21 +53,21 @@ void WebPortal::Setup()
 
 	std::string port0String = std::to_string(_ntripServer0.GetPort());
 	_pCaster0Address = new WiFiManagerParameter("address0", "Caster 1 address", _ntripServer0.GetAddress().c_str(), 40);
-	_pCaster0Port = new WiFiManagerParameter("port0", "Caster 1 port", port0String.c_str(), 6);
+	_pCaster0Port = new WiFiManagerParameter("port0", "Caster 1 port (0 = off)", port0String.c_str(), 6);
 	_pCaster0Credential = new WiFiManagerParameter("credential0", "Caster 1 credential ", _ntripServer0.GetCredential().c_str(), 40);
-	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password", "", 40);
+	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password", _ntripServer0.GetPassword().c_str(), 40);
 
 	std::string port1String = std::to_string(_ntripServer1.GetPort());
 	_pCaster1Address = new WiFiManagerParameter("address1", "Caster 2 address", _ntripServer1.GetAddress().c_str(), 40);
-	_pCaster1Port = new WiFiManagerParameter("port1", "Caster 2 port", port1String.c_str(), 6);
+	_pCaster1Port = new WiFiManagerParameter("port1", "Caster 2 port (0 = off)", port1String.c_str(), 6);
 	_pCaster1Credential = new WiFiManagerParameter("credential1", "Caster 2 credential", _ntripServer1.GetCredential().c_str(), 40);
-	_pCaster1Password = new WiFiManagerParameter("password1", "Caster 2 password", "", 40);
+	_pCaster1Password = new WiFiManagerParameter("password1", "Caster 2 password", _ntripServer1.GetPassword().c_str(), 40);
 
 	std::string port2String = std::to_string(_ntripServer2.GetPort());
 	_pCaster2Address = new WiFiManagerParameter("address2", "Caster 3 address", _ntripServer2.GetAddress().c_str(), 40);
-	_pCaster2Port = new WiFiManagerParameter("port2", "Caster 3 port", port2String.c_str(), 6);
+	_pCaster2Port = new WiFiManagerParameter("port2", "Caster 3 port (0 = off)", port2String.c_str(), 6);
 	_pCaster2Credential = new WiFiManagerParameter("credential2", "Caster 3 credential", _ntripServer2.GetCredential().c_str(), 40);
-	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password", "", 40);
+	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password", _ntripServer2.GetPassword().c_str(), 40);
 
 	_wifiManager.addParameter(_pCaster0Address);
 	_wifiManager.addParameter(_pCaster0Port);
@@ -110,7 +110,7 @@ void WebPortal::Setup()
 int _loops = 0;
 /// @brief Process the look actions. This is called every loop only if the WiFi connection is available
 void WebPortal::Loop()
-{	
+{
 	if (!_wifiManager.getConfigPortalActive())
 	{
 		// Process the WiFi manager (Restart if necessary)
@@ -118,7 +118,7 @@ void WebPortal::Loop()
 	}
 	else
 	{
-		if (_loops++ > 1000)
+		if (_loops++ > 10000)
 		{
 			_loops = 0;
 			_wifiManager.process();
@@ -158,59 +158,95 @@ std::string I(int n)
 	return repeatedString;
 }
 
-std::string TableRow(int indent, const std::string &name, const char *value)
+void TableRow(std::string &html, int indent, const std::string &name, const char *value, bool rightAlign)
 {
-	return "<tr><td>" + I(indent) + name + "</td><td>" + value + "</td></tr>";
-}
-std::string TableRow(int indent, const std::string &name, const std::string &value)
-{
-	return TableRow(indent, name, value.c_str());
+	html += "<tr>";
+	switch (indent)
+	{
+	case 0:
+		html += "<td class='i1'>";
+		break;
+	case 2:
+		html += "<td class='i2'>";
+		break;
+
+	default:
+		html += "<td>";
+		break;
+	}
+
+	html += I(indent);
+	html += name;
+	html += "</td><td";
+	if (rightAlign)
+		html += " class='r'";
+	html += ">";
+	html += value;
+	html += "</td></tr>";
 }
 
-std::string TableRow(int indent, const std::string &name, int32_t value)
+void TableRow(std::string &html, int indent, const std::string &name, const char *value)
 {
-	return "<tr><td>" + I(indent) + name + "</td><td class='r'>" + ToThousands(value) + "</td></tr>";
+	TableRow(html, indent, name, value, false);
+}
+void TableRow(std::string &html, int indent, const std::string &name, const std::string &value)
+{
+	TableRow(html, indent, name, value.c_str());
+}
+void TableRow(std::string &html, int indent, const std::string &name, int32_t value)
+{
+	TableRow(html, indent, name, ToThousands(value).c_str(), true);
 }
 
 void ServerStatsHtml(NTRIPServer &server, std::string &html)
 {
-	html += TableRow(1, "Address", server.GetAddress());
-	html += TableRow(2, "Port", server.GetPort());
-	html += TableRow(2, "Credential", server.GetCredential());
-	html += TableRow(2, "Status", server.GetStatus());
-	html += TableRow(2, "Reconnects", server.GetReconnects());
-	html += TableRow(2, "Packets sent", server.GetPacketsSent());
-	html += TableRow(2, "bytes per ms", server.AverageSendTime());
+	TableRow(html, 2, "Address", server.GetAddress());
+	TableRow(html, 3, "Port", server.GetPort());
+	TableRow(html, 3, "Credential", server.GetCredential());
+	TableRow(html, 3, "Status", server.GetStatus());
+	TableRow(html, 3, "Reconnects", server.GetReconnects());
+	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
+	TableRow(html, 3, "bytes per ms", server.AverageSendTime());
 }
 
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
-	std::string html = "<h3>System Status</h3>";
-	html += "<style>.r{text-align:right;}</style>";
-	html += "<table>";
-	html += TableRow(0, "General", "");
-	html += TableRow(1, "Version", APP_VERSION);
-	html += TableRow(1, "Free Heap", ESP.getFreeHeap());
-	html += TableRow(1, "Free Sketch Space", ESP.getFreeSketchSpace());
-	html += TableRow(0, "GPS", "");
-	html += TableRow(1, "Device type", _gpsParser.GetDeviceType());
-	html += TableRow(1, "Device firmware", _gpsParser.GetDeviceFirmware());
-	html += TableRow(1, "Device serial #", _gpsParser.GetDeviceSerial());
+	std::string html = "<head>\
+	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
+	</head>\
+	<body style='padding:10px;'>\
+	<h3>System Status</h3>";
+	html += "<style>\
+	.r{text-align:right;}\
+	.i1{color:red;}\
+	.i2{color:blue;}\
+	table{border-spacing: 0; width:fit-content;}\
+	</style>";
+	html += "<table class='striped'>";
+	TableRow(html, 0, "General", "");
+	TableRow(html, 1, "Version", APP_VERSION);
+	TableRow(html, 1, "Uptime", Uptime(millis()));
+	TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
+	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	TableRow(html, 0, "GPS", "");
+	TableRow(html, 1, "Device type", _gpsParser.GetDeviceType());
+	TableRow(html, 1, "Device firmware", _gpsParser.GetDeviceFirmware());
+	TableRow(html, 1, "Device serial #", _gpsParser.GetDeviceSerial());
 
 	int32_t resetCount, reinitialize, packetCount;
 	_display.GetGpsStats(resetCount, reinitialize, packetCount);
-	html += TableRow(1, "Reset count", resetCount);
-	html += TableRow(1, "Reinitialize count", reinitialize);
-	html += TableRow(1, "Packet count", packetCount);
+	TableRow(html, 1, "Reset count", resetCount);
+	TableRow(html, 1, "Reinitialize count", reinitialize);
+	TableRow(html, 1, "Packet count", packetCount);
 
-	html += TableRow(0, "Caster outputs", "");
+	TableRow(html, 0, "Caster outputs", "");
 	ServerStatsHtml(_ntripServer0, html);
 	ServerStatsHtml(_ntripServer1, html);
 	ServerStatsHtml(_ntripServer2, html);
 
-	//	html += TableRow("", );
-	html += "</table>";
+	//	TableRow(html,"", );
+	html += "</table></body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 }
 

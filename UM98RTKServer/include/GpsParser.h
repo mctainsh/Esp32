@@ -12,6 +12,12 @@
 
 class GpsParser
 {
+private:
+	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
+	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
+	std::vector<std::string> _logHistory;	 // Last few log messages
+	std::string _deviceFirmware = "UNKNOWN"; // Firmware version
+	std::string _deviceSerial = "UNKNOWN";	 // Serial number
 public:
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
@@ -21,6 +27,12 @@ public:
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
 	}
+
+	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
+	inline const std::string &GetDeviceType() const { return _commandQueue.GetDeviceType(); }
+	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
+	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
+
 
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
@@ -133,19 +145,6 @@ public:
 		return true;
 	}
 
-	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
-	inline const std::string &GetDeviceType() const { return _deviceType; }
-	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
-	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
-
-private:
-	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
-	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
-	std::vector<std::string> _logHistory;	 // Last few log messages
-	std::string _deviceType = "UNKNOWN";	 // Device type
-	std::string _deviceFirmware = "UNKNOWN"; // Firmware version
-	std::string _deviceSerial = "UNKNOWN";	 // Serial number
-
 	///////////////////////////////////////////////////////////////////////////
 	// Process a GPS line
 	//		$GNGGA,020816.00,2734.21017577,S,15305.98006651,E,4,34,0.6,34.9570,M,41.1718,M,1.0,0*4A
@@ -183,7 +182,7 @@ private:
 				auto parts = Split(sections[1], ",");
 				if (parts.size() > 5)
 				{
-					_deviceType = parts[0];
+					_commandQueue.SetDeviceType(parts[0]);
 					_deviceFirmware = parts[1];
 					auto serialPart = Split(parts[3], "-");
 					_deviceSerial = serialPart[0];

@@ -1,6 +1,10 @@
 #pragma once
 
-#define SOCKET_BUFFER_MAX 100
+// Buffer used to grab data to send
+#define SOCKET_IN_BUFFER_MAX 1024
+
+// Number of items in the averaging buffer for send time calculation
+#define AVERAGE_SEND_TIMERS 200
 
 #include <string>
 #include <vector>
@@ -14,7 +18,7 @@ class NTRIPServer
 public:
 	NTRIPServer(MyDisplay &display, int index);
 	void LoadSettings();
-	void Save(const char* address, const char* port, const char* credential, const char* password) const;
+	void Save(const char *address, const char *port, const char *credential, const char *password) const;
 	void Loop(const byte *pBytes, int length);
 	int AverageSendTime();
 
@@ -28,17 +32,17 @@ public:
 	inline const std::string GetPassword() const { return _szPassword; }
 
 private:
-	WiFiClient _client;							// Socket connection
-	uint16_t _wifiConnectTime = 0;				// Time we last had good data to prevent reconnects too fast
-	byte _pSocketBuffer[SOCKET_BUFFER_MAX + 1]; // Build buffer
-	MyDisplay &_display;						// Display for updating packet count
-	bool _wasConnected = false;					// Was connected last time
-	const int _index;							// Index of the server used when updating display
-	const char *_status = "-";					// Connection status
-	std::vector<std::string> _logHistory;		// History of connection status
-	std::vector<int> _sendMicroSeconds;			// Collection of send times
-	int _reconnects;							// Total number of reconnects
-	int _packetsSent;							// Total number of packets sent
+	WiFiClient _client;							   // Socket connection
+	uint16_t _wifiConnectTime = 0;				   // Time we last had good data to prevent reconnects too fast
+	byte _pSocketBuffer[SOCKET_IN_BUFFER_MAX + 1]; // Build buffer
+	MyDisplay &_display;						   // Display for updating packet count
+	bool _wasConnected = false;					   // Was connected last time
+	const int _index;							   // Index of the server used when updating display
+	const char *_status = "-";					   // Connection status
+	std::vector<std::string> _logHistory;		   // History of connection status
+	std::vector<int> _sendMicroSeconds;			   // Collection of send times
+	int _reconnects;							   // Total number of reconnects
+	int _packetsSent;							   // Total number of packets sent
 
 	std::string _szAddress;
 	int _port;

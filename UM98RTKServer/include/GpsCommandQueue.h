@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 
-
 extern MyDisplay _display;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -13,6 +12,12 @@ extern MyDisplay _display;
 //  .. command responses look like $command,version,response: OK*24
 class GpsCommandQueue
 {
+private:
+	std::vector<std::string> _strings;
+	int _timeSent = 0;
+	bool _gotReset = false;
+	bool _startupComplete = false;
+	std::string _deviceType;
 public:
 	GpsCommandQueue()
 	{
@@ -22,6 +27,9 @@ public:
 	inline bool StartupComplete() const { return _startupComplete; }
 
 	inline bool GotReset() const { return _gotReset; }
+
+	inline const std::string &GetDeviceType() const { return _deviceType; }
+	inline void SetDeviceType(const std::string &deviceType) { _deviceType = deviceType; }
 
 	// ////////////////////////////////////////////////////////////////////////
 	// Check if the first item in the list matches the given string
@@ -74,7 +82,6 @@ public:
 			_display.UpdateGpsStarts(false, true);
 			// Setup RTCM V3
 			_strings.push_back("version");				  // Used to determine device type
-			_strings.push_back("CONFIG SIGNALGROUP 3 6"); // (for UM982)
 			_strings.push_back("MODE BASE TIME 60 5");	  // Set base mode with 60 second startup and 5m optimized save error
 			_strings.push_back("rtcm1005 30");			  // Base station antenna reference point (ARP) coordinates
 			_strings.push_back("rtcm1033 30");			  // Receiver and antenna description
@@ -83,6 +90,21 @@ public:
 			_strings.push_back("rtcm1097 1");			  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
 			_strings.push_back("rtcm1117 1");			  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
 			_strings.push_back("rtcm1127 1");			  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+			if( _deviceType == "UM982")
+			{
+				Logln("UM982 Detected");
+				_strings.push_back("CONFIG SIGNALGROUP 3 6"); // (for UM982)
+			}
+			else if (_deviceType == "UM980")
+			{
+				Logln("UM980 Detected");
+				_strings.push_back("CONFIG SIGNALGROUP 2"); // (for UM980)
+			}
+			else
+			{
+				Logf("DANGER : Unknown Device '%s' Detected", _deviceType.c_str());
+				_strings.push_back("CONFIG SIGNALGROUP 3 6"); // (for UM982)
+			}
 			_strings.push_back("saveconfig");
 		}
 		else
@@ -93,10 +115,6 @@ public:
 
 		SendTopCommand();
 	}
-
-	///////////////////////////////////////////////////////////////////////////
-	// Check for version response
-	// .. version response looks like "#VERSION,0,GPS,UNKNOWN,0,0,0,0,0,1261;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225104240,ff27289609cf869d,2023/11/24*4d0ec3ba"
 
 	//////////////////////////////////////////////////////////////////////////
 	// Check queue for timeouts
@@ -123,10 +141,4 @@ public:
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
-
-private:
-	std::vector<std::string> _strings;
-	int _timeSent = 0;
-	bool _gotReset = false;
-	bool _startupComplete = false;
 };
