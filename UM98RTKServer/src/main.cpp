@@ -41,8 +41,9 @@
 
 WiFiManager _wifiManager;
 
-unsigned long _loopWaitTime = 0; // Time of last second
-int _loopPersSecondCount = 0;	 // Number of times the main loops runs in a second
+unsigned long _loopWaitTime = 0;	// Time of last second
+int _loopPersSecondCount = 0;		// Number of times the main loops runs in a second
+unsigned long _lastButtonPress = 0; // Time of last button press to turn off display on T-Display-S3
 
 WebPortal _webPortal;
 
@@ -69,13 +70,13 @@ bool IsWifiConnected();
 void setup(void)
 {
 	Serial.begin(115200);
-#if USER_SETUP_ID == 25
-	Serial2.begin(115200, SERIAL_8N1, 25, 26);
-#else
+#if T_DISPLAY_S3 == true
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
-	pinMode(15, OUTPUT);
-	digitalWrite(15, HIGH);
+	pinMode(DISPLAY_POWER_PIN, OUTPUT);
+	digitalWrite(DISPLAY_POWER_PIN, HIGH);
+#else
+	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #endif
 
 	Logf("Starting %s", APP_VERSION);
@@ -128,14 +129,22 @@ void loop()
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
 	{
+		_lastButtonPress = t;
 		Logln("Button 1");
 		_display.NextPage();
 	}
 	if (IsButtonReleased(BUTTON_2, &_button2Current))
 	{
+		_lastButtonPress = t;
 		Logln("Button 2");
 		_display.ActionButton();
 	}
+
+	// Check if we should turn off the display
+	// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
+#if T_DISPLAY_S3 == true
+	digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
+#endif
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
