@@ -24,19 +24,19 @@ void NTRIPServer::LoadSettings()
 	std::string llText;
 	if (_myFiles.ReadFile(fileName.c_str(), llText))
 	{
-		LogX(StringPrintf(" - Read LL '%s'", llText.c_str()));
+		LogX(StringPrintf(" - Read config '%s'", llText.c_str()));
 		auto parts = Split(llText, "\n");
 		if (parts.size() > 3)
 		{
-			_szAddress = parts[0];
+			_sAddress = parts[0];
 			_port = atoi(parts[1].c_str());
-			_szCredential = parts[2];
-			_szPassword = parts[3];
-			LogX(StringPrintf(" - Recovered %s, %d, %s, %s", _szAddress.c_str(), _port, _szCredential.c_str(), _szPassword.c_str()));
+			_sCredential = parts[2];
+			_sPassword = parts[3];
+			LogX(StringPrintf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mid/Cred : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
 		}
 		else
 		{
-			LogX(StringPrintf(" - E341 - Cannot read saved Server setting %s", llText.c_str()));
+			LogX(StringPrintf(" - E341 - Cannot read saved Server settings %s", llText.c_str()));
 		}
 	}
 	else
@@ -59,7 +59,7 @@ void NTRIPServer::Save(const char *address, const char *port, const char *creden
 void NTRIPServer::Loop(const byte *pBytes, int length)
 {
 	// Disable the port if not used
-	if (_port < 1 || _szAddress.length() < 1)
+	if (_port < 1 || _sAddress.length() < 1)
 	{
 		_status = "Disabled";
 		_display.RefreshRtk(_index);
@@ -69,7 +69,7 @@ void NTRIPServer::Loop(const byte *pBytes, int length)
 	// Check the index is valid
 	if (_index > RTK_SERVERS)
 	{
-		LogX(StringPrintf("E500 - RTK Server index %d too high", index));
+		LogX(StringPrintf("E501 - RTK Server index %d too high", index));
 		return;
 	}
 
@@ -91,7 +91,6 @@ void NTRIPServer::ConnectedProcessing(const byte *pBytes, int length)
 {
 	if (!_wasConnected)
 	{
-		LogX("Connected");
 		_reconnects++;
 		_status = "Connected";
 		_display.RefreshRtk(_index);
@@ -122,13 +121,13 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 
 	if (sent != length)
 	{
-		LogX(StringPrintf("E500 - RTK Not sending all data %d of %d", sent, length));
+		LogX(StringPrintf("E500 - %s Only sent %d of %d", _sAddress.c_str(), sent, length));
 		_client.stop();
 		return;
 	}
 	else
 	{
-		// Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
+		// Logf("RTK %s Sent %d OK", _sAddress.c_str(), sent);
 		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, micros() - startT));
 		_wifiConnectTime = millis();
 		_packetsSent++;
@@ -198,16 +197,16 @@ void NTRIPServer::Reconnect()
 	_wifiConnectTime = millis();
 
 	// Start the connection process
-	LogX(StringPrintf("RTK Connecting to %s %d", _szAddress.c_str(), _port));
-	int status = _client.connect(_szAddress.c_str(), _port);
+	LogX(StringPrintf("RTK Connecting to %s %d", _sAddress.c_str(), _port));
+	int status = _client.connect(_sAddress.c_str(), _port);
 	if (!_client.connected())
 	{
-		LogX(StringPrintf("E500 - RTK %s Not connected %d", _szAddress.c_str(), status));
+		LogX(StringPrintf("E500 - RTK %s Not connected %d", _sAddress.c_str(), status));
 		return;
 	}
-	LogX(StringPrintf("Connected %s OK", _szAddress.c_str()));
+	LogX(StringPrintf("Connected %s OK", _sAddress.c_str()));
 
-	_client.write(StringPrintf("SOURCE %s %s\r\n", _szPassword.c_str(), _szCredential.c_str()).c_str());
+	_client.write(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str());
 	_client.write("Source-Agent: NTRIP UM98XX/ESP32_S2_Mini\r\n");
 	_client.write("STR: \r\n");
 	_client.write("\r\n");

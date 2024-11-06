@@ -26,10 +26,10 @@ public:
 	inline const char *GetStatus() const { return _status; }
 	inline int GetReconnects() const { return _reconnects; }
 	inline int GetPacketsSent() const { return _packetsSent; }
-	inline const std::string GetAddress() const { return _szAddress; }
+	inline const std::string GetAddress() const { return _sAddress; }
 	inline int GetPort() const { return _port; }
-	inline const std::string GetCredential() const { return _szCredential; }
-	inline const std::string GetPassword() const { return _szPassword; }
+	inline const std::string GetCredential() const { return _sCredential; }
+	inline const std::string GetPassword() const { return _sPassword; }
 	inline const std::vector<int> &GetSendMicroSeconds() const { return _sendMicroSeconds; }
 
 private:
@@ -45,10 +45,10 @@ private:
 	int _reconnects;							   // Total number of reconnects
 	int _packetsSent;							   // Total number of packets sent
 
-	std::string _szAddress;
+	std::string _sAddress;
 	int _port;
-	std::string _szCredential;
-	std::string _szPassword;
+	std::string _sCredential;
+	std::string _sPassword;
 
 	void ConnectedProcessing(const byte *pBytes, int length);
 	void ConnectedProcessingSend(const byte *pBytes, int length);

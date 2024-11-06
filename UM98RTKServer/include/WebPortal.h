@@ -297,7 +297,7 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "Status", server.GetStatus());
 	TableRow(html, 3, "Reconnects", server.GetReconnects());
 	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
-	TableRow(html, 3, "bytes per ms", server.AverageSendTime());
+	TableRow(html, 3, "Speed (Mbps)", server.AverageSendTime());
 }
 
 ///////////////////////////////////////////////////////////////////////////////

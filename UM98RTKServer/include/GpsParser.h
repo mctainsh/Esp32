@@ -156,7 +156,7 @@ public:
 
 		_timeOfLastMessage = millis();
 
-		LogX(StringPrintf("GPS <- '%s'", line.c_str()));
+		LogX(StringPrintf("GPS [- '%s'", line.c_str()));
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
