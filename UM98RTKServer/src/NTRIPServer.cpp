@@ -15,7 +15,7 @@ NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// Save the setting to the file
+// Load the configurations if they exist
 void NTRIPServer::LoadSettings()
 {
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
@@ -26,7 +26,7 @@ void NTRIPServer::LoadSettings()
 	{
 		LogX(StringPrintf(" - Read LL '%s'", llText.c_str()));
 		auto parts = Split(llText, "\n");
-		if( parts.size() > 3)
+		if (parts.size() > 3)
 		{
 			_szAddress = parts[0];
 			_port = atoi(parts[1].c_str());
@@ -36,7 +36,7 @@ void NTRIPServer::LoadSettings()
 		}
 		else
 		{
-			LogX(StringPrintf(" - E341 - Cannot read saved Server setting %s", llText.c_str()));		
+			LogX(StringPrintf(" - E341 - Cannot read saved Server setting %s", llText.c_str()));
 		}
 	}
 	else
@@ -47,7 +47,7 @@ void NTRIPServer::LoadSettings()
 
 //////////////////////////////////////////////////////////////////////////////
 // Save the setting to the file
-void NTRIPServer::Save(const char* address, const char* port, const char* credential, const char* password) const
+void NTRIPServer::Save(const char *address, const char *port, const char *credential, const char *password) const
 {
 	std::string llText = StringPrintf("%s\n%s\n%s\n%s", address, port, credential, password);
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
@@ -119,7 +119,6 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	// Send and record time
 	int startT = micros();
 	int sent = _client.write(pBytes, length);
-	_sendMicroSeconds.push_back((micros() - startT) * 1000 / max(1, sent));
 
 	if (sent != length)
 	{
@@ -129,7 +128,8 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	}
 	else
 	{
-		//Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
+		// Logf("RTK %s Sent %d OK", _szAddress.c_str(), sent);
+		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, micros() - startT));
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_display.RefreshRtk(_index);

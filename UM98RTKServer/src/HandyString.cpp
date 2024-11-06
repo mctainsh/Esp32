@@ -29,6 +29,7 @@ bool StartsWith(const char *szA, const char *szB)
 	return *szB == '\0';
 }
 
+///////////////////////////////////////////////////////////////////////////
 /// @brief Format a the int with thousand separators
 /// @param number
 /// @return 1,234,567
@@ -46,12 +47,10 @@ std::string ToThousands(int number)
 	}
 	return value;
 
-
-
 	// std::stringstream ss;
 	// ss.imbue(std::locale("en_US.UTF-8"));
-//	 ss << std::fixed << number;
-	 //return ss.str();
+	//	 ss << std::fixed << number;
+	// return ss.str();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -145,4 +144,29 @@ const char *WifiStatus(wl_status_t status)
 		return "Disconnected";
 	}
 	return "Unknown";
+}
+
+std::string ReplaceNewlineWithTab(const std::string &input)
+{
+	std::string output;
+	for (char c : input)
+	{
+		if (c == '\n')
+			output += '\t';
+		else
+			output += c;
+	}
+	return output;
+}
+
+std::string Replace(const std::string &input, const std::string &search, const std::string &replace)
+{
+	std::string result = input;
+	std::size_t pos = 0;
+	while ((pos = result.find(search, pos)) != std::string::npos)
+	{
+		result.replace(pos, search.length(), replace);
+		pos += replace.length(); // Move past the newly inserted characters
+	}
+	return result;
 }

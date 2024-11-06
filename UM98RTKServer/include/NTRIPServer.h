@@ -30,6 +30,7 @@ public:
 	inline int GetPort() const { return _port; }
 	inline const std::string GetCredential() const { return _szCredential; }
 	inline const std::string GetPassword() const { return _szPassword; }
+	inline const std::vector<int> &GetSendMicroSeconds() const { return _sendMicroSeconds; }
 
 private:
 	WiFiClient _client;							   // Socket connection

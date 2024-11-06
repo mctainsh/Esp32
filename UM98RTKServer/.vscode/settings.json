@@ -6,6 +6,7 @@
 		"GNGGA",
 		"GNSS",
 		"NTRIP",
+		"Plotly",
 		"PREAMB",
 		"RTCM",
 		"saveconfig",

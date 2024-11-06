@@ -16,8 +16,6 @@ private:
 	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
 	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
 	std::vector<std::string> _logHistory;	 // Last few log messages
-	std::string _deviceFirmware = "UNKNOWN"; // Firmware version
-	std::string _deviceSerial = "UNKNOWN";	 // Serial number
 public:
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
@@ -29,10 +27,7 @@ public:
 	}
 
 	inline const std::vector<std::string> &GetLogHistory() const { return _logHistory; }
-	inline const std::string &GetDeviceType() const { return _commandQueue.GetDeviceType(); }
-	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
-	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
-
+	inline const GpsCommandQueue &GetCommandQueue() const { return _commandQueue; }
 
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
@@ -151,7 +146,6 @@ public:
 	//		$GNGGA,232306.00,,,,,0,00,9999.0,,,,,,*4E
 	//		$devicename,COM1*67										// Reset response (Checksum is wrong)
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
-	// 		#VERSION,0,GPS,UNKNOWN,0,0,0,0,0,1261;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225104240,ff27289609cf869d,2023/11/24*4d0ec3ba
 	void ProcessLine(const std::string &line)
 	{
 		if (line.length() < 1)
@@ -170,27 +164,11 @@ public:
 			_display.UpdateGpsStarts(true, false);
 			return;
 		}
+		
 		if (_commandQueue.IsCommandResponse(line))
 			return;
-		auto pStr = line.c_str();
-		// Extract version information
-		if (StartsWith(line, "#VERSION"))
-		{
-			auto sections = Split(line, ";");
-			if (sections.size() > 1)
-			{
-				auto parts = Split(sections[1], ",");
-				if (parts.size() > 5)
-				{
-					_commandQueue.SetDeviceType(parts[0]);
-					_deviceFirmware = parts[1];
-					auto serialPart = Split(parts[3], "-");
-					_deviceSerial = serialPart[0];
-				}
-				_display.RefreshScreen();
-			}
-			return;
-		}
+
+		_commandQueue.CheckForVersion(line);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

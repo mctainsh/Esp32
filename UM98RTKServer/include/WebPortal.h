@@ -22,9 +22,14 @@ public:
 
 private:
 	void OnBindServerCallback();
+	void IndexHtml();
 	void ShowStatusHtml();
+	void GraphHtml() const;
+	void GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const;
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
 	void OnSaveParamsCallback();
+
+	int _loops = 0;
 
 	WiFiManagerParameter *_pCaster0Address;
 	WiFiManagerParameter *_pCaster0Port;
@@ -46,8 +51,7 @@ private:
 void WebPortal::Setup()
 {
 	// Setup callbacks
-	_wifiManager.setWebServerCallback([this]()
-									  { OnBindServerCallback(); });
+	_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
 	_wifiManager.setSaveParamsCallback([this]()
 									   { OnSaveParamsCallback(); });
 
@@ -107,7 +111,30 @@ void WebPortal::Setup()
 	Logln("WebPortal setup complete");
 }
 
-int _loops = 0;
+////////////////////////////////////////////////////////////////////////////
+/// @brief Setup all the URL bindings. Called when the server is ready
+void WebPortal::OnBindServerCallback()
+{
+	Logln("Binding server callback");
+
+	// Our main pages
+	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
+	_wifiManager.server->on("/index", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
+	_wifiManager.server->on("/castergraph", std::bind(&WebPortal::GraphHtml, this));
+	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
+	_wifiManager.server->on("/log", HTTP_GET, [this]()
+							{ HtmlLog("System log", _mainLog); });
+	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
+							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
+	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
+							{ HtmlLog("Caster 1 log", _ntripServer0.GetLogHistory()); });
+	_wifiManager.server->on("/caster2log", HTTP_GET, [this]()
+							{ HtmlLog("Caster 2 log", _ntripServer1.GetLogHistory()); });
+	_wifiManager.server->on("/caster3log", HTTP_GET, [this]()
+							{ HtmlLog("Caster 3 log", _ntripServer2.GetLogHistory()); });
+}
+
+////////////////////////////////////////////////////////////////////////////
 /// @brief Process the look actions. This is called every loop only if the WiFi connection is available
 void WebPortal::Loop()
 {
@@ -137,6 +164,58 @@ void WebPortal::OnSaveParamsCallback()
 	ESP.restart();
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Plot a single graph
+void WebPortal::GraphHtml() const
+{
+	std::string html = "<!DOCTYPE html><html><head>\
+	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
+	<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>\
+	</head>\n\
+	<body style='padding:10px;'>\
+	<h3>Graphs of send speed</h3>";
+	GraphDetail(html, "1", _ntripServer0);
+	GraphDetail(html, "2", _ntripServer1);
+	GraphDetail(html, "3", _ntripServer2);
+	html += "</body>";
+	html += "</html>";
+	_wifiManager.server->send(200, "text/html", html.c_str());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Plot a single graph
+/// @param html Where to append the graph
+/// @param divId Id of the div to plot the graph in
+/// @param server The server to plot. Source of title and data
+void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const
+{
+
+	html += "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
+	html += "<script>";
+	html += "const xValues" + divId + " = [";
+	for (int n = 0; n < server.GetSendMicroSeconds().size(); n++)
+	{
+		if (n != 0)
+			html += ",";
+		html += StringPrintf("%d", n);
+	}
+	html += "];";
+	html += "const yValues" + divId + " = [";
+	for (int n = 0; n < server.GetSendMicroSeconds().size(); n++)
+	{
+		if (n != 0)
+			html += ",";
+		html += StringPrintf("%d", server.GetSendMicroSeconds()[n]);
+	}
+	html += "];";
+	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '" + server.GetAddress() + " (Mbps)'});";
+	html += "</script>\n";
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Display a log in html format
+/// @param title Title of the log
+/// @param log The log to display
 void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
 {
 	Logf("Show %s", title);
@@ -145,11 +224,16 @@ void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) 
 	html += "</h3>";
 	html += "<pre>";
 	for (const auto &entry : log)
-		html += (entry + "\n");
+	{
+		html += (Replace(ReplaceNewlineWithTab(entry), "<", "&lt;") + "\n");
+	}
 	html += "</pre>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Create a string with n spaces
+/// @param n Number of spaces
 std::string I(int n)
 {
 	std::string repeatedString;
@@ -158,6 +242,13 @@ std::string I(int n)
 	return repeatedString;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Add a table row to the html
+/// @param html where to append the data
+/// @param indent how many spaces to indent
+/// @param name title of the row
+/// @param value content of the row
+/// @param rightAlign true if the value should be right aligned (Numbers)
 void TableRow(std::string &html, int indent, const std::string &name, const char *value, bool rightAlign)
 {
 	html += "<tr>";
@@ -209,6 +300,30 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "bytes per ms", server.AverageSendTime());
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Display a list of possible pages
+void WebPortal::IndexHtml()
+{
+	Logln("ShowIndexHtml");
+	std::string html = "<head>\
+	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
+	</head>\
+	<body style='padding:10px;'>\
+	<h3>Index</h3>";
+
+	html += "<ul>";
+	html += "<li><a href='/log'>System log</a></li>";
+	html += "<li><a href='/gpslog'>GPS log</a></li>";
+	html += "<li><a href='/caster1log'>Caster 1 log</a></li>";
+	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
+	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
+	html += "<li><a href='/castergraph'>Caster graph</a></li>";
+	html += "<li><a href='/status'>System status</a></li>";
+	html += "</ul>";
+	html += "</body>";
+	_wifiManager.server->send(200, "text/html", html.c_str());
+}
+
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
@@ -226,13 +341,22 @@ void WebPortal::ShowStatusHtml()
 	html += "<table class='striped'>";
 	TableRow(html, 0, "General", "");
 	TableRow(html, 1, "Version", APP_VERSION);
+#if USER_SETUP_ID == 25
+	TableRow(html, 1, "Device", "TTGO T-Display");
+#else
+#if USER_SETUP_ID == 206
+	TableRow(html, 1, "Device", "TTGO T-Display-S3");
+#else
+	TableRow(html, 1, "Device", "Generic ESP32");
+#endif
+#endif
 	TableRow(html, 1, "Uptime", Uptime(millis()));
 	TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
 	TableRow(html, 0, "GPS", "");
-	TableRow(html, 1, "Device type", _gpsParser.GetDeviceType());
-	TableRow(html, 1, "Device firmware", _gpsParser.GetDeviceFirmware());
-	TableRow(html, 1, "Device serial #", _gpsParser.GetDeviceSerial());
+	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
+	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
+	TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
 
 	int32_t resetCount, reinitialize, packetCount;
 	_display.GetGpsStats(resetCount, reinitialize, packetCount);
@@ -248,25 +372,4 @@ void WebPortal::ShowStatusHtml()
 	//	TableRow(html,"", );
 	html += "</table></body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
-}
-
-/// @brief Setup all the URL bindings
-void WebPortal::OnBindServerCallback()
-{
-	Logln("Binding server callback");
-
-	// Simple test page
-	_wifiManager.server->on("/TT", HTTP_GET, []()
-							{	Logln("TT"); _wifiManager.server->send(200, "text/html", StringPrintf("<h1>HELLO WORLD %d</h1>", millis()).c_str()); });
-
-	_wifiManager.server->on("/log", HTTP_GET, [this]()
-							{ HtmlLog("System log", _mainLog); });
-	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
-							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
-	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
-							{ HtmlLog("Caster 1 log", _ntripServer0.GetLogHistory()); });
-	_wifiManager.server->on("/caster2log", HTTP_GET, [this]()
-							{ HtmlLog("Caster 2 log", _ntripServer1.GetLogHistory()); });
-	_wifiManager.server->on("/status", HTTP_GET, [this]()
-							{ ShowStatusHtml(); });
 }
