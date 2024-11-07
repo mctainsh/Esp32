@@ -150,7 +150,7 @@ void NTRIPServer::ConnectedProcessingReceive()
 	_pSocketBuffer[buffSize] = 0;
 
 	// Log the data
-	std::string str = "TCP IN ";
+	std::string str = _sAddress + " TCP IN ";
 	if (GpsParser::IsAllAscii(_pSocketBuffer, buffSize))
 	{
 		str.append((const char *)_pSocketBuffer);
@@ -197,7 +197,7 @@ void NTRIPServer::Reconnect()
 	_wifiConnectTime = millis();
 
 	// Start the connection process
-	LogX(StringPrintf("RTK Connecting to %s %d", _sAddress.c_str(), _port));
+	LogX(StringPrintf("RTK Connecting to %s : %d", _sAddress.c_str(), _port));
 	int status = _client.connect(_sAddress.c_str(), _port);
 	if (!_client.connected())
 	{

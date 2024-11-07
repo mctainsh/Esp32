@@ -312,13 +312,14 @@ void WebPortal::IndexHtml()
 	<h3>Index</h3>";
 
 	html += "<ul>";
+	html += "<li><a href='/status'>System status</a></li>";
+	html += "<li><a href='/info?'>Device info</a></li>";
 	html += "<li><a href='/log'>System log</a></li>";
 	html += "<li><a href='/gpslog'>GPS log</a></li>";
 	html += "<li><a href='/caster1log'>Caster 1 log</a></li>";
 	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
 	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
 	html += "<li><a href='/castergraph'>Caster graph</a></li>";
-	html += "<li><a href='/status'>System status</a></li>";
 	html += "</ul>";
 	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());

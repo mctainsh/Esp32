@@ -1,10 +1,10 @@
 #pragma once
 
 // Buffer used to grab data to send
-#define SOCKET_IN_BUFFER_MAX 1024
+#define SOCKET_IN_BUFFER_MAX 2048
 
 // Number of items in the averaging buffer for send time calculation
-#define AVERAGE_SEND_TIMERS 200
+#define AVERAGE_SEND_TIMERS 256
 
 #include <string>
 #include <vector>
