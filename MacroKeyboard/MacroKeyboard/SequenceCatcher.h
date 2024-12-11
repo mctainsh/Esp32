@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Actions.h"
+//#include "Actions.h"
+#include "ActionsPrivate.h"
 
 /// <summary>
 /// Build the sequence looking for sequence
