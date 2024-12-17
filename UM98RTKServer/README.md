@@ -1,19 +1,33 @@
 # UM982 RTK Server with TTGO T-Display-S3 (Multi miner)
 
-This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3/S2 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The system will automatically program and UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
+<style> 
+.image-container { display: flex; } 
+.image-container img { width: 180px; margin:10px; }
+</style>
+
+
+This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3/S2 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
 
 All up you it will cost about US$200 to make the station with GNSS receiver, antenna and ESP32 with display. 
 
 If you want to send to more than three casters you can connect a second ESP32 in parallel to the TX port of the UM98x and power both ESP32's at the some time. No need for a second UM98x or expensive splitters.
 
-I haven't included the STL for box as it is a mess. When I do a nice one, I will include it.
+The Display also allow you to see at an instant if the system is connected and sending to all the casters
+
+<div class="image-container">
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true"/>
+
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" />
+
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true"/>
+</div>
 
 NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Mini's to handel more casters.
 
 ## Circuit 
 
 
-![Wiring](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" width="480" />
 
 
 ## Table of Contents 
@@ -72,12 +86,10 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | 13 | TX | 3 | RX |
 | 12 | RX | 4 | TX |
 
-![Home](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true" width="400" />
 
 #### TTGO T-Display-S2
-<table>
-<tr>
-<td>
+
 | TTGO T-Display Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
 | 5V | 5V| 2 | 5V |
@@ -85,13 +97,8 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | NC | |  |  |
 | 26 | TX | 3 | RX |
 | 25 | RX | 4 | TX |
-</td>
-<td>
-![Home](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S2-Display/T-DIsplay_Schematic.jpg?raw=true)
-</td>
-</tr>
-</table>
 
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S2-Display/T-DIsplay_Schematic.jpg?raw=true" width="400" />
 
 
 ## Software 
@@ -202,19 +209,20 @@ The top line of the display shows the following
 | X | Connection state of WIFI |
 | X | Connection State to UM98x |
 
-![Home](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true)
 
-![GPS](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="300"/>
 
-![RTK](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" width="300"/>
 
-![GPS Log](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-GPS.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="300"/>
 
-![Server 1 Log](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C1.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-GPS.jpg?raw=true" width="300"/>
 
-![Server 2 Log](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C2.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C1.jpg?raw=true" width="300"/>
 
-![Server 3 Log](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C3.jpg?raw=true)
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C2.jpg?raw=true" width="300"/>
+
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C3.jpg?raw=true" width="300"/>
 
 ## TODO
 
