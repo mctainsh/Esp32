@@ -6,7 +6,7 @@ All up you it will cost about US$200 to make the station with GNSS receiver, ant
 
 If you want to send to more than three casters you can connect a second ESP32 in parallel to the TX port of the UM98x and power both ESP32's at the some time. No need for a second UM98x or expensive splitters.
 
-The Display also allow you to see at an instant if the system is connected and sending to all the casters
+The display also allow you to see at an instant if the system is connected and sending to all the casters
 
 <div style="display: flex; gap:10px;">
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="180" />
@@ -14,12 +14,9 @@ The Display also allow you to see at an instant if the system is connected and s
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="180" />
 </div>
 
-NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Mini's to handel more casters.
+NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message (blocks) the other will be delayed. I'm working on a better option to make non blocking socket calls or daisy chain ESP-S2-Mini's to handle more casters.
 
-## Circuit 
-
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" width="480" />
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
 
 
 ## Table of Contents 
@@ -66,9 +63,9 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 4. **Fan** - Used a 5V fan cos the UM982 get hot in the sun.
  
 
-### Wiring Diagram
+## Wiring Diagram
 
-#### TTGO T-Display-S3
+### TTGO T-Display-S3
 | TTGO T-Display-S3 Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
 | 5V | 5V| 2 | 5V |
@@ -78,9 +75,13 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | 13 | TX | 3 | RX |
 | 12 | RX | 4 | TX |
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true" width="400" />
 
-#### TTGO T-Display-S2
+<div style="display:flex;">
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true" Height="320" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" Height="320" />
+</div>
+
+### TTGO T-Display-S2
 
 | TTGO T-Display Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
@@ -202,17 +203,54 @@ The top line of the display shows the following
 | X | Connection State to UM98x |
 
 
+### General
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="300"/>
 
+| Title | Meaning | 
+| --- | --- | 
+| Wi-Fi | Wifi IP address. | 
+| Version | Software version | 
+| Up time | How log it has been running. Max 76 days before the counter rolls over  | 
+| Speed | Now many times to process is being checked per second | 
+
+### GPS State
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" width="300"/>
+
+| Title | Meaning | 
+| --- | --- | 
+| Type | Type of GPS device. Queried at startup | 
+| Resets |  | 
+| Packets | How many packets have been received | 
+| Serial # | GPS module serial number | 
+| Firmware | GPS module firmware verison | 
+
+### RTK Server
 
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="300"/>
 
+Only shows the state of the first two casters
+
+| Title | Meaning | 
+| --- | --- | 
+| State | Connection state | 
+| Reconnect | Number of time the connection was lost | 
+| Sends | Number of packets sent | 
+| μs | Microseconds per byte sent | 
+
+### GPS Log
+
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-GPS.jpg?raw=true" width="300"/>
+
+
+### First RTK Caster Log
 
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C1.jpg?raw=true" width="300"/>
 
+### Second RTK Caster Log
+
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C2.jpg?raw=true" width="300"/>
+
+### Third RTK Caster Log
 
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C3.jpg?raw=true" width="300"/>
 
