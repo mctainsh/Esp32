@@ -7,6 +7,7 @@
 #include "HandyString.h"
 #include "MyFiles.h"
 #include "MyDisplayGraphics.h"
+#include "CredentialPrivate.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -314,7 +315,7 @@ public:
 	void NextPage()
 	{
 		_currentPage++;
-		if (_currentPage > 3)
+		if (_currentPage > 4)
 			_currentPage = 0;
 		Serial.printf("Switch to page %d\r\n", _currentPage);
 		RefreshScreen();
@@ -368,6 +369,23 @@ public:
 			_tft.fillScreen(TFT_YELLOW);
 			title = "  System";
 			break;
+
+		case 4:
+			_bg = 0x07eb;
+			_tft.fillScreen(_bg);
+			title = "  Settings";
+
+			DrawLabel("Wi-Fi", COL1, R1F4, 2);
+			DrawLabel("RTK", COL1, R2F4, 2);
+			DrawLabel("Mount", COL1, R3F4, 2);
+			DrawLabel("Destin", COL1, R4F4, 2);
+
+			DrawML(WIFI_SSID, COL2_P0, R1F4, COL2_P0_W, 4);
+			DrawML(RTF_SERVER_ADDRESS, COL2_P0, R2F4, COL2_P0_W, 4);
+			DrawML(RTF_MOUNT_POINT, COL2_P0, R3F4, COL2_P0_W, 4);
+			DrawML(SERVER_URL, COL2_P0, R4F4, COL2_P0_W, 4);
+			break;
+
 		}
 		DrawML(title, 20, 0, 200, 2);
 

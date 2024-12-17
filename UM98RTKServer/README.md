@@ -1,28 +1,20 @@
-# UM982 RTK Server with TTGO T-DisplayESP32-S3
+# UM982 RTK Server with TTGO T-Display-S3 (Multi miner)
 
-WARNING :  Do not run without real credentials or your IP may be blocked!!
+This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3/S2 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The system will automatically program and UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
 
-![Wiring](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true)
+All up you it will cost about US$200 to make the station with GNSS receiver, antenna and ESP32 with display. 
 
-This project connects a UM982 RTK GNSS receiver to a TTGO T-Display-S3 allowing you to share RTK correction data with various networks.
-
-NOTE : ALthough the code is able to send data to two RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Minis to handel more casters.
+If you want to send to more than three casters you can connect a second ESP32 in parallel to the TX port of the UM98x and power both ESP32's at the some time. No need for a second UM98x or expensive splitters.
 
 I haven't included the STL for box as it is a mess. When I do a nice one, I will include it.
 
-## TODO
+NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Mini's to handel more casters.
 
-1. Write instructions to install without compiling with PlatformIO (Using ESP32 Upload tool)
+## Circuit 
 
-2. Make http sends in non-blocking to prevent one NTRIP server upsetting the others
 
-3. Rework the TTGO T-Display-S2 code to make the display nicer (Currently optimized for larger S3)
+![Wiring](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true)
 
-4. Put each NTRIP server details on its own page
-
-5. Make better looking STL
-
-6. Build one using ESP32-S3 Mini board. Won't have display but will be very compact
 
 ## Table of Contents 
  
@@ -80,7 +72,12 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | 13 | TX | 3 | RX |
 | 12 | RX | 4 | TX |
 
+![Home](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true)
+
 #### TTGO T-Display-S2
+<table>
+<tr>
+<td>
 | TTGO T-Display Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
 | 5V | 5V| 2 | 5V |
@@ -88,6 +85,13 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | NC | |  |  |
 | 26 | TX | 3 | RX |
 | 25 | RX | 4 | TX |
+</td>
+<td>
+![Home](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S2-Display/T-DIsplay_Schematic.jpg?raw=true)
+</td>
+</tr>
+</table>
+
 
 
 ## Software 
@@ -110,6 +114,9 @@ Do not use the following command, it is only here as example
 ### Config parameters 
 
 Config parameters are set in the "Configure Wifi" web page
+
+Note : You don't need to sign up to all three. Leave the CASTER ADDRESS blank to only use one or two casters. 
+
 | Parameter | Usage | 
 | --- | --- | 
 | SSID | Your WiFi network name. Note: Not all speed are supported by ESP32 |
@@ -127,6 +134,7 @@ Config parameters are set in the "Configure Wifi" web page
 | CASTER 3 CREDENTIAL | Mount point name |
 | CASTER 3 PASSWORD | Create this with Rtk2Go signup |
 
+WARNING :  Do not run without real credentials or your IP may be blocked!!
 
 ### Setup & Installation 
 
@@ -208,6 +216,19 @@ The top line of the display shows the following
 
 ![Server 3 Log](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C3.jpg?raw=true)
 
+## TODO
+
+1. Write instructions to install without compiling with PlatformIO (Using ESP32 Upload tool)
+
+2. Make http sends in non-blocking to prevent one NTRIP server upsetting the others
+
+3. Rework the TTGO T-Display-S2 code to make the display nicer (Currently optimized for larger S3)
+
+4. Put each NTRIP server details on its own page
+
+5. Make better looking STL
+
+6. Build one using ESP32-S3 Mini board. Won't have display but will be very compact
 
 ## License 
 This project is licensed under the GNU General Public License - see the [LICENSE](https://github.com/mctainsh/Esp32/blob/main/LICENSE)  file for details.
