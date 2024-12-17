@@ -1,11 +1,5 @@
 # UM982 RTK Server with TTGO T-Display-S3 (Multi miner)
 
-<style> 
-.image-container { display: flex; } 
-.image-container img { width: 180px; margin:10px; }
-</style>
-
-
 This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3/S2 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
 
 All up you it will cost about US$200 to make the station with GNSS receiver, antenna and ESP32 with display. 
@@ -14,12 +8,10 @@ If you want to send to more than three casters you can connect a second ESP32 in
 
 The Display also allow you to see at an instant if the system is connected and sending to all the casters
 
-<div class="image-container">
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true"/>
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" />
-
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true"/>
+<div style="display: flex; gap:10px;">
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="180" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" width="180" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="180" />
 </div>
 
 NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message the other will be delayed. I'm working on a better option where I daisy chain ESP-S2-Mini's to handel more casters.
