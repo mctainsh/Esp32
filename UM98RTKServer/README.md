@@ -44,23 +44,45 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | RTK Server | A server that processes and distributes RTK correction data to clients. (This project builds a RTK Server) |
 | RTK Caster | A service that broadcasts RTK correction data over the internet using the NTRIP protocol. |
 
-### Use Cases 
-
-- Creating accurate GPS data where there is none for very cheap
-
 ## Hardware 
 
 ### Components 
  
 1. **UM982 with antenna** - Witte Intelligent WTRTK-982 high-precision positioning and orientation module. I got it from AliExpress for about A$220.00 [Not affiliate link. Find your own seller](https://www.aliexpress.com/item/1005007287184287.html)
  
-2.1 **TTGO T-Display-S3** - (Preferred) ESP32 S3 with Display AliExpress for A$32.00. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
+2. ESP32 WIth display. Either of the following
 
-2.2 **TTGO T-Display** - ESP32 LX6 with Display AliExpress for A$13.19. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
+<table>
+<tr>
+<td>
+**TTGO T-Display-S3** - (Preferred) ESP32 S3 with Display AliExpress for A$32.00. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
+</td>
+<td>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3.jpg?raw=true" />
+</td>
+</tr>
+
+<tr>
+<td>
+**TTGO T-Display** - ESP32 LX6 with Display AliExpress for A$13.19. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
+</td>
+<td>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/T-Display.jpg?raw=true" />
+</td>
+</tr>
+</table>
+	
+	
+	
+
+	OR
+
+	
+		
  
-3. **Wires Protoboard** - Connects the ESP32 to receiver as described below.
+3. **Wires and Protoboard** - Connects the ESP32 to receiver as described below.
 
-4. **Fan** - Used a 5V fan cos the UM982 get hot in the sun.
+4. **Fan** - Used a 5V fan cos the UM982 get hot in the sun. Not always necessary.
  
 
 ## Wiring Diagram
