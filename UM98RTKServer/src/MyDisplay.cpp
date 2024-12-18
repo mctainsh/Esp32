@@ -156,7 +156,8 @@ void MyDisplay::RefreshWiFiState()
 	else
 	{
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
-		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
+		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);		
+		DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);		
 	}
 }
 

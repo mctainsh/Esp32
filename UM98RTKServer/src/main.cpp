@@ -34,10 +34,11 @@
 #include "HandyString.h"
 #include "MyDisplay.h"
 #include "GpsParser.h"
-#include "CredentialPrivate.h"
 #include "NTRIPServer.h"
 #include "MyFiles.h"
 #include <WebPortal.h>
+
+const char* AP_PASSWORD = "JohnTLegend";
 
 WiFiManager _wifiManager;
 
@@ -64,12 +65,23 @@ wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
 bool IsWifiConnected();
+String MakeHostName();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
 void setup(void)
 {
+	// Setup temporary startup display
+	auto tft = TFT_eSPI();
+	tft.init();
+	tft.setRotation(1);
+	tft.fillScreen(TFT_GREEN);
+	tft.setTextColor(TFT_BLACK, TFT_GREEN);
+	tft.setTextFont(2);
+	tft.printf("Starting %\r\n", APP_VERSION);
+
 	Serial.begin(115200);
+
 #if T_DISPLAY_S3 == true
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
@@ -80,36 +92,44 @@ void setup(void)
 #endif
 
 	Logf("Starting %s", APP_VERSION);
+	tft.println("Enable WIFI"); 
 	WiFi.mode(WIFI_AP_STA);
 
+	Logln("Enable RS232 pins");
+	tft.println("Enable RS232 pins");
 	pinMode(BUTTON_1, INPUT_PULLUP);
 	pinMode(BUTTON_2, INPUT_PULLUP);
 
-	// Verify file IO
+	// Verify file IO (This can take up tpo 60s is SPIFFs not initialised)
+	tft.println("Setup SPIFFS");
+	tft.println("This can take up to 60 seconds ...");
 	if (_myFiles.Setup())
-	{
 		Logln("Test file IO");
-		//_myFiles.WriteFile("/hello.txt", "Hello ");
-		//_myFiles.AppendFile("/hello.txt", "World!\r\n");
-
-		// std::string response;
-		//_myFiles.ReadFile("/hello.txt", response);
-		// Logln(response.c_str());
-	}
 	else
-	{
 		Logln("E100 - File IO failed");
-	}
 
 	// Load the NTRIP server settings
+	tft.println("Setup NTRIP Connections");
 	_ntripServer0.LoadSettings();
 	_ntripServer1.LoadSettings();
 	_ntripServer2.LoadSettings();
 
 	_display.Setup();
-	Logf("Display type %d setup complete", USER_SETUP_ID);
+	Logf("Display type %d", USER_SETUP_ID);
+
+	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
+	//_wifiManager.erase();
+
+	// Setup host name to have RTK_ prefix
+	WiFi.setHostname(MakeHostName().c_str());
+	_display.RefreshScreen();
+
+	// Block here till we have WiFi credentials (good or bad)
+	Logf("Start listening on %s", MakeHostName().c_str());
+	_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
 
 	_webPortal.Setup();
+	Logln("Setup complete");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -189,9 +209,10 @@ bool IsWifiConnected()
 
 		if (status == WL_CONNECTED)
 		{
-			auto res = _wifiManager.startConfigPortal();
+			// Setup the access point to prevend device getting stuck on a nearby network
+			auto res = _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
 			if (!res)
-				Logln("Failed to start config Portal");
+				Logln("Failed to start config Portal (Maybe cos non-blocked)");
 			else
 				Logln("Config portal started");
 		}
@@ -209,14 +230,27 @@ bool IsWifiConnected()
 		return false;
 	}
 
+	Logln("Try resetting WIfi");
+
 	// Reset the WIFI
-	//_wifiFullResetTime = t;
+	//_wifiFullResetTime = t;		
+	// We will block here until the WIFI is connected
+	//_wifiManager.autoConnect(WiFi.getHostname(), "JohnIs#1");
 	// WiFi.mode(WIFI_STA);
 	// wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	// Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
 	//_display.RefreshWiFiState();
 
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Maker a unique host name based on the MAC address with Rtk prefix
+String MakeHostName()
+{ 
+	auto mac = WiFi.macAddress();
+	mac.replace(":", "");
+	return "Rtk_" + mac;
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file

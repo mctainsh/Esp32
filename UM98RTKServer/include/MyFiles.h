@@ -23,7 +23,6 @@ class MyFiles
 		return false;
 	}
 
-
 	bool WriteFile(const char* path, const char* message)
 	{
 		Logf("Writing file: %s -> '%s'", path, message);

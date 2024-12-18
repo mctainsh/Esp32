@@ -19,4 +19,4 @@
 
 #define RTK_SERVERS 3
 
-#define APP_VERSION "1.80.8"
+#define APP_VERSION "1.82.1"

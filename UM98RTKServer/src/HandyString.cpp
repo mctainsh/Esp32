@@ -1,4 +1,3 @@
-
 #include <memory>
 #include <iomanip>
 #include <string>

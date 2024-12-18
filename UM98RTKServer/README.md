@@ -1,6 +1,6 @@
 # UM982 RTK Server with TTGO T-Display-S3 (Multi miner)
 
-This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3/S2 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
+This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display/-S3 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
 
 All up you it will cost about US$200 to make the station with GNSS receiver, antenna and ESP32 with display. 
 
@@ -34,7 +34,7 @@ NOTE : Although the code is able to send data to three RTK casters, if one of th
 
 ## Project Overview
 
-This project enables an TTGO T-Display to act as an RTK server sending RTK corrections to two casters. These could be Onocoy, Rtk2Go or RtkDirect.
+This project enables an TTGO T-Display to act as an RTK server sending RTK corrections to up to three casters. Examples of these are be Onocoy, Rtk2Go or RtkDirect.
 
 ### Terms
 
@@ -56,7 +56,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
  
 2.1 **TTGO T-Display-S3** - (Preferred) ESP32 S3 with Display AliExpress for A$32.00. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
 
-2.2 **TTGO T-Display-S2** - ESP32 S3 with Display AliExpress for A$13.19. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
+2.2 **TTGO T-Display** - ESP32 LX6 with Display AliExpress for A$13.19. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
  
 3. **Wires Protoboard** - Connects the ESP32 to receiver as described below.
 
@@ -81,7 +81,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" Height="320" />
 </div>
 
-### TTGO T-Display-S2
+### TTGO T-Display
 
 | TTGO T-Display Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
@@ -91,7 +91,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | 26 | TX | 3 | RX |
 | 25 | RX | 4 | TX |
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S2-Display/T-DIsplay_Schematic.jpg?raw=true" width="400" />
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/T-DIsplay_Schematic.jpg?raw=true" width="400" />
 
 
 ## Software 
@@ -106,10 +106,28 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 
 - Sends correction data to both RTK Casters
 
-### Upload binary (Broken)
+### ESP32 device setup
 
-Do not use the following command, it is only here as example
-"C:\Users\YOUR_NAME\.platformio\penv\Scripts\python.exe" "C:\Users\YOUR_NAME\.platformio\packages\tool-esptoolpy\esptool.py" --chip esp32s3 --port "COM16" --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB 0x0000 bootloader.bin 0x8000 partitions.bin 0xe000 C:\Users\YOUR_NAME\.platformio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin 0x10000 .pio\build\lilygo-t-display-s3\firmware.bin
+Depending on the device you will need to upload the binary
+
+[Upload Binary for TTGO T-Display](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/README_Upload_T-Display.md)
+
+
+### Connect WIFI
+
+- Connect ESP32 to your HOME WiFi
+	- Power up the TTGO-Display (GPS does not need to be connected)
+	- Using your phone or computer
+	- Connect to the WIFI access point Rtk_XXXXXXXX (Mac address shown on ESP32 screen)
+	- Password will be `JohnTLegend`
+	- Browse to http://192.168.4.1
+	- Select "Configure WiFi"
+	- Select your HOME WiFi network and enter credential
+- Connect your phone or computer to you HOME WiFi 
+	- You should be able to browse to the WiFi address shown on the ESP32 screen (NOT 192.168.4.1)
+
+
+
 
 ### Config parameters 
 
@@ -260,7 +278,7 @@ Only shows the state of the first two casters
 
 2. Make http sends in non-blocking to prevent one NTRIP server upsetting the others
 
-3. Rework the TTGO T-Display-S2 code to make the display nicer (Currently optimized for larger S3)
+3. Rework the TTGO T-Display code to make the display nicer (Currently optimized for larger S3)
 
 4. Put each NTRIP server details on its own page
 
