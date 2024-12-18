@@ -9,14 +9,14 @@ If you want to send to more than three casters you can connect a second ESP32 in
 The display also allow you to see at an instant if the system is connected and sending to all the casters
 
 <div style="display: flex; gap:10px;">
-	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="180" />
-	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" width="180" />
-	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="180" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Home.jpg?raw=true" width="180" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-GPS.jpg?raw=true" width="180" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-RTK.jpg?raw=true" width="180" />
 </div>
 
 NOTE : Although the code is able to send data to three RTK casters, if one of the casters fails to receive the message (blocks) the other will be delayed. I'm working on a better option to make non blocking socket calls or daisy chain ESP-S2-Mini's to handle more casters.
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-Display-S3-UM982_Boxed.jpg?raw=true" width="400" />
 
 
 ## Table of Contents 
@@ -58,7 +58,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 				<b>TTGO T-Display-S3</b> - <i>(Preferred)</i> ESP32 S3 with Display AliExpress for A$32.00.<br/> [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
 			</td>
 			<td>
-				<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3.jpg?raw=true" />
+				<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-Display-S3.jpg?raw=true" />
 			</td>
 		</tr>
 		<tr>
@@ -91,7 +91,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 
 
 <div style="display:flex;">
-	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-DIsplay-S3_Schematic.jpg?raw=true" Height="320" />
+	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/T-DIsplay-S3_Schematic.jpg?raw=true" Height="320" />
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" Height="320" />
 </div>
 
@@ -241,7 +241,7 @@ The top line of the display shows the following
 
 
 ### General
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Home.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Home.jpg?raw=true" width="300"/>
 
 | Title | Meaning | 
 | --- | --- | 
@@ -251,7 +251,7 @@ The top line of the display shows the following
 | Speed | Now many times to process is being checked per second | 
 
 ### GPS State
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-GPS.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-GPS.jpg?raw=true" width="300"/>
 
 | Title | Meaning | 
 | --- | --- | 
@@ -263,7 +263,7 @@ The top line of the display shows the following
 
 ### RTK Server
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-RTK.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-RTK.jpg?raw=true" width="300"/>
 
 Only shows the state of the first two casters
 
@@ -276,20 +276,20 @@ Only shows the state of the first two casters
 
 ### GPS Log
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-GPS.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-GPS.jpg?raw=true" width="300"/>
 
 
 ### First RTK Caster Log
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C1.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C1.jpg?raw=true" width="300"/>
 
 ### Second RTK Caster Log
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C2.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C2.jpg?raw=true" width="300"/>
 
 ### Third RTK Caster Log
 
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/S3-Screen-Log-C3.jpg?raw=true" width="300"/>
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display-S3/S3-Screen-Log-C3.jpg?raw=true" width="300"/>
 
 ## TODO
 

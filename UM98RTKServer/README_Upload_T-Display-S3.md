@@ -9,7 +9,7 @@ If everything goes bad you can reset by uploading the NO-TOUCH version from http
 ```
 
 
-- Download the files from [TTGO T-Display Binaries](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Deploy/T-Display-S3)
+- Download the files from [TTGO T-Display-S3 Binaries](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Deploy/T-Display-S3)
 - Get the Espressif Flash Download Tools from https://www.espressif.com/en/support/download/other-tools
 	- The tool is called Flash Download Tools
 	- If the tool doesn't work out of the box watch https://www.youtube.com/watch?v=BVJlc4hio6A to get the correct drivers
