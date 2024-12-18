@@ -50,34 +50,26 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
  
 1. **UM982 with antenna** - Witte Intelligent WTRTK-982 high-precision positioning and orientation module. I got it from AliExpress for about A$220.00 [Not affiliate link. Find your own seller](https://www.aliexpress.com/item/1005007287184287.html)
  
-2. ESP32 WIth display. Either of the following
+2. **ESP32** With display. ONE of the following
 
-<table>
-<tr>
-<td>
-**TTGO T-Display-S3** - (Preferred) ESP32 S3 with Display AliExpress for A$32.00. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
-</td>
-<td>
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3.jpg?raw=true" />
-</td>
-</tr>
-
-<tr>
-<td>
-**TTGO T-Display** - ESP32 LX6 with Display AliExpress for A$13.19. [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
-</td>
-<td>
-<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/T-Display.jpg?raw=true" />
-</td>
-</tr>
-</table>
-	
-	
-	
-
-	OR
-
-	
+	<table>
+		<tr>
+			<td>
+				<b>TTGO T-Display-S3</b> - <i>(Preferred)</i> ESP32 S3 with Display AliExpress for A$32.00.<br/> [Not an affiliate link shop with care](https://www.aliexpress.com/item/1005004496543314.html)
+			</td>
+			<td>
+				<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-S3-Display/T-Display-S3.jpg?raw=true" />
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<b>TTGO T-Display</b> - ESP32 LX6 with Display AliExpress for A$13.19. <br/>[Not an affiliate link shop with care](https://www.aliexpress.com/item/1005005970553639.html)
+			</td>
+			<td>
+				<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/T-Display.jpg?raw=true" />
+			</td>
+		</tr>
+	</table>
 		
  
 3. **Wires and Protoboard** - Connects the ESP32 to receiver as described below.
@@ -132,7 +124,12 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 
 Depending on the device you will need to upload the binary
 
-[Upload Binary for TTGO T-Display](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/README_Upload_T-Display.md)
+
+ - [Upload Binary for TTGO T-Display-S3](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/README_Upload_T-Display-S3.md)
+
+ - OR
+
+ - [Upload Binary for TTGO T-Display](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/README_Upload_T-Display.md)
 
 
 ### Connect WIFI
