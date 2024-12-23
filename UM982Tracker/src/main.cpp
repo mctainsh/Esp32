@@ -16,15 +16,15 @@
 //		#define DISABLE_ALL_LIBRARY_WARNINGS
 ///////////////////////////////////////////////////////////////////////////////
 
-#define BUTTON_1 0
-#define BUTTON_2 35
-
-#define APP_VERSION "1.88"
+#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
+#include <SPI.h>
 
 #include <WiFi.h>
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "Global.h"
 
 #include "HandyString.h"
 #include "MyDisplay.h"
@@ -57,7 +57,25 @@ bool IsWifiConnected();
 void setup(void)
 {
 	Serial.begin(115200);
+	Serial.println("Starting");
+	
+	// Setup temporary startup display
+	auto tft = TFT_eSPI();
+	tft.init();
+	tft.setRotation(1);
+	tft.fillScreen(TFT_GREEN);
+	tft.setTextColor(TFT_BLACK, TFT_GREEN);
+	tft.setTextFont(2);
+	tft.printf("Starting %\r\n", APP_VERSION);
+
+#if T_DISPLAY_S3 == true
+	Serial2.begin(115200, SERIAL_8N1, 12, 13);
+	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
+	pinMode(DISPLAY_POWER_PIN, OUTPUT);
+	digitalWrite(DISPLAY_POWER_PIN, HIGH);
+#else
 	Serial2.begin(115200, SERIAL_8N1, 25, 26);
+#endif
 
 	pinMode(BUTTON_1, INPUT_PULLUP);
 	pinMode(BUTTON_2, INPUT_PULLUP);
@@ -195,3 +213,11 @@ bool IsWifiConnected()
 	//_display.SetWebStatus(WiFi.localIP().toString().c_str());
 	//return true;
 }
+
+
+//  Check the Correct TFT Display Type is Selected in the User_Setup.h file
+#if USER_SETUP_ID != 206 && USER_SETUP_ID != 25
+#error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
+#error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
+#error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
+#endif
