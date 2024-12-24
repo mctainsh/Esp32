@@ -18,7 +18,10 @@ class GpsParser
 	GpsSender _gpsSender;
 	bool _gpsConnected = false;	// Are we receiving GPS data from GPS unit (Does not mean we have location)
 
-	GpsParser(MyDisplay& display)  : _display(display), _gpsSender(display)
+	GpsParser(MyDisplay& display)  : 
+		_display(display), 
+		_gpsSender(display),
+		_commandQueue(display)
 	{
 	}
 

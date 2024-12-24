@@ -16,9 +16,15 @@
 #include <string>
 
 // #include "Free_Fonts.h" // Include the header file attached to this sketch
+#if T_DISPLAY_S3
+#define ROW2 (38)
+// #define ROW3 (78)
+#define ROW4 (169 - 54)
+#else
 #define ROW2 (24)
-#define ROW3 (54)
-#define ROW4 (135 - 54)
+// #define ROW3 (54)
+#define ROW4 (84)
+#endif
 
 // Font size 4 with 4 rows
 #define R1F4 20
@@ -29,7 +35,7 @@
 // Columns
 #define COL1 5
 #define COL2_P0 60
-#define COL2_P0_W 178
+#define COL2_P0_W SCR_W - 5 - COL2_P0
 
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
@@ -37,6 +43,35 @@ extern MyFiles _myFiles;
 
 class MyDisplay
 {
+private:
+	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
+	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
+	uint16_t _bg = 0x8610;		 // Background colour
+	int _currentPage = 2;		 // Page we are currently displaying
+	bool _gpsConnected;			 // GPS connected
+	int8_t _fixMode = -1;		 // Fix mode for RTK
+	int8_t _satellites = -1;	 // Number of satellites
+	int16_t _gpsResetCount = 0;	 // Number GPS resets
+	int16_t _gpsPacketCount = 0; // Number GPS of packets received
+	int16_t _rtkResetCount = 0;	 // Number RTK restarts
+	int16_t _rtkPacketCount = 0; // Number of packets received
+	int _sendGood = 0;			 // Number of good sends
+	int _sendBad = 0;			 // Number of bad sends
+	int _httpCode = 0;			 // Last HTTP code
+	std::string _time;			 // GPS time in minutes and seconds
+	double _lng;				 // Longitude
+	double _lat;				 // ..
+	double _height;				 // ..
+	double _lngSaved;			 // Saved for deltas
+	double _latSaved;			 // ..
+	double _heightSaved;		 //
+	int _animationAngle;		 // Animated wheel
+	int _loopsPerSecond;		 // How many loop occur per second
+	wl_status_t _webStatus;		 // WIFI Status of connection to hot spot
+	std::string _webRtkStatus;	 // RTK connection status
+	std::string _webTxStatus;	 // Transmitting of data status
+	const bool _isTDisplayS3 = T_DISPLAY_S3;
+
 public:
 	MyDisplay()
 	{
@@ -80,44 +115,80 @@ public:
 		_graphics.Animate();
 	}
 
+
 	// ************************************************************************//
 	// Page 1 - CurrentGPS
 	// ************************************************************************//
-	void SetPosition(double lng, double lat, double height)
+	void SetPosition(double lngNew, double latNew, double height)
 	{
+		int e2 = SCR_W - 4 - 74; // End just before N0-. Satellites
 		if (_currentPage == 1)
 		{
-			SetValueFormatted(1, lng, &_lng, StringPrintf("%.9lf", lng), 3, 24, 236, 4);
-			SetValueFormatted(1, lat, &_lat, StringPrintf("%.9lf", lat), 3, 52, 236, 4);
-			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", lat), 3, 110, 120, 4);
+			SetValueFormatted(1, lngNew, &_lng, StringPrintf("%.9lf", lngNew), 3, R1F4, e2, 4);
+			SetValueFormatted(1, latNew, &_lat, StringPrintf("%.9lf", latNew), 3, R2F4, e2, 4);
+			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", latNew), 3, R3F4, 120, 4);
 		}
 
 		// Save new value
-		if (_lng == lng || _lat == lat)
+		if (_lng == lngNew || _lat == latNew)
 			return;
-		_lng = lng;
-		_lat = lat;
+		_lng = lngNew;
+		_lat = latNew;
 		_height = height;
 
 		if (_currentPage == 2)
 		{
+			int maxDistLength = 7;
 			// Calculate the
-			std::string heightDiff = StringPrintf("%.3lf", _height - _heightSaved).substr(0, 4);
-			DrawCell(heightDiff.c_str(), 3, ROW4, 128, 7, TFT_BLACK, TFT_SILVER);
+			auto heightDiff = StringPrintf("%.3lf", _height - _heightSaved).substr(0, 6);
 
-			double metres = HaversineMetres(lat, lng, _latSaved, _lngSaved);
+			if (!_isTDisplayS3)
+			{
+				heightDiff = heightDiff.substr(0, 4);
+				maxDistLength = 5;
+			}
+
+			DrawCell(heightDiff.c_str(), 3, ROW4, SCR_W - 146, 7, TFT_BLACK, TFT_SILVER);
+
+			// Calculate the bearing
+			double bearing = CalculateBearing(_latSaved, _lngSaved, _lat, _lng);
+			auto bearingText = StringPrintf("%.0lf", bearing);
+			DrawCell(bearingText.c_str(), SCR_W - 140, ROW4, 100, 7, TFT_BLACK, TFT_VIOLET);
+
+			// Calculate the distance
+			double metres = HaversineMetres(_lat, _lng, _latSaved, _lngSaved);
 			uint16_t clr = TFT_GREEN;
-			std::string text = StringPrintf("%.3lf", metres);
-			if (text.length() > 7)
+			auto text = StringPrintf("%.3lf", metres);
+			if (text.length() > maxDistLength)
 			{
 				text = StringPrintf("%.0lf", metres);
 				clr = TFT_YELLOW;
 			}
-			if (text.length() > 6)
+			if (text.length() > maxDistLength)
 				text = "---";
-			if (lat != 0 && lng != 0)
-				DrawCell(text.c_str(), 3, 24, 234, 7, TFT_BLACK, clr);
+			if (_lat == 0 || _lng == 0)
+				text = "No GPS";
+			DrawCell(text.c_str(), 3, ROW2, e2, 7, TFT_BLACK, clr);
 		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Calculate the distance between two points in metres
+	double CalculateBearing(double lat1, double lon1, double lat2, double lon2)
+	{
+		// Convert to radians
+		lat1 = lat1 * M_PI / 180.0;
+		lon1 = lon1 * M_PI / 180.0;
+		lat2 = lat2 * M_PI / 180.0;
+		lon2 = lon2 * M_PI / 180.0;
+
+		// Calculate the bearing
+		double y = sin(lon2 - lon1) * cos(lat2);
+		double x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(lon2 - lon1);
+		double bearing = atan2(y, x) * 180.0 / M_PI;
+		if (bearing < 0)
+			bearing += 360.0;
+		return bearing;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -164,10 +235,10 @@ public:
 			fg = TFT_BLACK;
 			bg = TFT_GREEN;
 		}
-		DrawCell(text.c_str(), 240 - 20, 0, 20, 2, fg, bg);
+		DrawCell(text.c_str(), SCR_W - 20, 0, 20, 2, fg, bg);
 
 		if (_currentPage == 1 || _currentPage == 2)
-			DrawCell(text.c_str(), 240 - 38, ROW4, 34, 7, fg, bg);
+			DrawCell(text.c_str(), SCR_W - 38, ROW4, 34, 7, fg, bg);
 	}
 
 	void SetTime(const std::string t)
@@ -187,7 +258,7 @@ public:
 		std::string text = " ";
 		if (_satellites != -1)
 			text = std::to_string(_satellites);
-		DrawCell(text.c_str(), 240 - 38 - 72, ROW4, 68, 7);
+		DrawCell(text.c_str(), SCR_W - 72, ROW2, 68, 7);
 	}
 
 	// ************************************************************************//
@@ -220,7 +291,7 @@ public:
 
 	void SetLoopsPerSecond(int n)
 	{
-		SetValue(3, n, &_loopsPerSecond, 2, 54, 236, 4);
+		SetValue(3, n, &_loopsPerSecond, 2, 54, SCR_W - 4, 4);
 	}
 
 	void ResetGps()
@@ -274,7 +345,7 @@ public:
 			DrawCell(StringPrintf("G:%d B:%d", _sendGood, _sendBad).c_str(), 2, ROW2, 116, 4);
 		if (_currentPage == 0)
 		{
-			std::string status = StringPrintf("E:%d", _httpCode);
+			auto status = StringPrintf("E:%d", _httpCode);
 			if (_httpCode == 200)
 				status = "OK";
 			DrawML(status.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
@@ -295,7 +366,7 @@ public:
 			_latSaved = _lat;
 			_heightSaved = _height;
 			{
-				std::string saveText = StringPrintf("%.9lf %.9lf %.3lf", _lng, _lat, _height);
+				auto saveText = StringPrintf("%.9lf %.9lf %.3lf", _lng, _lat, _height);
 				Serial.printf("Saving X,Y %s\r\n", saveText.c_str());
 				_myFiles.WriteFile(SAVE_LNG_LAT_FILE, saveText.c_str());
 			}
@@ -315,7 +386,7 @@ public:
 	void NextPage()
 	{
 		_currentPage++;
-		if (_currentPage > 4)
+		if (_currentPage > 5)
 			_currentPage = 0;
 		Serial.printf("Switch to page %d\r\n", _currentPage);
 		RefreshScreen();
@@ -362,8 +433,19 @@ public:
 			title = "  Location";
 			break;
 		case 2:
-			_tft.fillScreen(TFT_RED);
+			_bg = 0x0961;
+			_tft.fillScreen(_bg);
 			title = "  Location offset";
+			if (_isTDisplayS3)
+			{
+				_tft.setTextColor(TFT_WHITE, _bg, false);
+				_tft.setTextDatum(BL_DATUM);
+				_tft.drawString("Distance (m)", 10, ROW2 - 2, 2);
+				_tft.drawString("#Sats", SCR_W - 50, ROW2 - 2, 2);
+				_tft.drawString("Height (m)", 10, ROW4 - 2, 2);
+				_tft.drawString("Bearing°", SCR_W - 130, ROW4 - 2, 2);
+				_tft.drawString("FIX", SCR_W - 30, ROW4 - 2, 2);
+			}
 			break;
 		case 3:
 			_tft.fillScreen(TFT_YELLOW);
@@ -385,7 +467,18 @@ public:
 			DrawML(RTF_MOUNT_POINT, COL2_P0, R3F4, COL2_P0_W, 4);
 			DrawML(SERVER_URL, COL2_P0, R4F4, COL2_P0_W, 4);
 			break;
-
+		case 5:
+			_bg = 0xa51f;
+			_tft.fillScreen(_bg);
+			title = "  Key";
+			DrawLabel("Wi-Fi", COL1, R1F4, 2);
+			DrawLabel("GPS", COL1, R2F4, 2);
+			DrawLabel("RTK", COL1, R3F4, 2);
+			DrawLabel("TX", COL1, R4F4, 2);
+			DrawKeyLine(R1F4, 4);
+			DrawKeyLine(R2F4, 3);
+			DrawKeyLine(R3F4, 2);
+			DrawKeyLine(R4F4, 1);
 		}
 		DrawML(title, 20, 0, 200, 2);
 
@@ -402,7 +495,7 @@ public:
 		wl_status_t ws = _webStatus;
 		SetWebStatus(static_cast<wl_status_t>(ws + 1));
 		SetWebStatus(ws);
-		std::string s = _webRtkStatus;
+		auto s = _webRtkStatus;
 		SetRtkStatus(_webRtkStatus + "?");
 		SetRtkStatus(s);
 
@@ -417,6 +510,16 @@ public:
 
 		DrawSendStats(_httpCode + 1);
 		DrawSendStats(_httpCode);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Draw line from text to top row tick position
+	void DrawKeyLine(int y, int tick)
+	{
+		y += 10;
+		int box = SCR_W - (SPACE * tick) - CW / 2;
+		_tft.drawLine(50, y, box, y, TFT_BLACK);
+		_tft.drawLine(box, y, box, CH, TFT_BLACK);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -487,32 +590,4 @@ public:
 		// Frame it
 		//_tft.drawRoundRect(x, y, width, height + 3, 5, TFT_YELLOW);
 	}
-
-private:
-	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
-	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
-	uint16_t _bg = 0x8610;		 // Background colour
-	int _currentPage = 0;		 // Page we are currently displaying
-	bool _gpsConnected;			 // GPS connected
-	int8_t _fixMode = -1;		 // Fix mode for RTK
-	int8_t _satellites = -1;	 // Number of satellites
-	int16_t _gpsResetCount = 0;	 // Number GPS resets
-	int16_t _gpsPacketCount = 0; // Number GPS of packets received
-	int16_t _rtkResetCount = 0;	 // Number RTK restarts
-	int16_t _rtkPacketCount = 0; // Number of packets received
-	int _sendGood = 0;			 // Number of good sends
-	int _sendBad = 0;			 // Number of bad sends
-	int _httpCode = 0;			 // Last HTTP code
-	std::string _time;			 // GPS time in minutes and seconds
-	double _lng;				 // Longitude
-	double _lat;				 // ..
-	double _height;				 // ..
-	double _lngSaved;			 // Saved for deltas
-	double _latSaved;			 // ..
-	double _heightSaved;		 //
-	int _animationAngle;		 // Animated wheel
-	int _loopsPerSecond;		 // How many loop occur per second
-	wl_status_t _webStatus;		 // WIFI Status of connection to hot spot
-	std::string _webRtkStatus;	 // RTK connection status
-	std::string _webTxStatus;	 // Transmitting of data status
 };

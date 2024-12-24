@@ -90,14 +90,14 @@ public:
 	// Wi-Fi Status indicator
 	void SetWebStatus(wl_status_t status)
 	{
-		DrawBoxTick(240 - SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
+		DrawBoxTick(SCR_W - 4*SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// GPS connected status
 	void SetGpsConnected(bool connected)
 	{
-		DrawBoxTick(240 - 2*SPACE - CW, 0, connected);
+		DrawBoxTick(SCR_W - 3*SPACE - CW, 0, connected);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -105,14 +105,14 @@ public:
 	void SetRtkStatus(std::string status)
 	{
 		bool connected = StartsWith(status, "Conn");
-		DrawBoxTick(240 - 3*SPACE - CW, 0, connected);
+		DrawBoxTick(SCR_W - 2*SPACE - CW, 0, connected);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// Transmitting data indicator
 	void SetTxStatus(int httpCode)
 	{
-		DrawBoxTick(240 - 4*SPACE - CW, 0, httpCode == 200);
+		DrawBoxTick(SCR_W - 1*SPACE - CW, 0, httpCode == 200);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////

@@ -11,14 +11,26 @@
 //  .. command responses look like $command,version,response: OK*24
 class GpsCommandQueue
 {
-  public:
+private:
+	std::vector<std::string> _strings;
+	int _timeSent = 0;
+	bool _gotReset = false;
+	int _resetCount = 0;
+	MyDisplay& _display;
+
+public:
+	///////////////////////////////////////////////////////////////////////////
+	// Constructor
+	GpsCommandQueue(MyDisplay& display) : _display(display)
+	{
+	}
 
 	// ////////////////////////////////////////////////////////////////////////
 	// Check if the first item in the list matches the given string
-	bool IsCommandResponse(const std::string& str) 
+	bool IsCommandResponse(const std::string &str)
 	{
 		if (_strings.empty())
-			return false;  // List is empty, no match
+			return false; // List is empty, no match
 
 		std::string match = "$command,";
 		match += _strings.front();
@@ -36,34 +48,41 @@ class GpsCommandQueue
 	///////////////////////////////////////////////////////////////////////////
 	// Check if the GPS receiver has reset itself and send all the commands
 	// .. reset command looks like "$devicename,COM1*67"
-	bool HasDeviceReset(const std::string& str)
+	bool HasDeviceReset(const std::string &str)
 	{
 		const std::string match = "$devicename,COM";
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
 
-		// Load the commands
 		Serial.println("E200 - Reset command received");
-		_strings.clear();
-		_strings.push_back("version");
-		_strings.push_back("config signalgroup 3 6");
-		_strings.push_back("MODE ROVER");
-		_strings.push_back("CONFIG RTK TIMEOUT 10");
-		_strings.push_back("GNGGA 1");
-
+		_resetCount++;
+		_display.SetRtkStatus(StringPrintf("GPS Reset %d", _resetCount));
 		StartInitialiseProcess();
 		return true;
 	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Check if the GPS receiver has reset itself and send all the commands
 	void StartInitialiseProcess()
 	{
 		// Load the commands
-		Serial.println("GPS Queue StartInitialiseProcess");
 		_strings.clear();
-		_strings.push_back("version");
-		_strings.push_back("config signalgroup 3 6");
-		_strings.push_back("MODE ROVER");
-		_strings.push_back("CONFIG RTK TIMEOUT 10");
-		_strings.push_back("GNGGA 1");
+		if (_gotReset)
+		{
+			Serial.println("GPS Queue StartInitialiseProcess");
+			_strings.push_back("version");
+			_strings.push_back("config signalgroup 3 6");
+			_strings.push_back("MODE ROVER");
+			_strings.push_back("CONFIG RTK TIMEOUT 10");
+			_strings.push_back("GNGGA 1");
+			_strings.push_back("saveconfig");
+		}
+		else
+		{
+			Serial.println("GPS FRESET");
+			_strings.push_back("freset");
+			_gotReset = true;
+		}
 
 		SendTopCommand();
 	}
@@ -78,7 +97,4 @@ class GpsCommandQueue
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
-  private:
-	std::vector<std::string> _strings;
-	int _timeSent = 0;
 };
