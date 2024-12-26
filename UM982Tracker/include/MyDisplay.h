@@ -17,12 +17,10 @@
 
 // #include "Free_Fonts.h" // Include the header file attached to this sketch
 #if T_DISPLAY_S3
-#define ROW2 (38)
-// #define ROW3 (78)
+#define ROW2 (40)
 #define ROW4 (169 - 54)
 #else
 #define ROW2 (24)
-// #define ROW3 (54)
 #define ROW4 (84)
 #endif
 
@@ -291,7 +289,7 @@ public:
 
 	void SetLoopsPerSecond(int n)
 	{
-		SetValue(3, n, &_loopsPerSecond, 2, 54, SCR_W - 4, 4);
+		SetValue(3, n, &_loopsPerSecond, 2, R2F4, SCR_W - 4, 4);
 	}
 
 	void ResetGps()
@@ -342,7 +340,7 @@ public:
 		_httpCode = httpCode;
 		_graphics.SetTxStatus(httpCode);
 		if (_currentPage == 3)
-			DrawCell(StringPrintf("G:%d B:%d", _sendGood, _sendBad).c_str(), 2, ROW2, 116, 4);
+			DrawCell(StringPrintf("Sends G:%d B:%d", _sendGood, _sendBad).c_str(),  COL2_P0, R1F4, COL2_P0_W, 4);
 		if (_currentPage == 0)
 		{
 			auto status = StringPrintf("E:%d", _httpCode);

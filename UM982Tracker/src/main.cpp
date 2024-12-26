@@ -3,8 +3,8 @@
 //	  #########################################################################
 //	  ###### DON'T FORGET TO UPDATE THE User_Setup.h FILE IN THE LIBRARY ######
 //	  #########################################################################
-//	 
-//	To use the TTGO T-Display with the TFT_eSPI library, you need to make the following changes to 
+//
+//	To use the TTGO T-Display with the TFT_eSPI library, you need to make the following changes to
 //	the User_Setup.h file in the library.
 //		.pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h
 //
@@ -32,24 +32,34 @@
 #include "CredentialPrivate.h"
 #include "NTRIPClient.h"
 #include "MyFiles.h"
+#include "ButtonInterrupt.h"
 
 MyFiles _myFiles;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
 NTRIPClient _ntripClient(_display);
 
-unsigned long _loopWaitTime = 0;  // Time of last second
-int _loopPersSecondCount = 0;	  // Number of times the main loops runs in a second
+ButtonInterrupt _button1(BUTTON_1);/*, []()
+							  { _button1.OnFallingIsr(); },
+							   []()
+							  { _button1.OnRaisingIsr(); });*/
+ButtonInterrupt _button2(BUTTON_2);/*, []()
+							  { _button2.OnFallingIsr(); },
+							   []()
+							  { _button2.OnRaisingIsr(); });*/
 
-uint8_t _button1Current = HIGH;	 // Top button on left
-uint8_t _button2Current = HIGH;	 // Bottom button when
+unsigned long _loopWaitTime = 0; // Time of last second
+int _loopPersSecondCount = 0;	 // Number of times the main loops runs in a second
+
+uint8_t _button1Current = HIGH; // Top button on left
+uint8_t _button2Current = HIGH; // Bottom button when
 
 // WiFi monitoring states
 #define WIFI_STARTUP_TIMEOUT 20000
 unsigned long _wifiFullResetTime = -WIFI_STARTUP_TIMEOUT;
 wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
-bool IsButtonReleased(uint8_t button, uint8_t* pCurrent);
+bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
 bool IsWifiConnected();
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -58,7 +68,7 @@ void setup(void)
 {
 	Serial.begin(115200);
 	Serial.println("Starting");
-	
+
 	// Setup temporary startup display
 	auto tft = TFT_eSPI();
 	tft.init();
@@ -77,24 +87,23 @@ void setup(void)
 	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #endif
 
-	pinMode(BUTTON_1, INPUT_PULLUP);
-	pinMode(BUTTON_2, INPUT_PULLUP);
+	_button1.AttachInterrupts([]() IRAM_ATTR { _button1.OnFallingIsr(); },[]() IRAM_ATTR { _button1.OnRaisingIsr(); });
+	_button2.AttachInterrupts([]() IRAM_ATTR { _button2.OnFallingIsr(); },[]() IRAM_ATTR { _button2.OnRaisingIsr(); });
 
 	// Verify file IO
 	if (_myFiles.Setup())
 	{
 		//_myFiles.WriteFile("/hello.txt", "Hello ");
 		//_myFiles.AppendFile("/hello.txt", "World!\r\n");
-		
-		//std::string response;
+
+		// std::string response;
 		//_myFiles.ReadFile("/hello.txt", response);
-		//Serial.println(response.c_str());
+		// Serial.println(response.c_str());
 	}
 
 	_display.Setup();
 	Serial.println("Startup Complete");
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Loop here
@@ -111,19 +120,21 @@ void loop()
 	}
 
 	// Check for push buttons
-	if (IsButtonReleased(BUTTON_1, &_button1Current))
+	if (_button1.WasPressed())
+	// if (IsButtonReleased(BUTTON_1, &_button1Current))
 	{
 		Serial.println("Button 1");
 		_display.NextPage();
 	}
-	if (IsButtonReleased(BUTTON_2, &_button2Current))
+	if (_button2.WasPressed())
+	// if (IsButtonReleased(BUTTON_2, &_button2Current))
 	{
 		Serial.println("Button 2");
 		_display.ActionButton();
 	}
 
 	// Check for new data GPS serial data
-	_display.SetGpsConnected( _gpsParser.ReadDataFromSerial(Serial2) );
+	_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2));
 
 	// WIFI related functions
 	if (IsWifiConnected())
@@ -140,7 +151,7 @@ void loop()
 ///////////////////////////////////////////////////////////////////////////////
 // Check if the button is released. This takes < 1ms
 // Note : Button is HIGH when released
-bool IsButtonReleased(uint8_t button, uint8_t* pCurrent)
+bool IsButtonReleased(uint8_t button, uint8_t *pCurrent)
 {
 	if (*pCurrent != digitalRead(button))
 	{
@@ -150,45 +161,44 @@ bool IsButtonReleased(uint8_t button, uint8_t* pCurrent)
 	return false;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Check Wifi and reconnect
 bool IsWifiConnected()
 {
 	// Is the WIFI connected?
 	wl_status_t status = WiFi.status();
-	if( _lastWifiStatus != status)
+	if (_lastWifiStatus != status)
 	{
 		_lastWifiStatus = status;
 		Serial.printf("Wifi Status %d %s\r\n", status, WifiStatus(status));
 		_display.SetWebStatus(status);
-		if( status == WL_CONNECTED)
+		if (status == WL_CONNECTED)
 			_display.SetRtkStatus("GPS Pending");
 	}
-		
+
 	if (status == WL_CONNECTED)
 		return true;
 
 	// Start the connection process
-	//Serial.println("E310 - No WIFI");
+	// Serial.println("E310 - No WIFI");
 	unsigned long t = millis();
 	unsigned long tDelta = t - _wifiFullResetTime;
 	if (tDelta < WIFI_STARTUP_TIMEOUT)
 	{
-		
-		//if( status != WL_DISCONNECTED)
+
+		// if( status != WL_DISCONNECTED)
 		//	Serial.println(stateTitle.c_str());
 		//_display.SetWebStatus(stateTitle.c_str());
 
 		// Create a string of dots to show progress. 1 dot per second
-		std::string dotsStr(tDelta/1000, '.');
+		std::string dotsStr(tDelta / 1000, '.');
 		_display.SetRtkStatus(dotsStr.c_str());
 
 		return false;
 	}
 
 	// Reset the WIFI
-	_wifiFullResetTime = t;	
+	_wifiFullResetTime = t;
 	WiFi.mode(WIFI_STA);
 	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	//_display.SetWebStatus(WifiStatus(beginState));
@@ -197,8 +207,8 @@ bool IsWifiConnected()
 	return false;
 
 	// Wait 20 seconds to connect
-	//int countDown = 40;
-	//while ((beginState = WiFi.status()) != WL_CONNECTED)
+	// int countDown = 40;
+	// while ((beginState = WiFi.status()) != WL_CONNECTED)
 	//{
 	//	_display.SetWebStatus(StringPrintf("%d %s", countDown, WifiStatus(beginState)));
 	//	delay(500);
@@ -211,9 +221,8 @@ bool IsWifiConnected()
 	//	}
 	//}
 	//_display.SetWebStatus(WiFi.localIP().toString().c_str());
-	//return true;
+	// return true;
 }
-
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file
 #if USER_SETUP_ID != 206 && USER_SETUP_ID != 25
