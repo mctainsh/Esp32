@@ -4,10 +4,12 @@
 // Handy RGB565 colour picker at https://chrishewett.com/blog/true-rgb565-colour-picker/
 // Image converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
+#include "Global.h"
 #include "HandyString.h"
 #include "MyFiles.h"
 #include "MyDisplayGraphics.h"
 #include "CredentialPrivate.h"
+//#include "NTRIPClient.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -38,6 +40,7 @@
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
 extern MyFiles _myFiles;
+//extern NTRIPClient _ntripClient;
 
 class MyDisplay
 {
@@ -45,7 +48,7 @@ private:
 	TFT_eSPI _tft = TFT_eSPI(); // Invoke library, pins defined in User_Setup.h
 	MyDisplayGraphics _graphics = MyDisplayGraphics(&_tft);
 	uint16_t _bg = 0x8610;		 // Background colour
-	int _currentPage = 2;		 // Page we are currently displaying
+	int _currentPage = 0;		 // Page we are currently displaying
 	bool _gpsConnected;			 // GPS connected
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
@@ -112,7 +115,6 @@ public:
 	{
 		_graphics.Animate();
 	}
-
 
 	// ************************************************************************//
 	// Page 1 - CurrentGPS
@@ -266,15 +268,29 @@ public:
 	// ************************************************************************//
 	// Page 3 - System detail
 	// ************************************************************************//
-	void SetWebStatus(wl_status_t status)
+	void RefreshWiFiState()
 	{
-		if (_webStatus == status)
-			return;
-		_webStatus = status;
+		auto status = WiFi.status();
 		_graphics.SetWebStatus(status);
 		if (_currentPage != 0)
 			return;
-		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+		if (status == WL_CONNECTED)
+		{
+			DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		}
+		else
+		{
+			DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+			DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
+			DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
+		}
+		// if (_webStatus == status)
+		// 	return;
+		// _webStatus = status;
+		// _graphics.SetWebStatus(status);
+		// if (_currentPage != 0)
+		// 	return;
+		// DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
 	}
 	void SetRtkStatus(std::string status)
 	{
@@ -340,7 +356,7 @@ public:
 		_httpCode = httpCode;
 		_graphics.SetTxStatus(httpCode);
 		if (_currentPage == 3)
-			DrawCell(StringPrintf("Sends G:%d B:%d", _sendGood, _sendBad).c_str(),  COL2_P0, R1F4, COL2_P0_W, 4);
+			DrawCell(StringPrintf("Sends G:%d B:%d", _sendGood, _sendBad).c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
 		if (_currentPage == 0)
 		{
 			auto status = StringPrintf("E:%d", _httpCode);
@@ -460,10 +476,10 @@ public:
 			DrawLabel("Mount", COL1, R3F4, 2);
 			DrawLabel("Destin", COL1, R4F4, 2);
 
-			DrawML(WIFI_SSID, COL2_P0, R1F4, COL2_P0_W, 4);
-			DrawML(RTF_SERVER_ADDRESS, COL2_P0, R2F4, COL2_P0_W, 4);
-			DrawML(RTF_MOUNT_POINT, COL2_P0, R3F4, COL2_P0_W, 4);
-			DrawML(SERVER_URL, COL2_P0, R4F4, COL2_P0_W, 4);
+//			DrawML( _ntripClient.GetAddress().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		//	DrawML(_ntripClient.GetPort().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		//	DrawML(_ntripClient.GetMountPoint().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
+		//	DrawML(_ntripClient.GetUsername().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 			break;
 		case 5:
 			_bg = 0xa51f;
@@ -490,9 +506,8 @@ public:
 		SetFixMode(n + 1);
 		SetFixMode(n);
 
-		wl_status_t ws = _webStatus;
-		SetWebStatus(static_cast<wl_status_t>(ws + 1));
-		SetWebStatus(ws);
+		RefreshWiFiState();
+
 		auto s = _webRtkStatus;
 		SetRtkStatus(_webRtkStatus + "?");
 		SetRtkStatus(s);

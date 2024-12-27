@@ -137,7 +137,7 @@ class GpsParser
 		// Skip unused types
 		if (parts.at(0) != "$GNGGA")
 		{
-			Serial.printf("\tNot GGA %s\r\n", line.c_str());
+			Serial.printf("\tNot GNGGA %s\r\n", line.c_str());
 			return;
 		}
 		_gpsConnected = true;

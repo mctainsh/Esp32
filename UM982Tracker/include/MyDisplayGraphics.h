@@ -4,6 +4,7 @@
 // Image converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
 #include "MyDisplay.h"
+#include "Global.h"
 
 #include <TFT_eSPI.h>
 #include <SPI.h>

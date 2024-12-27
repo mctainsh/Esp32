@@ -19,7 +19,8 @@
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
 
-#include <WiFi.h>
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+// #include <WiFi.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -30,23 +31,23 @@
 #include "MyDisplay.h"
 #include "GpsParser.h"
 #include "CredentialPrivate.h"
-#include "NTRIPClient.h"
 #include "MyFiles.h"
+#include "NTRIPClient.h"
 #include "ButtonInterrupt.h"
+#include "WebPortal.h"
+
+const char *AP_PASSWORD = "JohnTLegend";
+
+WiFiManager _wifiManager;
+WebPortal _webPortal;
 
 MyFiles _myFiles;
+NTRIPClient _ntripClient;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
-NTRIPClient _ntripClient(_display);
 
-ButtonInterrupt _button1(BUTTON_1);/*, []()
-							  { _button1.OnFallingIsr(); },
-							   []()
-							  { _button1.OnRaisingIsr(); });*/
-ButtonInterrupt _button2(BUTTON_2);/*, []()
-							  { _button2.OnFallingIsr(); },
-							   []()
-							  { _button2.OnRaisingIsr(); });*/
+ButtonInterrupt _button1(BUTTON_1);
+ButtonInterrupt _button2(BUTTON_2);
 
 unsigned long _loopWaitTime = 0; // Time of last second
 int _loopPersSecondCount = 0;	 // Number of times the main loops runs in a second
@@ -61,6 +62,15 @@ wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
 bool IsWifiConnected();
+String MakeHostName();
+
+///////////////////////////////////////////////////////////////////////////////
+// Startup logging to screen and serial
+void LogI(TFT_eSPI &tft, const char *str)
+{
+	Serial.print(str);
+	tft.print(str);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
@@ -72,12 +82,13 @@ void setup(void)
 	// Setup temporary startup display
 	auto tft = TFT_eSPI();
 	tft.init();
-	tft.setRotation(1);
+	tft.setRotation(3);
 	tft.fillScreen(TFT_GREEN);
 	tft.setTextColor(TFT_BLACK, TFT_GREEN);
 	tft.setTextFont(2);
-	tft.printf("Starting %\r\n", APP_VERSION);
 
+	LogI(tft, StringPrintf("Starting %s\r\n", APP_VERSION).c_str());
+	LogI(tft, "GPS, ");
 #if T_DISPLAY_S3 == true
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
@@ -86,11 +97,16 @@ void setup(void)
 #else
 	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #endif
-
-	_button1.AttachInterrupts([]() IRAM_ATTR { _button1.OnFallingIsr(); },[]() IRAM_ATTR { _button1.OnRaisingIsr(); });
-	_button2.AttachInterrupts([]() IRAM_ATTR { _button2.OnFallingIsr(); },[]() IRAM_ATTR { _button2.OnRaisingIsr(); });
+	LogI(tft, "Btn interrupts, ");
+	_button1.AttachInterrupts([]() IRAM_ATTR
+							  { _button1.OnFallingIsr(); }, []() IRAM_ATTR
+							  { _button1.OnRaisingIsr(); });
+	_button2.AttachInterrupts([]() IRAM_ATTR
+							  { _button2.OnFallingIsr(); }, []() IRAM_ATTR
+							  { _button2.OnRaisingIsr(); });
 
 	// Verify file IO
+	LogI(tft, "Check file access, ");
 	if (_myFiles.Setup())
 	{
 		//_myFiles.WriteFile("/hello.txt", "Hello ");
@@ -99,9 +115,35 @@ void setup(void)
 		// std::string response;
 		//_myFiles.ReadFile("/hello.txt", response);
 		// Serial.println(response.c_str());
+		_ntripClient.LoadSettings();
 	}
 
+	// Setup the WIFI
+	LogI(tft, "WIFI Setup\r\n");
+	WiFi.setHostname(MakeHostName().c_str());
+	LogI(tft, StringPrintf("Host : %s\r\n", WiFi.getHostname()).c_str());
+	LogI(tft, "IP : 192.168.4.1\r\n");
+	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
+	//_wifiManager.erase();
+
+	// Block and wait till we are connected
+	auto res = _wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+	if (!res)
+		LogI(tft, "Failed to start config Portal (Maybe cos non-blocked)\r\n");
+	else
+		LogI(tft, "WIFI Connected. Please wait..\r\n");
+
+	//_wifiManager.setConfigPortalTimeout(0);
+	//_wifiManager.setConfigPortalBlocking(false);
+	//_wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
+
+	// Setup the display
+	LogI(tft, "Setup display\r\n");
 	_display.Setup();
+
+	Serial.println("Setup Web Portal");
+	_webPortal.Setup();
+
 	Serial.println("Startup Complete");
 }
 
@@ -109,6 +151,12 @@ void setup(void)
 // Loop here
 void loop()
 {
+	// Check if we should turn off the display
+	// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
+#if T_DISPLAY_S3 == true
+	//digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
+#endif
+
 	// Trigger something every second
 	int t = millis();
 	_loopPersSecondCount++;
@@ -121,13 +169,11 @@ void loop()
 
 	// Check for push buttons
 	if (_button1.WasPressed())
-	// if (IsButtonReleased(BUTTON_1, &_button1Current))
 	{
 		Serial.println("Button 1");
 		_display.NextPage();
 	}
 	if (_button2.WasPressed())
-	// if (IsButtonReleased(BUTTON_2, &_button2Current))
 	{
 		Serial.println("Button 2");
 		_display.ActionButton();
@@ -143,6 +189,9 @@ void loop()
 		if (_display.HasLocation())
 			_ntripClient.Loop();
 	}
+
+	// Keep web portal awake
+	_webPortal.Loop();
 
 	// Update animations
 	_display.Animate();
@@ -171,9 +220,11 @@ bool IsWifiConnected()
 	{
 		_lastWifiStatus = status;
 		Serial.printf("Wifi Status %d %s\r\n", status, WifiStatus(status));
-		_display.SetWebStatus(status);
+		_display.RefreshWiFiState();
 		if (status == WL_CONNECTED)
+		{
 			_display.SetRtkStatus("GPS Pending");
+		}
 	}
 
 	if (status == WL_CONNECTED)
@@ -199,29 +250,20 @@ bool IsWifiConnected()
 
 	// Reset the WIFI
 	_wifiFullResetTime = t;
-	WiFi.mode(WIFI_STA);
-	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	//_display.SetWebStatus(WifiStatus(beginState));
-	Serial.printf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+	//	WiFi.mode(WIFI_STA);
+	//	wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	//	Serial.printf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
 
 	return false;
+}
 
-	// Wait 20 seconds to connect
-	// int countDown = 40;
-	// while ((beginState = WiFi.status()) != WL_CONNECTED)
-	//{
-	//	_display.SetWebStatus(StringPrintf("%d %s", countDown, WifiStatus(beginState)));
-	//	delay(500);
-	//	Serial.print(".");
-	//	if (countDown-- < 1)
-	//	{
-	//		Serial.println("\r\nE311 - WIFI Connect timed out");
-	//		_display.SetWebStatus("NO WIFI!!!");
-	//		return false;
-	//	}
-	//}
-	//_display.SetWebStatus(WiFi.localIP().toString().c_str());
-	// return true;
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Maker a unique host name based on the MAC address with Rtk prefix
+String MakeHostName()
+{
+	auto mac = WiFi.macAddress();
+	mac.replace(":", "");
+	return "RtkTrk_" + mac;
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file

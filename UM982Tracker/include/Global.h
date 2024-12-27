@@ -1,6 +1,6 @@
 #pragma once
 
-#define APP_VERSION "1.108"
+#define APP_VERSION "1.138"
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
