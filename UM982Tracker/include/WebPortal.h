@@ -16,7 +16,7 @@ extern NTRIPClient _ntripClient;
 class WebPortal
 {
 public:
-	void Setup();
+	void Setup(const char *hostname);
 	void Loop();
 
 private:
@@ -28,21 +28,18 @@ private:
 
 	int _loops = 0;
 
-	// RTK Connection details
-	// const char *RTF_SERVER_ADDRESS = "ntrip.data.gnss.ga.gov.au";	 // Url
-	// const int RTF_SERVER_PORT = 2101;								 // Port
-	// const char *RTF_MOUNT_POINT = "CLEV00AUS0";						 //  "PTHL00AUS0"      // Port headland
-	// const char *RTK_USERNAME_PASSWORD = "mctainsh:jfgXhrr557_462hh"; // Bearer for RTK server
-
 	WiFiManagerParameter *_pNtripAddress;
 	WiFiManagerParameter *_pNtripPort;
 	WiFiManagerParameter *_pNtripMountPoint;
 	WiFiManagerParameter *_pNtripUsername;
 	WiFiManagerParameter *_pNtripPassword;
+
+	WiFiManagerParameter *_pGpsSenderUrl;
+	WiFiManagerParameter *_pGpsSenderDeviceId;
 };
 
 /// @brief Startup the portal
-void WebPortal::Setup()
+void WebPortal::Setup( const char *hostname)
 {
 	// Setup callbacks
 	_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
@@ -55,21 +52,17 @@ void WebPortal::Setup()
 	_pNtripUsername = new WiFiManagerParameter("NtripUsername", "NTRIP Username", _ntripClient.GetUsername().c_str(), 48);
 	_pNtripPassword = new WiFiManagerParameter("NtripPassword", "NTRIP Password", _ntripClient.GetPassword().c_str(), 48);
 
+	_pGpsSenderUrl = new WiFiManagerParameter("GpsSenderUrl", "Tracking Server URL", _gpsParser.GetGpsSender().GetUrl().c_str(), 128);
+	_pGpsSenderDeviceId = new WiFiManagerParameter("GpsSenderDeviceId", "Tracker Device ID", _gpsParser.GetGpsSender().GetDeviceId().c_str(), 48);
+
 	_wifiManager.addParameter(_pNtripAddress);
 	_wifiManager.addParameter(_pNtripPort);
 	_wifiManager.addParameter(_pNtripMountPoint);
 	_wifiManager.addParameter(_pNtripUsername);
 	_wifiManager.addParameter(_pNtripPassword);
 
-	// _wifiManager.addParameter(_pCaster1Address);
-	// _wifiManager.addParameter(_pCaster1Port);
-	// _wifiManager.addParameter(_pCaster1Credential);
-	// _wifiManager.addParameter(_pCaster1Password);
-
-	// _wifiManager.addParameter(_pCaster2Address);
-	// _wifiManager.addParameter(_pCaster2Port);
-	// _wifiManager.addParameter(_pCaster2Credential);
-	// _wifiManager.addParameter(_pCaster2Password);
+	_wifiManager.addParameter(_pGpsSenderUrl);
+	_wifiManager.addParameter(_pGpsSenderDeviceId);
 
 	_wifiManager.setConfigPortalTimeout(0);
 	_wifiManager.setConfigPortalBlocking(false);
@@ -78,7 +71,9 @@ void WebPortal::Setup()
 
 	// First parameter is name of access point, second is the password
 	//_wifiManager.resetSettings();
-	auto res = _wifiManager.autoConnect(WiFi.getHostname(), "Test1234");
+	//*wm:StartAP with SSID:
+	//auto res = _wifiManager.startConfigPortal(hostname, AP_PASSWORD);
+	auto res = _wifiManager.autoConnect(hostname, AP_PASSWORD);
 	if (!res)
 	{
 		Serial.println("WiFi : Failed to connect OR is running in non-blocking mode");
@@ -126,10 +121,8 @@ void WebPortal::OnSaveParamsCallback()
 {
 	Serial.println("SaveParamsCallback");
 	_ntripClient.Save(_pNtripAddress->getValue(), _pNtripPort->getValue(), _pNtripMountPoint->getValue(), _pNtripUsername->getValue(), _pNtripPassword->getValue());
-	//	_ntripServer0.Save(_pCaster0Address->getValue(), _pCaster0Port->getValue(), _pCaster0Credential->getValue(), _pCaster0Password->getValue());
-	//	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(), _pCaster1Credential->getValue(), _pCaster1Password->getValue());
-	//	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(), _pCaster2Credential->getValue(), _pCaster2Password->getValue());
-
+	_gpsParser.GetGpsSender().Save(_pGpsSenderUrl->getValue(), _pGpsSenderDeviceId->getValue());
+	
 	ESP.restart();
 }
 

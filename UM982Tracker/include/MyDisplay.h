@@ -1,15 +1,15 @@
-#include "HardwareSerial.h"
 #pragma once
 
 // Handy RGB565 colour picker at https://chrishewett.com/blog/true-rgb565-colour-picker/
 // Image converter for sprite http://www.rinkydinkelectronics.com/t_imageconverter565.php
 
+#include "HardwareSerial.h"
 #include "Global.h"
 #include "HandyString.h"
 #include "MyFiles.h"
 #include "MyDisplayGraphics.h"
 #include "CredentialPrivate.h"
-//#include "NTRIPClient.h"
+// #include "NTRIPClient.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -40,7 +40,7 @@
 #define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
 
 extern MyFiles _myFiles;
-//extern NTRIPClient _ntripClient;
+// extern NTRIPClient _ntripClient;
 
 class MyDisplay
 {
@@ -73,8 +73,11 @@ private:
 	std::string _webTxStatus;	 // Transmitting of data status
 	const bool _isTDisplayS3 = T_DISPLAY_S3;
 
+	// Callback functions
+	const std::function<void()> _onShowNtripSettings;
+
 public:
-	MyDisplay()
+	MyDisplay(const std::function<void()> onShowNtripSettings) : _onShowNtripSettings(onShowNtripSettings)
 	{
 	}
 
@@ -272,26 +275,29 @@ public:
 	{
 		auto status = WiFi.status();
 		_graphics.SetWebStatus(status);
-		if (_currentPage != 0)
-			return;
-		if (status == WL_CONNECTED)
-		{
-			DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
-		}
-		else
+		if (_currentPage == 0)
 		{
 			DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
-			DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
-			DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
+			if (status != WL_CONNECTED)
+			//{
+			//	DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+			//}
+			//else
+			{
+				
+				DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
+				DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
+			}
 		}
-		// if (_webStatus == status)
-		// 	return;
-		// _webStatus = status;
-		// _graphics.SetWebStatus(status);
-		// if (_currentPage != 0)
-		// 	return;
-		// DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+		if( _currentPage == 5)
+		{
+			DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+			DrawML(WiFi.SSID().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+			DrawML(WiFi.getHostname(), COL2_P0, R3F4, COL2_P0_W, 4);
+			DrawML(WiFi.macAddress().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+		}
 	}
+
 	void SetRtkStatus(std::string status)
 	{
 		if (_webRtkStatus == status)
@@ -400,7 +406,7 @@ public:
 	void NextPage()
 	{
 		_currentPage++;
-		if (_currentPage > 5)
+		if (_currentPage > 6)
 			_currentPage = 0;
 		Serial.printf("Switch to page %d\r\n", _currentPage);
 		RefreshScreen();
@@ -432,7 +438,7 @@ public:
 		case 0:
 			_bg = 0x07eb;
 			_tft.fillScreen(_bg);
-			title = "  Network";
+			title = "  0 - Network";
 
 			DrawLabel("Wi-Fi", COL1, R1F4, 2);
 			DrawLabel("RTK", COL1, R2F4, 2);
@@ -444,12 +450,12 @@ public:
 			break;
 		case 1:
 			_tft.fillScreen(TFT_GREEN);
-			title = "  Location";
+			title = "  1 - Location";
 			break;
 		case 2:
 			_bg = 0x0961;
 			_tft.fillScreen(_bg);
-			title = "  Location offset";
+			title = "  2 - Location offset";
 			if (_isTDisplayS3)
 			{
 				_tft.setTextColor(TFT_WHITE, _bg, false);
@@ -463,28 +469,29 @@ public:
 			break;
 		case 3:
 			_tft.fillScreen(TFT_YELLOW);
-			title = "  System";
+			title = "  3 - System";
 			break;
 
 		case 4:
 			_bg = 0x07eb;
 			_tft.fillScreen(_bg);
-			title = "  Settings";
+			title = "  4 - Settings";
 
-			DrawLabel("Wi-Fi", COL1, R1F4, 2);
-			DrawLabel("RTK", COL1, R2F4, 2);
-			DrawLabel("Mount", COL1, R3F4, 2);
-			DrawLabel("Destin", COL1, R4F4, 2);
-
-//			DrawML( _ntripClient.GetAddress().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
-		//	DrawML(_ntripClient.GetPort().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
-		//	DrawML(_ntripClient.GetMountPoint().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
-		//	DrawML(_ntripClient.GetUsername().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+			_onShowNtripSettings();
 			break;
 		case 5:
+			_bg = 0xd345;
+			_tft.fillScreen(_bg);
+			title = "  5 - WIFI";
+			DrawLabel("IP", COL1, R1F4, 2);
+			DrawLabel("SSID", COL1, R2F4, 2);
+			DrawLabel("Host", COL1, R3F4, 2);
+			DrawLabel("Mac", COL1, R4F4, 2);
+			break;
+		case 6:
 			_bg = 0xa51f;
 			_tft.fillScreen(_bg);
-			title = "  Key";
+			title = "  6 - Key";
 			DrawLabel("Wi-Fi", COL1, R1F4, 2);
 			DrawLabel("GPS", COL1, R2F4, 2);
 			DrawLabel("RTK", COL1, R3F4, 2);

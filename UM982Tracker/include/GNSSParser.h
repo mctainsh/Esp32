@@ -1,5 +1,7 @@
 #pragma once
 
+#include "HandyString.h"
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Process the GNSS data from TCPIP stream. Format of the packet is
 ///		Length of body in ASCII hex

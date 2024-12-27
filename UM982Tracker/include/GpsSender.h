@@ -1,11 +1,13 @@
 #pragma once
 
 #include "HandyString.h"
-#include "CredentialPrivate.h"
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include "MyDisplay.h"
+#include "MyFiles.h"
+
+extern MyFiles _myFiles;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Send GPS data in FRI format
@@ -38,15 +40,65 @@ class GpsSender
 {
 public:
 	GpsSender(MyDisplay &display);
+	void LoadSettings();
+	void Save(const char *url, const char *deviceId);
 	void SendHttpData(double latitude, double longitude, double altitude, int satellites, int fixMode);
 	void SendTcpData(const char *ip, uint16_t port, const String &text);
+
+	inline const std::string GetUrl() const { return _sUrl; }
+	inline const std::string GetDeviceId() const { return _sDeviceId; }
 
 private:
 	MyDisplay &_display;
 	uint16_t _lastSend;
+	std::string _sUrl;
+	std::string _sDeviceId;
+	const char *SETTING_FILE = "/GpsSenderSettings.txt";
 };
 
-GpsSender::GpsSender(MyDisplay &display) : _display(display) {}
+///////////////////////////////////////////////////////////////////////////////
+// Constructor
+// LOad the settings
+GpsSender::GpsSender(MyDisplay &display) : _display(display)
+{
+}
+
+void GpsSender::LoadSettings()
+{
+	// Load default settings
+	_sUrl = "https://www.yoursite.com/api/weatherforecast/SaveLocation";
+	_sDeviceId = "McTainsh001";
+
+	// Read the server settings from the config file
+	std::string llText;
+	if (_myFiles.ReadFile(SETTING_FILE, llText))
+	{
+		Serial.printf(" - Read config '%s'\r\n", llText.c_str());
+		auto parts = Split(llText, "\n");
+		if (parts.size() > 1)
+		{
+			_sUrl = parts[0];
+			_sDeviceId = parts[1];
+			Serial.printf(" - Recovered\r\n\t URL      : %s\r\n\t DeviceId : %s\r\n", _sUrl.c_str(), _sDeviceId.c_str());
+		}
+		else
+		{
+			Serial.printf(" - E341 - Cannot read saved Server settings %s\r\n", llText.c_str());
+		}
+	}
+	else
+	{
+		Serial.printf(" - E342 - Cannot read saved Server setting %s\r\n", SETTING_FILE);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Save the setting to the file
+void GpsSender::Save(const char *url, const char *deviceId)
+{
+	std::string llText = StringPrintf("%s\n%s", url, deviceId);
+	_myFiles.WriteFile(SETTING_FILE, llText.c_str());
+}
 
 void GpsSender::SendHttpData(double latitude, double longitude, double altitude, int satellites, int fixMode)
 {
@@ -55,7 +107,7 @@ void GpsSender::SendHttpData(double latitude, double longitude, double altitude,
 		return;
 
 	// Build and send
-	std::string httpStr = StringPrintf("%s/%.9lf/%.9lf/%lf/%d/%d", SERVER_URL, longitude, latitude, altitude, satellites, fixMode);
+	std::string httpStr = StringPrintf("%s/%.9lf/%.9lf/%lf/%d/%d", _sUrl.c_str(), longitude, latitude, altitude, satellites, fixMode);
 	const char *httpBuff = httpStr.c_str();
 	if (WiFi.status() == WL_CONNECTED)
 	{

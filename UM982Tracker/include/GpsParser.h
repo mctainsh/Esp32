@@ -12,23 +12,24 @@
 
 class GpsParser
 {
-  public:
-	MyDisplay& _display;
-	GpsCommandQueue _commandQueue;
+private:
 	GpsSender _gpsSender;
-	bool _gpsConnected = false;	// Are we receiving GPS data from GPS unit (Does not mean we have location)
+	MyDisplay &_display;
+	GpsCommandQueue _commandQueue;
+	bool _gpsConnected = false; // Are we receiving GPS data from GPS unit (Does not mean we have location)
 
-	GpsParser(MyDisplay& display)  : 
-		_display(display), 
-		_gpsSender(display),
-		_commandQueue(display)
+public:
+	GpsParser(MyDisplay &display) : _display(display),
+									_gpsSender(display),
+									_commandQueue(display)
 	{
 	}
 
+	GpsSender &GetGpsSender() { return _gpsSender; }
 
 	///////////////////////////////////////////////////////////////////////////
 	// Return the number of lines
-	bool ReadDataFromSerial(Stream& stream)
+	bool ReadDataFromSerial(Stream &stream)
 	{
 		int count = 0;
 		while (stream.available() > 0)
@@ -36,7 +37,7 @@ class GpsParser
 			char ch = stream.read();
 
 			// Has the packet started?
-			//if (_buildBuffer.length() < 1 && ch != '$')
+			// if (_buildBuffer.length() < 1 && ch != '$')
 			//{
 			//	if (ch != '\r' && ch != '\n')
 			//		Serial.printf("Skipping:%c\r\n", ch);
@@ -67,7 +68,7 @@ class GpsParser
 		}
 
 		// Check for timeouts
-		if( (millis() - _timeOfLastMessage) > 5000 )
+		if ((millis() - _timeOfLastMessage) > 5000)
 		{
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
@@ -75,9 +76,10 @@ class GpsParser
 		}
 		return _gpsConnected;
 	}
-  private:
-	unsigned long _timeOfLastMessage = 0;		// Millis of last good message
-	std::string _buildBuffer;					// Buffer to make the serial packet up to LF or CR
+
+private:
+	unsigned long _timeOfLastMessage = 0; // Millis of last good message
+	std::string _buildBuffer;			  // Buffer to make the serial packet up to LF or CR
 
 	///////////////////////////////////////////////////////////////////////////
 	// Process a GPS line
@@ -85,7 +87,7 @@ class GpsParser
 	//		$GNGGA,232306.00,,,,,0,00,9999.0,,,,,,*4E
 	//		$devicename,COM1*67										// Reset response (Checksum is wrong)
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
-	void ProcessLine(const std::string& line)
+	void ProcessLine(const std::string &line)
 	{
 		if (line.length() < 1)
 		{
@@ -167,16 +169,16 @@ class GpsParser
 
 		// Height
 		double height = 0;
-		if( !IsValidDouble( parts.at(9).c_str(), &height) )
+		if (!IsValidDouble(parts.at(9).c_str(), &height))
 			height = -1;
 
 		_display.SetPosition(lng, lat, height);
 
-		//Serial.printf("\tLL %.10lf, %.10lf\r\n", lat, lng);
-		//Serial.print("\t LL ");
-		//Serial.print(lat);
-		//Serial.print(", ");
-		//Serial.println(lat);
+		// Serial.printf("\tLL %.10lf, %.10lf\r\n", lat, lng);
+		// Serial.print("\t LL ");
+		// Serial.print(lat);
+		// Serial.print(", ");
+		// Serial.println(lat);
 
 		// Satellite count
 		std::string satellites = parts.at(7);
@@ -190,12 +192,11 @@ class GpsParser
 		_gpsSender.SendHttpData(lat, lng, height, sat, nQuality);
 	}
 
-
 	///////////////////////////////////////////////////////////////////////////
 	// Parse the longitude or latitude from
 	//		Latitude   = 2734.21017577,S,
 	//		Longitude = 15305.98006651,E,
-	double ParseLatLong(const std::string& text, int degreeDigits, bool isNegative)
+	double ParseLatLong(const std::string &text, int degreeDigits, bool isNegative)
 	{
 		if (text.length() < degreeDigits)
 			return 0.0;

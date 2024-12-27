@@ -16,11 +16,8 @@
 //		#define DISABLE_ALL_LIBRARY_WARNINGS
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
-#include <SPI.h>
 
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
-// #include <WiFi.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -30,20 +27,17 @@
 #include "HandyString.h"
 #include "MyDisplay.h"
 #include "GpsParser.h"
-#include "CredentialPrivate.h"
 #include "MyFiles.h"
 #include "NTRIPClient.h"
 #include "ButtonInterrupt.h"
 #include "WebPortal.h"
-
-const char *AP_PASSWORD = "JohnTLegend";
 
 WiFiManager _wifiManager;
 WebPortal _webPortal;
 
 MyFiles _myFiles;
 NTRIPClient _ntripClient;
-MyDisplay _display;
+MyDisplay _display([](){_ntripClient.DisplaySettings();});
 GpsParser _gpsParser(_display);
 
 ButtonInterrupt _button1(BUTTON_1);
@@ -116,35 +110,35 @@ void setup(void)
 		//_myFiles.ReadFile("/hello.txt", response);
 		// Serial.println(response.c_str());
 		_ntripClient.LoadSettings();
+
+		_gpsParser.GetGpsSender().LoadSettings();
 	}
 
 	// Setup the WIFI
 	LogI(tft, "WIFI Setup\r\n");
-	WiFi.setHostname(MakeHostName().c_str());
+	auto hostname = MakeHostName();
+	WiFi.setHostname(hostname.c_str());
+	_wifiManager.setHostname(hostname.c_str());
 	LogI(tft, StringPrintf("Host : %s\r\n", WiFi.getHostname()).c_str());
 	LogI(tft, "IP : 192.168.4.1\r\n");
 	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
 	//_wifiManager.erase();
 
 	// Block and wait till we are connected
-	auto res = _wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+	auto res = _wifiManager.autoConnect(hostname.c_str(), AP_PASSWORD);
 	if (!res)
 		LogI(tft, "Failed to start config Portal (Maybe cos non-blocked)\r\n");
 	else
 		LogI(tft, "WIFI Connected. Please wait..\r\n");
-
-	//_wifiManager.setConfigPortalTimeout(0);
-	//_wifiManager.setConfigPortalBlocking(false);
-	//_wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
 
 	// Setup the display
 	LogI(tft, "Setup display\r\n");
 	_display.Setup();
 
 	Serial.println("Setup Web Portal");
-	_webPortal.Setup();
+	_webPortal.Setup(hostname.c_str());
 
-	Serial.println("Startup Complete");
+	Serial.printf("Startup Complete. Connected to %s\r\n", WiFi.SSID().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -261,9 +255,10 @@ bool IsWifiConnected()
 /// @brief Maker a unique host name based on the MAC address with Rtk prefix
 String MakeHostName()
 {
+	//return WiFi.getHostname();
 	auto mac = WiFi.macAddress();
 	mac.replace(":", "");
-	return "RtkTrk_" + mac;
+	return "RT_" + mac;
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file

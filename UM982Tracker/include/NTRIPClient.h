@@ -18,10 +18,8 @@ private:
 	WiFiClient _client;
 	uint16_t _wifiConnectTime = 0;			// Time we last had good data to prevent reconnects too fast
 	byte _pSocketBuffer[SOCKET_BUFFER_MAX]; // Build buffer
-	//MyDisplay &_display;					// Display for updating packet count
 	GNSSParser _gnssParser;					// Parser for extracting RTK
 	bool _wasConnected = false;				// Was connected last time
-	//MyFiles _myFiles;						// File system for saving settings
 	bool _firstPacketAfterConnect = true;	// Dump the first packet after connect
 
 	std::string _sAddress;
@@ -31,10 +29,8 @@ private:
 	std::string _sPassword;
 
 	const char *SETTING_FILE = "/NtripClientSettings.txt";
+
 public:
-//	NTRIPClient(MyDisplay &display) : _display(display)
-//	{
-//	}
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Load the configurations if they exist
@@ -43,15 +39,15 @@ public:
 		// Load default settings
 		_sAddress = "ntrip.data.gnss.ga.gov.au";
 		_port = 2101;
-		_sMountPoint = "CLEV00AUS0";	
+		_sMountPoint = "CLEV00AUS0";
 		_sUsername = "mctainsh";
-		_sPassword = "";	
+		_sPassword = "";
 
 		// Read the server settings from the config file
 		std::string llText;
 		if (_myFiles.ReadFile(SETTING_FILE, llText))
 		{
-			//LogX(StringPrintf(" - Read config '%s'", llText.c_str()));
+			// LogX(StringPrintf(" - Read config '%s'", llText.c_str()));
 			auto parts = Split(llText, "\n");
 			if (parts.size() > 4)
 			{
@@ -61,16 +57,16 @@ public:
 				_sUsername = parts[3];
 				_sPassword = parts[4];
 				Serial.printf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mount    : %s\r\n\t User     : %s\r\n\t Pass     : %s\r\n", _sAddress.c_str(), _port, _sMountPoint.c_str(), _sUsername.c_str(), _sPassword.c_str());
-				//LogX(StringPrintf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mid/Cred : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
+				// LogX(StringPrintf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mid/Cred : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
 			}
 			else
 			{
-				//LogX(StringPrintf(" - E341 - Cannot read saved Server settings %s", llText.c_str()));
+				// LogX(StringPrintf(" - E341 - Cannot read saved Server settings %s", llText.c_str()));
 			}
 		}
 		else
 		{
-			//LogX(StringPrintf(" - E342 - Cannot read saved Server setting %s", fileName.c_str()));
+			// LogX(StringPrintf(" - E342 - Cannot read saved Server setting %s", fileName.c_str()));
 		}
 	}
 
@@ -94,10 +90,9 @@ public:
 				buffSize = SOCKET_BUFFER_MAX;
 			_client.read(_pSocketBuffer, buffSize);
 
-
 			// Testing dump text
-			if( _firstPacketAfterConnect )
-			{ 
+			if (_firstPacketAfterConnect)
+			{
 				_firstPacketAfterConnect = false;
 				std::string built;
 				for (int n = 0; n < buffSize; n++)
@@ -120,6 +115,21 @@ public:
 		}
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+	// Called when the NTRIP settings page is to be displayed
+	void DisplaySettings()
+	{
+		_display.DrawLabel("Wi-Fi", COL1, R1F4, 2);
+		_display.DrawLabel("RTK", COL1, R2F4, 2);
+		_display.DrawLabel("Mount", COL1, R3F4, 2);
+		_display.DrawLabel("Destin", COL1, R4F4, 2);
+
+		_display.DrawML(GetAddress().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		_display.DrawML(GetPort().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		_display.DrawML(GetMountPoint().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
+		_display.DrawML(GetUsername().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+	}
+
 	inline const std::string GetAddress() const { return _sAddress; }
 	inline const std::string GetPort() const { return std::to_string(_port); }
 	inline const std::string GetMountPoint() const { return _sMountPoint; }
@@ -128,13 +138,14 @@ public:
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Save the setting to the file
-	void Save(const char *address, const char *port, const char *mountPoint, const char* username, const char *password)
+	void Save(const char *address, const char *port, const char *mountPoint, const char *username, const char *password)
 	{
 		std::string llText = StringPrintf("%s\n%s\n%s\n%s\n%s", address, port, mountPoint, username, password);
 		_myFiles.WriteFile(SETTING_FILE, llText.c_str());
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
+	// Reconnect to the NTRIP server
 	void Reconnect()
 	{
 		// Limit how soon the connection is retried
@@ -159,20 +170,20 @@ public:
 
 		// Add credentials
 		size_t output_length;
-		const char* userNamePassword = ( _sUsername + ":" + _sPassword ).c_str();
+		const char *userNamePassword = (_sUsername + ":" + _sPassword).c_str();
 		Serial.println("*******************************************************************");
 		Serial.println("*******************************************************************");
-		Serial.printf("'%s'\r\n",userNamePassword);
+		Serial.printf("'%s'\r\n", userNamePassword);
 		Serial.println("*******************************************************************");
 		Serial.println("*******************************************************************");
-		const unsigned char* u_str = reinterpret_cast<const unsigned char*>(userNamePassword);
-		//char *bearer = Base64Encode((const unsigned char *)u_str, strlen(userNamePassword), &output_length);
+		const unsigned char *u_str = reinterpret_cast<const unsigned char *>(userNamePassword);
+		// char *bearer = Base64Encode((const unsigned char *)u_str, strlen(userNamePassword), &output_length);
 		auto bearer = Base64Encode(userNamePassword);
-		Serial.printf("Bearer '%s'\r\n",bearer.c_str());
+		Serial.printf("Bearer '%s'\r\n", bearer.c_str());
 		if (bearer.length() > 0)
 		{
-			_client.write(("Authorization: Basic "+bearer+"\r\n").c_str());
-			//free(bearer);
+			_client.write(("Authorization: Basic " + bearer + "\r\n").c_str());
+			// free(bearer);
 		}
 		else
 		{

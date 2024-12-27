@@ -1,6 +1,10 @@
-#pragma once
+#ifndef GLOBAL_H
+#define GLOBAL_H
 
-#define APP_VERSION "1.138"
+#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
+#include <SPI.h>
+
+#define APP_VERSION "1.158"
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
@@ -19,3 +23,7 @@
 
 #define SCR_W TFT_HEIGHT
 #define SCR_H TFT_WIDTH
+
+const char *AP_PASSWORD = "JohnTLegend";
+
+#endif // GLOBAL_H
