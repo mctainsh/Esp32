@@ -4,7 +4,7 @@
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
 
-#define APP_VERSION "1.158"
+#define APP_VERSION "1.168"
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25

@@ -492,14 +492,14 @@ public:
 			_bg = 0xa51f;
 			_tft.fillScreen(_bg);
 			title = "  6 - Key";
-			DrawLabel("Wi-Fi", COL1, R1F4, 2);
-			DrawLabel("GPS", COL1, R2F4, 2);
-			DrawLabel("RTK", COL1, R3F4, 2);
-			DrawLabel("TX", COL1, R4F4, 2);
 			DrawKeyLine(R1F4, 4);
 			DrawKeyLine(R2F4, 3);
 			DrawKeyLine(R3F4, 2);
 			DrawKeyLine(R4F4, 1);
+			DrawLabel("Wi-Fi", COL1, R1F4, 4);
+			DrawLabel("GPS", COL1, R2F4, 4);
+			DrawLabel("RTK", COL1, R3F4, 4);
+			DrawLabel("TX", COL1, R4F4, 4);
 		}
 		DrawML(title, 20, 0, 200, 2);
 
