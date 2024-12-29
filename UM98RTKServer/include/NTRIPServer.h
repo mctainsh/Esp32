@@ -49,7 +49,7 @@ private:
 	int _port;
 	std::string _sCredential;
 	std::string _sPassword;
-
+ 
 	void ConnectedProcessing(const byte *pBytes, int length);
 	void ConnectedProcessingSend(const byte *pBytes, int length);
 	void ConnectedProcessingReceive();

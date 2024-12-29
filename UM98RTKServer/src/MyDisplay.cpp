@@ -38,8 +38,6 @@
 #define COL3_P4 190
 #define COL_W_P4 128
 
-#define SAVE_LNG_LAT_FILE "/SavedLatLng.txt"
-
 extern MyFiles _myFiles;
 extern NTRIPServer _ntripServer0;
 extern NTRIPServer _ntripServer1;
@@ -137,7 +135,7 @@ void MyDisplay::ActionButton()
 void MyDisplay::NextPage()
 {
 	_currentPage++;
-	if (_currentPage > 6)
+	if (_currentPage > 7)
 		_currentPage = 0;
 	Logf("Switch to page %d", _currentPage);
 	RefreshScreen();
@@ -156,12 +154,12 @@ void MyDisplay::RefreshWiFiState()
 	else
 	{
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
-		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);		
-		DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);		
+		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
+		DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
 	}
 }
 
-NTRIPServer* GetServer(int index)
+NTRIPServer *GetServer(int index)
 {
 	switch (index)
 	{
@@ -178,7 +176,7 @@ NTRIPServer* GetServer(int index)
 // Refresh the RTK server status (Only display first two servers)
 void MyDisplay::RefreshRtk(int index)
 {
-	auto pServer = GetServer( index );
+	auto pServer = GetServer(index);
 	_graphics.SetRtkStatus(index, pServer->GetStatus());
 
 	if (_currentPage != 1 || index > 1)
@@ -195,7 +193,7 @@ void MyDisplay::RefreshRtkLog()
 {
 	if (4 > _currentPage || _currentPage > 6)
 		return;
-	NTRIPServer *pServer = GetServer(_currentPage-4);	
+	NTRIPServer *pServer = GetServer(_currentPage - 4);
 	RefreshLog(pServer->GetLogHistory());
 }
 void MyDisplay::RefreshGpsLog()
@@ -245,7 +243,7 @@ void MyDisplay::RefreshScreen()
 		_bg = 0x07eb;
 		_fg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = "  General";
+		title = "  0 - General";
 
 		DrawLabel("Wi-Fi", COL1, R1F4, 2);
 		DrawLabel("Version", COL1, R2F4, 2);
@@ -259,7 +257,7 @@ void MyDisplay::RefreshScreen()
 		_bg = TFT_ORANGE;
 		_fg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = "  RTK Server";
+		title = "  1 - RTK Server";
 		DrawLabel("State", COL1, R1F4, 2);
 		DrawLabel("Reconnects", COL1, R2F4, 2);
 		DrawLabel("Sends", COL1, R3F4, 2);
@@ -268,7 +266,7 @@ void MyDisplay::RefreshScreen()
 	case 2:
 		_bg = TFT_RED;
 		_tft.fillScreen(_bg);
-		title = "  GPS State";
+		title = "  2 - GPS State";
 
 		DrawLabel("Type", COL1, R1F4, 2);
 		DrawLabel("Resets", COL1, R2F4, 2);
@@ -285,27 +283,42 @@ void MyDisplay::RefreshScreen()
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
 		_tft.fillScreen(TFT_BLACK);
-		title = "  GPS Log";
+		title = "  3 - GPS Log";
 		break;
 
 	case 4:
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
 		_tft.fillScreen(TFT_BLACK);
-		title = StringPrintf("  1 - %s", _ntripServer0.GetAddress().c_str()).c_str();
+		title = StringPrintf("  4 - %s", _ntripServer0.GetAddress().c_str()).c_str();
 		break;
 
 	case 5:
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = StringPrintf("  2 - %s", _ntripServer1.GetAddress().c_str()).c_str();
+		title = StringPrintf("  5 - %s", _ntripServer1.GetAddress().c_str()).c_str();
 		break;
 
 	case 6:
 		_bg = TFT_BLACK;
 		_tft.fillScreen(_bg);
-		title = StringPrintf("  3 - %s", _ntripServer2.GetAddress().c_str()).c_str();
+		title = StringPrintf("  6 - %s", _ntripServer2.GetAddress().c_str()).c_str();
 		break;
+	case 7:
+		_bg = 0xa51f;
+		_fg = TFT_BLACK;
+		_tft.fillScreen(_bg);
+		title = "  6 - Key";
+		DrawKeyLine(R1F4, 4);
+		DrawKeyLine(R2F4, 3);
+		DrawKeyLine(R3F4, 2);
+		DrawKeyLine(R4F4, 1);
+		DrawKeyLine(R5F4, 0);
+		DrawLabel("Wi-Fi", COL1, R1F4, 4);
+		DrawLabel("GPS", COL1, R2F4, 4);
+		DrawLabel("RTK Server 1 ", COL1, R3F4, 4);
+		DrawLabel("RTK Server 3 ", COL1, R5F4, 4);
+		DrawLabel("RTK Server 2 ", COL1, R4F4, 4);
 	}
 	DrawML(title, 20, 0, 200, 2);
 
@@ -334,7 +347,7 @@ void MyDisplay::SetValue(int page, T n, T *pMember, int32_t x, int32_t y, int wi
 
 	if (page != _currentPage)
 		return;
-	
+
 	std::string text;
 	if (std::is_same<T, int>::value)
 	{
@@ -358,6 +371,16 @@ void MyDisplay::SetValueFormatted(int page, T n, T *pMember, const std::string t
 	if (_currentPage != page)
 		return;
 	DrawCell(text.c_str(), x, y, width, font);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Draw line from text to top row tick position
+void MyDisplay::DrawKeyLine(int y, int tick)
+{
+	y += 10;
+	int box = TFT_HEIGHT - (SPACE * tick) - CW / 2;
+	_tft.drawLine(50, y, box, y, TFT_BLACK);
+	_tft.drawLine(box, y, box, CH, TFT_BLACK);
 }
 
 ///////////////////////////////////////////////////////////////////////////

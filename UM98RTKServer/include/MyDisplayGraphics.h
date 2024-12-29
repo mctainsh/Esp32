@@ -84,14 +84,14 @@ public:
 	// Wi-Fi Status indicator
 	void SetWebStatus(wl_status_t status)
 	{
-		DrawBoxTick(WX - 0*SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
+		DrawBoxTick(WX - 4*SPACE - CW, 0, status == wl_status_t::WL_CONNECTED);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
 	// GPS connected status
 	void SetGpsConnected(bool connected)
 	{
-		DrawBoxTick(WX - 1*SPACE - CW, 0, connected);
+		DrawBoxTick(WX - 3*SPACE - CW, 0, connected);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -100,11 +100,11 @@ public:
 	{
 		if( StartsWith(status,"Disabled") )
 		{
-			DrawBoxN_A(WX - (index+2)*SPACE - CW, 0);
+			DrawBoxN_A(WX - (2-index)*SPACE - CW, 0);
 			return;
 		}
 		bool connected = StartsWith(status, "Conn");
-		DrawBoxTick(WX - (index+2)*SPACE - CW, 0, connected);
+		DrawBoxTick(WX - (2-index)*SPACE - CW, 0, connected);
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////

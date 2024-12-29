@@ -144,6 +144,7 @@ public:
 			_strings.push_back("rtcm1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
 			_strings.push_back("rtcm1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
 			_strings.push_back("rtcm1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+			_strings.push_back("rtcm1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 		}
 		else
 		{
