@@ -149,6 +149,16 @@ public:
 		else
 		{
 			_display.UpdateGpsStarts(true, false);
+
+			// Stop everything
+			_strings.push_back("rtcm1005 600"); // Base station antenna reference point (ARP) coordinates
+			_strings.push_back("rtcm1033 600"); // Receiver and antenna description
+			_strings.push_back("rtcm1077 600");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
+			_strings.push_back("rtcm1087 600");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
+			_strings.push_back("rtcm1097 600");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
+			_strings.push_back("rtcm1117 600");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
+			_strings.push_back("rtcm1127 600");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+			_strings.push_back("rtcm1137 600");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 			_strings.push_back("freset");
 		}
 
