@@ -10,12 +10,27 @@
 #include "NTRIPServer.h"
 #include "Global.h"
 
+// Note : Max RTK packet size id 1029 bytes
+#define MAX_BUFF 1200
+
 class GpsParser
 {
+	// The state of the build
+	enum BuildState
+	{
+		BuildStateNone,
+		BuildStateBinaryPre1,
+		BuildStateBinaryPre2,
+		BuildStateBinary,
+		BuildStateAscii
+	};
 private:
 	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
 	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
+	char _byteArray[MAX_BUFF];				 // Buffer to hold the binary data
+	int _binaryIndex = 0;					 // Index of the binary data
 	std::vector<std::string> _logHistory;	 // Last few log messages
+	BuildState _buildState = BuildStateNone;	// Where we are with the build of a packet
 public:
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
@@ -126,6 +141,103 @@ public:
 		return _gpsConnected;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	// Read the latest GPS data and check for timeouts
+	void ProcessStreamBeforeConnected(Stream &stream)
+	{
+		// Loop through the entire data
+		char ch = '\0';
+		while (stream.available() > 0)
+		{
+			ch = stream.read();
+			switch (_buildState)
+			{
+				// Check for start character
+				case BuildStateNone:
+					if( ch == '$' || ch == '#' )
+					{
+						_buildBuffer.clear();
+						_buildBuffer += ch;
+					_buildState = BuildStateAscii;
+					}
+					else if( ch == 0xAA )
+					{
+						_buildState = BuildStateBinaryPre1;
+					}
+					break;					
+				// Binary second header byte
+				case BuildStateBinaryPre1:
+					{
+						if( ch == 0x44 )
+						{
+							_buildState = BuildStateBinaryPre2;
+						}
+						else
+						{
+							_buildState = BuildStateNone;
+						}
+						break;
+					}
+				// Binary third header byte
+				case BuildStateBinaryPre2:
+					{
+						if( ch == 0xB5 )
+						{
+							_buildState = BuildStateBinary;
+							_binaryIndex = 0;
+						}
+						else
+						{
+							_buildState = BuildStateNone;
+						}
+						break;
+					}
+
+				// Work the binary buffer
+				case BuildStateBinary:
+					{
+						_byteArray[_binaryIndex++] = ch;
+						if (_binaryIndex >= MAX_BUFF)
+						{
+							// Dump as HEX
+							LogX("Buffer overflow");
+							_binaryIndex = 0;
+							_buildState = BuildStateNone;
+						}
+						break;
+					}
+
+				// Plain text processing	
+				case BuildStateAscii:
+					{
+						// The line complete
+						if (ch == '\r' || ch == '\n')
+						{
+							if (_buildBuffer.length() < 1)
+								break;
+							ProcessLine(_buildBuffer);
+							_buildBuffer.clear();
+							_buildState = BuildStateNone;
+							break;
+						}
+
+						// Is the line too long
+						if (_buildBuffer.length() > 254)
+						{
+							LogX(StringPrintf("Overflowing %s\r\n", _buildBuffer.c_str()));
+							_buildBuffer.clear();
+							_buildState = BuildStateNone;
+							break;
+						}
+
+						// Build the buffer
+						_buildBuffer += ch;
+						break;
+				}		
+			}
+		}
+	}		
+		
 	///////////////////////////////////////////////////////////////////////////
 	// Check if the byte array is all ASCII
 	static bool IsAllAscii(const byte *pBytes, int length)
