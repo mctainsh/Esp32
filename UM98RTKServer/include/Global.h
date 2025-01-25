@@ -15,8 +15,8 @@
 	#define DISPLAY_POWER_PIN 15
 #endif
 
-#define MAX_LOG_LENGTH (100)
+#define MAX_LOG_LENGTH (500)
 
 #define RTK_SERVERS 3
 
-#define APP_VERSION "1.85.3"
+#define APP_VERSION "1.86.7"

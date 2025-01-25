@@ -8,6 +8,7 @@
 #include <WiFi.h>
 
 #include "HandyLog.h"
+#include "HandyString.h"
 
 bool StartsWith(const std::string &fullString, const std::string &startString)
 {
@@ -50,6 +51,18 @@ std::string ToThousands(int number)
 	// ss.imbue(std::locale("en_US.UTF-8"));
 	//	 ss << std::fixed << number;
 	// return ss.str();
+}
+
+///////////////////////////////////////////////////////////////////////////
+/// @brief Convert a array of bytes to string of hex numbers
+std::string HexDump( const unsigned char *data, int len )
+{
+	std::string hex;
+	for (int n = 0; n < len; n++)
+	{
+		hex += StringPrintf("%02x ", data[n]);
+	}
+	return hex;
 }
 
 ///////////////////////////////////////////////////////////////////////////

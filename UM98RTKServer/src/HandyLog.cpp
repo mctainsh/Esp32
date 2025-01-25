@@ -17,15 +17,12 @@ std::string Uptime(unsigned long millis)
 	return uptime;
 }
 
-//void Log(const char *msg)
-//{
-//	Serial.print(AddToLog(msg).c_str());
-//}
-
-void Logln(const char *msg)
+std::string Logln(const char *msg)
 {
-	Serial.print(AddToLog(msg).c_str());
+	auto s = AddToLog(msg);
+	Serial.print(s.c_str());
 	Serial.print("\r\n");
+	return s;
 }
 
 std::string AddToLog(const char *msg)
