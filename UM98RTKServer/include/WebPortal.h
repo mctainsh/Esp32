@@ -291,6 +291,7 @@ void TableRow(std::string &html, int indent, const std::string &name, int32_t va
 
 void ServerStatsHtml(NTRIPServer &server, std::string &html)
 {
+	html += "<td><Table>";
 	TableRow(html, 2, "Address", server.GetAddress());
 	TableRow(html, 3, "Port", server.GetPort());
 	TableRow(html, 3, "Credential", server.GetCredential());
@@ -298,6 +299,7 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "Reconnects", server.GetReconnects());
 	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
 	TableRow(html, 3, "Speed (Mbps)", server.AverageSendTime());
+	html += "</td></Table>";
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -365,10 +367,15 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Reinitialize count", reinitialize);
 	TableRow(html, 1, "Packet count", packetCount);
 
-	TableRow(html, 0, "Caster outputs", "");
+	TableRow(html, 0, "Message counts", "");
+	for (const auto &pair : _gpsParser.GetMsgTypeTotals())
+		TableRow(html, 1, std::to_string(pair.first), pair.second);
+
+	html += "<Table><tr>";
 	ServerStatsHtml(_ntripServer0, html);
 	ServerStatsHtml(_ntripServer1, html);
 	ServerStatsHtml(_ntripServer2, html);
+	html += "</tr></Table>";
 
 	//	TableRow(html,"", );
 	html += "</table></body>";

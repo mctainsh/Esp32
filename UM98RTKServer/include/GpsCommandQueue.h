@@ -139,29 +139,29 @@ public:
 			// Setup RTCM V3
 			_strings.push_back("version"); // Used to determine device type
 			//_strings.push_back("MODE BASE TIME 60 5"); // Set base mode with 60 second startup and 5m optimized save error
-			_strings.push_back("rtcm1005 30"); // Base station antenna reference point (ARP) coordinates
-			_strings.push_back("rtcm1033 30"); // Receiver and antenna description
-			_strings.push_back("rtcm1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-			_strings.push_back("rtcm1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-			_strings.push_back("rtcm1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-			_strings.push_back("rtcm1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-			_strings.push_back("rtcm1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-			_strings.push_back("rtcm1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
+			_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
+			_strings.push_back("RTCM1033 30"); // Receiver and antenna description
+			_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
+			_strings.push_back("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
+			_strings.push_back("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
+			_strings.push_back("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
+			_strings.push_back("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+			_strings.push_back("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 		}
 		else
 		{
 			_display.UpdateGpsStarts(true, false);
 
 			// Stop everything
-			_strings.push_back("freset");
-			//_strings.push_back("rtcm1005 600"); // Base station antenna reference point (ARP) coordinates
-			//_strings.push_back("rtcm1033 600"); // Receiver and antenna description
-			//_strings.push_back("rtcm1077 600");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-			//_strings.push_back("rtcm1087 600");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-			//_strings.push_back("rtcm1097 600");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-			//_strings.push_back("rtcm1117 600");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-			//_strings.push_back("rtcm1127 600");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-			//_strings.push_back("rtcm1137 600");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
+			_strings.push_back("FRESET");
+			//_strings.push_back("RTCM1005 600"); // Base station antenna reference point (ARP) coordinates
+			//_strings.push_back("RTCM1033 600"); // Receiver and antenna description
+			//_strings.push_back("RTCM1077 600");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
+			//_strings.push_back("RTCM1087 600");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
+			//_strings.push_back("RTCM1097 600");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
+			//_strings.push_back("RTCM1117 600");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
+			//_strings.push_back("RTCM1127 600");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+			//_strings.push_back("RTCM1137 600");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 		}
 
 		SendTopCommand();
@@ -189,7 +189,6 @@ public:
 		if (_strings.empty())
 			return;
 		_logToGps("GPS -> " + _strings.front());
-		//Logf("GPS -> '%s'", _strings.front().c_str());
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
