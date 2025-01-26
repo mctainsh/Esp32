@@ -180,11 +180,11 @@ int NTRIPServer::AverageSendTime()
 // Write to the debug log and keep the last few messages for display
 void NTRIPServer::LogX(std::string text)
 {
-	Logln(text.c_str());
-	_logHistory.push_back(StringPrintf("%d %s", millis(), text.c_str()));
-	if (_logHistory.size() > 15)
+	auto s = Logln(text.c_str());
+	_logHistory.push_back(s);
+	if (_logHistory.size() > 100)
 		_logHistory.erase(_logHistory.begin());
-	_display.RefreshRtkLog();
+	_display.RefreshGpsLog();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

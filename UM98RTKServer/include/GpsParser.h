@@ -13,7 +13,7 @@
 // Note : Max RTK packet size id 1029 bytes
 #define MAX_BUFF 1200
 
-static const unsigned int tbl_CRC24Q[] = {
+const static unsigned int tbl_CRC24Q[] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
 	0xA18139, 0x27CDC2, 0x2B5434, 0xAD18CF, 0x3267D8, 0xB42B23, 0xB8B2D5, 0x3EFE2E,
 	0xC54E89, 0x430272, 0x4F9B84, 0xC9D77F, 0x56A868, 0xD0E493, 0xDC7D65, 0x5A319E,
@@ -53,26 +53,28 @@ class GpsParser
 	enum BuildState
 	{
 		BuildStateNone,
-		BuildStateBinaryPre1,
-		BuildStateBinaryPre2,
 		BuildStateBinary,
 		BuildStateAscii
 	};
 
 private:
 	unsigned long _timeOfLastMessage = 0;	 // Millis of last good message
-	std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
+	//std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
 	unsigned char _byteArray[MAX_BUFF + 1];	 // Buffer to hold the binary data
 	int _binaryIndex = 0;					 // Index of the binary data
 	int _binaryLength = 0;					 // Length of the binary packet
 	std::vector<std::string> _logHistory;	 // Last few log messages
 	BuildState _buildState = BuildStateNone; // Where we are with the build of a packet
+
+	unsigned char _skippedArray[MAX_BUFF + 1];
+	int _skippedIndex = 0;
+
 public:
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
 	bool _gpsConnected = false; // Are we receiving GPS data from GPS unit (Does not mean we have location)
 
-	GpsParser(MyDisplay &display) : _display(display)
+	GpsParser(MyDisplay &display) : _display(display), _commandQueue([this](std::string str) { LogX(str); })
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
 	}
@@ -115,7 +117,7 @@ public:
 				}
 
 				// Process the binary data
-				_buildBuffer.clear();
+				//_buildBuffer.clear();
 				_gpsConnected = true;
 
 				auto bytes = byteArray.get();
@@ -126,7 +128,7 @@ public:
 				ntripServer2.Loop(bytes, available);
 
 				// Process the binary data (Npot important for data but handy for stats)
-				//for (int n = 0; n < available; n++)
+				// for (int n = 0; n < available; n++)
 				//	ProcessGpsSerialByte(bytes[n]);
 
 				_timeOfLastMessage = millis();
@@ -155,18 +157,35 @@ public:
 	// Read the latest GPS data and check for timeouts
 	void ProcessStreamBeforeConnected(Stream &stream)
 	{
-		char ch = '\0';
-		while (stream.available() > 0)
-		{
-			ch = stream.read();
-			ProcessGpsSerialByte(ch);
-		}
-	}
+		int available = stream.available();
+		if (available < 1)
+			return;
 
+		// Limit the number of bytes we read
+		available = min(available, 100);
+
+		// Read the available bytes from stream
+		// TODO Just use a single buffer over and over
+		std::unique_ptr<byte[]> byteArray(new byte[available + 1]);
+		stream.readBytes(byteArray.get(), available);
+
+
+
+		for (int n = 0; n < available; n++)
+			ProcessGpsSerialByte(byteArray[n]);
+
+		//		char ch = '\0';
+		//		while (stream.available() > 0)
+		//		{
+		//			ch = stream.read();
+		//			ProcessGpsSerialByte(ch);
+		//		}
+	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Process a new character from the GPS unit
-	void ProcessGpsSerialByte(char ch)
+	// @return true if buffer building good
+	bool ProcessGpsSerialByte(char ch)
 	{
 		switch (_buildState)
 		{
@@ -176,51 +195,63 @@ public:
 			{
 			case '$':
 			case '#':
-				LogX("Build ASCII");
-				_buildBuffer.clear();
-				_buildBuffer += ch;
-				_buildState = BuildStateAscii;
-				break;
-			case 0x0a:
-				break;
-			case 0xD3:
-				LogX("Build BINARY");
-				_buildState = BuildStateBinary;
-				_binaryLength = 0;
-				//_binaryIndex = 0;
+				//LogX("Build ASCII");
+				//_buildBuffer.clear();
+				//_buildBuffer += ch;
+
 				_binaryIndex = 1;
 				_byteArray[0] = ch;
-				break;
+
+
+				_buildState = BuildStateAscii;
+				return true;
+			case 0x0a:
+				return true;
+			case 0xD3:
+				//LogX("Build BINARY");
+				_buildState = BuildStateBinary;
+				_binaryLength = 0;
+				_binaryIndex = 1;
+				_byteArray[0] = ch;
+				return true;
 			default:
-				LogX(StringPrintf("Skip '%c', 0x%02x", ch, ch));
-				break;
+				AddToSkipped(ch);
+				return true;
 			}
-			break;
 
 		// Work the binary buffer
 		case BuildStateBinary:
-			BuildBinary(ch);
-			break;
+			return BuildBinary(ch);
 
 		// Plain text processing
 		case BuildStateAscii:
-			BuildAscii(ch);
-			break;
+			return BuildAscii(ch);
 		default:
+			AddToSkipped(ch);
 			LogX(StringPrintf("Unknown state %d", _buildState));
 			_buildState = BuildStateNone;
-			break;
+			return true;
 		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////
+	// Add to buffer of skipped data
+	void AddToSkipped(char ch)
+	{
+		if (_skippedIndex >= MAX_BUFF)
+			LogX("Skip buffer overflowed");
+		_skippedArray[_skippedIndex++] = ch;
+	}
+
+	///////////////////////////////////////////////////////////////////////////
 	// Process a new byte in binary format
-	void BuildBinary(char ch)
+	// @return true if buffer building good
+	bool BuildBinary(char ch)
 	{
 		_byteArray[_binaryIndex++] = ch;
 
 		if (_binaryIndex < 4)
-			return;
+			return true;
 
 		// Extract length
 		if (_binaryLength == 0 && _binaryIndex >= 4)
@@ -230,24 +261,24 @@ public:
 			{
 				LogX(StringPrintf("Binary length prefix too big %02xh %02xh", _byteArray[1], _byteArray[2]));
 				DumpBinaryBufferFalseStart();
-				return;
+				return false;
 			}
 			_binaryLength = GetUInt(14, 10) + 6;
 			if (_binaryLength >= MAX_BUFF)
 			{
 				LogX(StringPrintf("Binary length too big %d", _binaryLength));
 				DumpBinaryBufferFalseStart();
-				return;
+				return false;
 			}
-			LogX(StringPrintf("Buffer length %d", _binaryLength));
-			return;
+			//LogX(StringPrintf("Buffer length %d", _binaryLength));
+			return true;
 		}
 		if (_binaryIndex >= MAX_BUFF)
 		{
 			// Dump as HEX
 			LogX(StringPrintf("Buffer overflow %d", _binaryIndex));
 			DumpBinaryBufferFalseStart();
-			return;
+			return false;
 		}
 
 		// Have we got the full buffer
@@ -260,50 +291,51 @@ public:
 			{
 				LogX(StringPrintf("Checksum failed %d != %d", parity, calculated));
 				DumpBinaryBufferFalseStart();
-				return;
+				return false;
 			}
 
 			auto type = GetUInt(24, 12);
-			LogX(StringPrintf("Type %d -> %s", type, HexDump(_byteArray, _binaryIndex).c_str()));
+			LogX(StringPrintf("GOOD %d (%d)", type, _binaryLength));
 			_buildState = BuildStateNone;
 		}
+		return true;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Build the ASCII buffer
-	void BuildAscii(char ch)
+	// @return true if buffer building good
+	bool BuildAscii(char ch)
 	{
 		// The line complete
 		if (ch == '\r' || ch == '\n')
 		{
-			if (_buildBuffer.length() < 1)
-				return;
-			ProcessLine(_buildBuffer);
-			_buildBuffer.clear();
+			// Make byte array null terminated
+			_byteArray[_binaryIndex] = 0;
+			ProcessLine((const char *)_byteArray);
 			_buildState = BuildStateNone;
-			return;
+			return true;
 		}
 
 		// Is the line too long
-		if (_buildBuffer.length() > 254)
+		if (_binaryIndex > 254)
 		{
-			LogX(StringPrintf("Overflowing %s\r\n", _buildBuffer.c_str()));
-			_buildBuffer.clear();
+			LogX(StringPrintf("Overflowing \r\n%s", HexAsciDump(_byteArray, _binaryIndex).c_str()));
+			//_buildBuffer.clear();
 			_buildState = BuildStateNone;
-			return;
+			return false;
 		}
+
+		// Append to the build the buffer
+		_byteArray[_binaryIndex++] = ch;
 
 		// Check for non ascii characters
 		if (ch < 32 || ch > 126)
 		{
-			LogX(StringPrintf("Non-ASCII 0x%02x '%c' in %s", ch, ch, _buildBuffer.c_str()));
-			_buildBuffer.clear();
+			LogX(StringPrintf("Non-ASCII \r\n%s", HexAsciDump(_byteArray, _binaryIndex).c_str()));
 			_buildState = BuildStateNone;
-			return;
+			return false;
 		}
-
-		// Append to the build the buffer
-		_buildBuffer += ch;
+		return true;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -311,24 +343,25 @@ public:
 	// WARNING : This is a recursive function and could cause a stack overflow
 	void DumpBinaryBufferFalseStart()
 	{
-		LogX(StringPrintf("Dump IN '%s'", HexDump(_byteArray, _binaryIndex).c_str()));
+		LogX(StringPrintf("Dump IN \r\n%s", HexDump(_byteArray, _binaryIndex).c_str()));
 		_buildState = BuildStateNone;
 
 		// Find next D3 in the buffer
 		for (int n = 1; n < _binaryIndex; n++)
 		{
 			if (_byteArray[n] != 0xD3)
-			{
-				LogX(StringPrintf("Dump '%c', 0x%02x", _byteArray[n], _byteArray[n]));
 				continue;
-			}
+
+			// Found a new start (Dump skipped data)
+			if (n > 1)
+				LogX(StringPrintf("DUMPED\r\n%s", HexAsciDump(_byteArray, n).c_str()));
 
 			// Copy the buffer to the start
 			int newLength = _binaryIndex - n;
 			memmove(_byteArray, _byteArray + n, newLength);
 			_binaryIndex = newLength;
 			_binaryLength = 0;
-			LogX(StringPrintf("Dump OUT '%s'", HexDump(_byteArray, _binaryIndex).c_str()));
+			LogX(StringPrintf("Dump OUT\r\n%s", HexDump(_byteArray, _binaryIndex).c_str()));
 			_buildState = BuildStateBinary;
 			return;
 		}
@@ -399,10 +432,19 @@ public:
 		_commandQueue.CheckForVersion(line);
 	}
 
+private:
 	///////////////////////////////////////////////////////////////////////////////
 	// Write to the debug log and keep the last few messages for display
 	void LogX(std::string text)
 	{
+		// Dump any skipped data
+		if (_skippedIndex > 0)
+		{
+			_logHistory.push_back(StringPrintf("Skipped \r\n%s", HexDump(_skippedArray, _skippedIndex).c_str()));
+			_skippedIndex = 0;
+		}
+
+		// Normal log
 		auto s = Logln(text.c_str());
 		_logHistory.push_back(s);
 		if (_logHistory.size() > MAX_LOG_LENGTH)
@@ -410,7 +452,6 @@ public:
 		_display.RefreshGpsLog();
 	}
 
-private:
 	////////////////////////////////////////////////////////////////////////////
 	// Pull an unsigned integer from a byte array
 	// @param buff The byte array

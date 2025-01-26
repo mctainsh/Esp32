@@ -66,6 +66,40 @@ std::string HexDump( const unsigned char *data, int len )
 }
 
 ///////////////////////////////////////////////////////////////////////////
+/// @brief Convert a array of bytes to string of hex numbers and ASCII characters
+/// Format: "00 01 02 03 04 05 06 07-08 09 0a 0b 0c 0d 0e 0f 0123456789abcdef"
+std::string HexAsciDump(const unsigned char* data, int len)
+{
+	if (len == 0)
+		return "";
+	std::string lines;
+	const int SIZE = 64;
+	char szText[SIZE + 1];
+	for (int n = 0; n < len; n++)
+	{
+		auto index = n % 16;
+		if (index == 0)
+		{
+			szText[SIZE - 1] = '\0';
+			if (n > 0)
+				lines += (std::string(szText) + "\r\n");
+
+			// Fill the szText with spaces
+			memset(szText, ' ', SIZE);
+		}
+
+		// Add the hex value to szText as position 3 * n
+		auto offset = 3 * index;
+		snprintf(szText + offset, 3, "%02x", data[n]);
+		szText[offset + 2] = ' ';
+		szText[3 * 16 + 1 + index] = data[n] < 0x20 ? 0xfa : data[n];
+	}
+	szText[SIZE - 1] = '\0';
+	lines += std::string(szText);
+	return lines;
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Split the string
 std::vector<std::string> Split(const std::string &s, const std::string delimiter)
 {

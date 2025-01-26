@@ -17,13 +17,15 @@ private:
 	int _timeSent = 0;
 	bool _gotReset = false;
 	bool _startupComplete = false;
-	std::string _deviceType;				 // Device type like UM982
-	std::string _deviceFirmware = "UNKNOWN"; // Firmware version
-	std::string _deviceSerial = "UNKNOWN";	 // Serial number
+	std::string _deviceType;					// Device type like UM982
+	std::string _deviceFirmware = "UNKNOWN";	// Firmware version
+	std::string _deviceSerial = "UNKNOWN";		// Serial number
+	std::function<void(std::string)> _logToGps; // Log to GPS function
 
 public:
-	GpsCommandQueue()
+	GpsCommandQueue(std::function<void(std::string)> logFunc)
 	{
+		_logToGps = logFunc;
 		StartInitialiseProcess();
 	}
 
@@ -186,7 +188,8 @@ public:
 	{
 		if (_strings.empty())
 			return;
-		Logf("GPS -> '%s'", _strings.front().c_str());
+		_logToGps("GPS -> " + _strings.front());
+		//Logf("GPS -> '%s'", _strings.front().c_str());
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
