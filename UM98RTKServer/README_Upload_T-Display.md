@@ -26,6 +26,8 @@ IMPORTANT : This applies to ESP32 only. Not other devices like ESP32-S2 or ESP32
 NOTE : The first time you install it may take up to 90 seconds to startup after reset. Please be patient
 ```
 
+NOTE: You can also use https://espressif.github.io/esp-launchpad/ which does not require anything to be downloaded to your computer.
+
 - Power cycle or hit reset. It should look like
 
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/PRE_WIFI.jpg?raw=true" width="200"/>

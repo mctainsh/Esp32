@@ -8,6 +8,8 @@ ALSO : T-Display and T-Display-S3 have very subtly different addresses. Pay atte
 If everything goes bad you can reset by uploading the firmware_no_touch.bin version from https://github.com/Xinyuan-LilyGO/T-Display-S3/tree/main/firmware
 ```
 
+NOTE: You can also use https://espressif.github.io/esp-launchpad/ which does not require anything to be downloaded to your computer.
+
 
 - Download the files from [TTGO T-Display-S3 Binaries](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Deploy/T-Display-S3)
 - Get the Espressif Flash Download Tools from https://www.espressif.com/en/support/download/other-tools

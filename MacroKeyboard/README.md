@@ -63,13 +63,13 @@ This project enables an ESP32-S2 Mini to act as a keyboard by interpreting key p
 
 It is a happy conicidence that the ESP32 can be soldered directly to the back of the keypad and the pinouts will align. However, be sure to align pins GPIO 1 to 14. There is two empty (NC) pins on a 4 x 3 board. Check that GPIO 14 goes into the right NC pin. Left NC pin has no connection (This is when keypad viewed from the BACK. Really should have taken a photo of this)
 
-![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeyPadPinOuts.png?raw=true)
-![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/4x3Physical.jpg?raw=true)
+![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/KeyPadPinOuts.png?raw=true)
+![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/4x3Physical.jpg?raw=true)
 
-![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadBackDetail.jpg?raw=true)
-##### I just not noticed pin 10 is not soldered (Doh)
+![Pinouts](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/KeypadBackDetail.jpg?raw=true)
+##### I just noticed pin 10 is not soldered (Doh)
 
-![Front](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/S2%20from%20side.jpg?raw=true)
+![Front](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/S2%20from%20side.jpg?raw=true)
 
 
 ## Software 
@@ -146,11 +146,10 @@ https://github.com/mctainsh/Esp32/tree/main/MarcoKeyboard/MarcoKeyboard
 This project is licensed under the GNU General Public License - see the [LICENSE](https://github.com/mctainsh/Esp32/blob/main/LICENSE)  file for details.
 
 ## More photos
-![Back](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadBack.jpg?raw=true)
+![Back](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/KeypadBack.jpg?raw=true)
 
 
-![Front](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/KeypadFront.JPG?raw=true)
-
+![Front](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/KeypadFront.JPG?raw=true)
 
 
 ---
