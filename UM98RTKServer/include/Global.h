@@ -20,4 +20,6 @@
 
 #define RTK_SERVERS 3
 
-#define APP_VERSION "1.89"
+#define APP_VERSION "1.108"
+
+#define GPS_BUFFER_SIZE (8*1024)

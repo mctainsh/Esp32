@@ -38,7 +38,7 @@
 #include "MyFiles.h"
 #include <WebPortal.h>
 
-const char* AP_PASSWORD = "JohnTLegend";
+const char *AP_PASSWORD = "JohnTLegend";
 
 WiFiManager _wifiManager;
 
@@ -80,8 +80,15 @@ void setup(void)
 	tft.setTextFont(2);
 	tft.printf("Starting %\r\n", APP_VERSION);
 
+	// No logging before here
 	Serial.begin(115200);
+	Logf("Starting %s", APP_VERSION);
 
+	// Setup the serial buffer for the GPS port
+	Logf("GPS Buffer size %d", Serial2.setRxBufferSize(GPS_BUFFER_SIZE));
+
+	Logln("Enable RS232 pins");
+	tft.println("Enable RS232 pins");
 #if T_DISPLAY_S3 == true
 	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
@@ -91,12 +98,11 @@ void setup(void)
 	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #endif
 
-	Logf("Starting %s", APP_VERSION);
-	tft.println("Enable WIFI"); 
+	tft.println("Enable WIFI");
 	WiFi.mode(WIFI_AP_STA);
 
-	Logln("Enable RS232 pins");
-	tft.println("Enable RS232 pins");
+	Logln("Enable Buttons");
+	tft.println("Enable Buttons");
 	pinMode(BUTTON_1, INPUT_PULLUP);
 	pinMode(BUTTON_2, INPUT_PULLUP);
 
@@ -233,7 +239,7 @@ bool IsWifiConnected()
 	Logln("Try resetting WIfi");
 
 	// Reset the WIFI
-	//_wifiFullResetTime = t;		
+	//_wifiFullResetTime = t;
 	// We will block here until the WIFI is connected
 	//_wifiManager.autoConnect(WiFi.getHostname(), "JohnIs#1");
 	// WiFi.mode(WIFI_STA);
@@ -247,7 +253,7 @@ bool IsWifiConnected()
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Maker a unique host name based on the MAC address with Rtk prefix
 String MakeHostName()
-{ 
+{
 	auto mac = WiFi.macAddress();
 	mac.replace(":", "");
 	return "Rtk_" + mac;

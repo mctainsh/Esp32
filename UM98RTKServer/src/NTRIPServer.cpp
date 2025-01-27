@@ -194,7 +194,10 @@ void NTRIPServer::Reconnect()
 
 	// Start the connection process
 	LogX(StringPrintf("RTK Connecting to %s : %d", _sAddress.c_str(), _port));
+	_client.setNoDelay(false);
+
 	int status = _client.connect(_sAddress.c_str(), _port);
+	_client.setNoDelay(true);
 	if (!_client.connected())
 	{
 		LogX(StringPrintf("E500 - RTK %s Not connected %d", _sAddress.c_str(), status));

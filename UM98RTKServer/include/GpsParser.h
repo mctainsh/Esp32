@@ -71,7 +71,7 @@ private:
 	int _binaryLength = 0;					   // Length of the binary packet
 	std::vector<std::string> _logHistory;	   // Last few log messages
 	BuildState _buildState = BuildStateNone;   // Where we are with the build of a packet
-	unsigned char _skippedArray[MAX_BUFF + 1]; // Skipped item array
+	unsigned char _skippedArray[MAX_BUFF + 2]; // Skipped item array
 	int _skippedIndex = 0;					   // Count of skipped items
 	std::map<int, int> _msgTypeTotals;		   // Collection of totals for each message type
 	int _readErrorCount = 0;				   // Total number of read errors
@@ -136,6 +136,9 @@ public:
 		int available = stream.available();
 		if (available < 1)
 			return false;
+
+		if (available > GPS_BUFFER_SIZE - 10)
+			LogX("GPS - Serial Buffer overflow");
 
 		// Limit the number of bytes we read
 		available = min(available, MAX_BUFF);
@@ -435,7 +438,11 @@ private:
 			}
 			else
 			{
-				_logHistory.push_back(StringPrintf("Skipped \r\n%s", HexDump(_skippedArray, _skippedIndex).c_str()));
+				_skippedArray[_skippedIndex] = 0;
+				if (IsAllAscii(_skippedArray, _skippedIndex))
+					_logHistory.push_back(StringPrintf("Skipped %d \r\n%s", _skippedIndex, _skippedArray).c_str());
+				else
+					_logHistory.push_back(StringPrintf("Skipped %d\r\n%s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str()));
 			}
 			_skippedIndex = 0;
 		}
