@@ -143,8 +143,7 @@ void NTRIPServer::ConnectedProcessingReceive()
 	int buffSize = _client.available();
 	if (buffSize < 1)
 		return;
-	if (buffSize > SOCKET_IN_BUFFER_MAX)
-		buffSize = SOCKET_IN_BUFFER_MAX;
+	buffSize = min( buffSize, SOCKET_IN_BUFFER_MAX);
 	_client.read(_pSocketBuffer, buffSize);
 
 	_pSocketBuffer[buffSize] = 0;
@@ -158,8 +157,7 @@ void NTRIPServer::ConnectedProcessingReceive()
 	else
 	{
 		// Write the byte array as hex text to serial
-		for (int n = 0; n < buffSize; n++)
-			str.append(StringPrintf("%02x ", _pSocketBuffer[n]));
+		str = HexDump( _pSocketBuffer, buffSize);
 	}
 	LogX(str.c_str());
 }

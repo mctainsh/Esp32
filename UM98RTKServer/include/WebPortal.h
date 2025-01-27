@@ -57,7 +57,7 @@ void WebPortal::Setup()
 
 	std::string port0String = std::to_string(_ntripServer0.GetPort());
 	_pCaster0Address = new WiFiManagerParameter("address0", "Caster 1 address", _ntripServer0.GetAddress().c_str(), 40);
-	_pCaster0Port = new WiFiManagerParameter("port0", "Caster 1 port (0 = off)", port0String.c_str(), 6);
+	_pCaster0Port = new WiFiManagerParameter("port0", "Caster 1 port [Normally 2101] (0 = off)", port0String.c_str(), 6);
 	_pCaster0Credential = new WiFiManagerParameter("credential0", "Caster 1 credential ", _ntripServer0.GetCredential().c_str(), 40);
 	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password", _ntripServer0.GetPassword().c_str(), 40);
 
@@ -366,6 +366,7 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Reset count", resetCount);
 	TableRow(html, 1, "Reinitialize count", reinitialize);
 	TableRow(html, 1, "Packet count", packetCount);
+	TableRow(html, 1, "Read errors", _gpsParser.GetReadErrorCount());
 
 	TableRow(html, 0, "Message counts", "");
 	for (const auto &pair : _gpsParser.GetMsgTypeTotals())

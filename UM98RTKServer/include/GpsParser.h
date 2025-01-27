@@ -1,5 +1,6 @@
 #pragma once
-#define VERBOSE false
+#define VERBOSE true
+#define PROCESS_ALL_PACKETS true
 
 #include <iostream>
 #include <sstream>
@@ -60,8 +61,7 @@ class GpsParser
 	};
 
 private:
-	unsigned long _timeOfLastMessage = 0; // Millis of last good message
-	// std::string _buildBuffer;				 // Buffer to make the serial packet up to LF or CR
+	unsigned long _timeOfLastMessage = 0;	   // Millis of last good message
 	unsigned char _byteArray[MAX_BUFF + 1];	   // Buffer to hold the binary data
 	int _binaryIndex = 0;					   // Index of the binary data
 	int _binaryLength = 0;					   // Length of the binary packet
@@ -69,7 +69,8 @@ private:
 	BuildState _buildState = BuildStateNone;   // Where we are with the build of a packet
 	unsigned char _skippedArray[MAX_BUFF + 1]; // Skipped item array
 	int _skippedIndex = 0;					   // Count of skipped items
-	std::map<int, int> _msgTypeTotals;
+	std::map<int, int> _msgTypeTotals;		   // Collection of totals for each message type
+	int _readErrorCount = 0;				   // Total number of read errors
 
 public:
 	MyDisplay &_display;
@@ -85,6 +86,7 @@ public:
 	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }
 	inline const GpsCommandQueue &GetCommandQueue() const { return _commandQueue; }
 	inline const std::map<int, int> &GetMsgTypeTotals() const { return _msgTypeTotals; }
+	inline const int GetReadErrorCount() const { return _readErrorCount; }
 
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
@@ -100,33 +102,6 @@ public:
 				_gpsConnected = true;
 				_timeOfLastMessage = millis();
 			}
-
-			// // Read the available bytes from stream
-			// int available = stream.available();
-			// if (available > 0)
-			// {
-			// 	_display.IncrementGpsPackets();
-
-			// 	// Limit the number of bytes we read
-			// 	available = min(available, MAX_BUFF);
-
-			// 	// TODO Just use a single buffer over and over
-			// 	//auto pData = new byte[available + 1];
-			// 	std::unique_ptr<byte[]> byteArray(new byte[available + 1]);
-			// 	auto pData = byteArray.get();
-
-			// 	stream.readBytes(pData, available);
-
-			// 	// Process the binary data
-
-			// 	// Send to RTK Casters
-			// 	ntripServer0.Loop(pData, available);
-			// 	ntripServer1.Loop(pData, available);
-			// 	ntripServer2.Loop(pData, available);
-
-			// 	_gpsConnected = true;
-			// 	_timeOfLastMessage = millis();
-			// }
 		}
 		else
 		{
@@ -169,8 +144,11 @@ public:
 			pSvr0->Loop(pData, available);
 			pSvr1->Loop(pData, available);
 			pSvr2->Loop(pData, available);
-			delete[] pData;
-			return true;
+			if (!PROCESS_ALL_PACKETS)
+			{
+				delete[] pData;
+				return true;
+			}
 		}
 
 		// Process each byte in turn for rolling buffer
@@ -180,6 +158,7 @@ public:
 				continue;
 
 			_buildState = BuildStateNone;
+			_readErrorCount++;
 
 			if (VERBOSE)
 			{
@@ -187,35 +166,24 @@ public:
 				LogX(StringPrintf("IN  DATA %d : %s", n, HexDump(pData, available).c_str()));
 			}
 
-			// Buffer build failed so reset pData to the second byte in the array
-			if (_binaryIndex == n)
+			// Output is made up of the existing buffer less the first byte (_binaryIndex - 1)
+			// .. plus what remains in the new data array (available -  n)
+			int oldBufferSize = _binaryIndex - 1;
+			int remainder = available - n;
+			auto totalSize = oldBufferSize + remainder;
+			// LogX(StringPrintf("Dump Move %d + %d = %d", _binaryIndex, available, totalSize));
+			if (totalSize > 0)
 			{
-				n = 1;
-			}
-			else if (_binaryIndex < n)
-			{
-				// Move index back to start of buffer plus one.
-				n = n - _binaryIndex + 1;
-				// LogX(StringPrintf("Dump clean %d - %d bytes n:%02x n-1:%02x", n, _binaryIndex, pData[n], pData[n - 1]));
-			}
-			else
-			{
-				auto oldBufferSize = _binaryIndex - (n + 1); // Amount of data in buffer before binary this buffer appeared
-				auto totalSize = oldBufferSize - 1 + available;
-				// LogX(StringPrintf("Dump Move %d + %d = %d", _binaryIndex, available, totalSize));
+				auto pTempData = new byte[totalSize + 1];
+				if (oldBufferSize > 0)
+					memcpy(pTempData, _byteArray + 1, oldBufferSize);
+				if (remainder > 0)
+					memcpy(pTempData + oldBufferSize, pData + n, remainder);
 
-				if (totalSize > 0)
-				{
-					// Make a new array of the buffer plus the new data
-					auto pTempData = new byte[totalSize + 1];
-					if (oldBufferSize > 2)
-						memcpy(pTempData, _byteArray + 1, oldBufferSize - 1);
-					memcpy(pTempData + oldBufferSize - 1, pData, available);
-					delete[] pData;
-					n = 0;
-					pData = pTempData;
-					available = totalSize;
-				}
+				delete[] pData;
+				n = 0;
+				pData = pTempData;
+				available = totalSize;
 			}
 			_binaryIndex = 0;
 
@@ -283,7 +251,10 @@ public:
 	void AddToSkipped(char ch)
 	{
 		if (_skippedIndex >= MAX_BUFF)
+		{
 			LogX("Skip buffer overflowed");
+			_skippedIndex = 0;
+		}
 		_skippedArray[_skippedIndex++] = ch;
 	}
 
@@ -331,7 +302,7 @@ public:
 			auto type = GetUInt(24, 12);
 			if (parity != calculated)
 			{
-				LogX(StringPrintf("Checksum %d (%d != %d) [%d] %s", type, parity, calculated, _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
+				LogX(StringPrintf("Checksum %d (%x != %x) [%d] %s", type, parity, calculated, _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
 				return false;
 			}
 
@@ -450,9 +421,16 @@ private:
 	void LogX(std::string text)
 	{
 		// Dump any skipped data
-		if (_skippedIndex > 0 && _skippedIndex != 1 && _skippedArray[0] != 0x0A)
+		if (_skippedIndex > 0)
 		{
-			_logHistory.push_back(StringPrintf("Skipped \r\n%s", HexDump(_skippedArray, _skippedIndex).c_str()));
+			if (_skippedIndex == 1 && _skippedArray[0] == 0x0A)
+			{
+				// Don't dump the end of ASCII line
+			}
+			else
+			{
+				_logHistory.push_back(StringPrintf("Skipped \r\n%s", HexDump(_skippedArray, _skippedIndex).c_str()));
+			}
 			_skippedIndex = 0;
 		}
 
