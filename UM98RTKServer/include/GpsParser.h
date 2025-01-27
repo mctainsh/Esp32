@@ -1,5 +1,9 @@
 #pragma once
-#define VERBOSE true
+
+// VERBOSE will log more GPS detail including dump logs and received RTK types
+#define VERBOSE false
+
+// Process the received packets after a GPS is configured and running
 #define PROCESS_ALL_PACKETS true
 
 #include <iostream>
@@ -14,7 +18,7 @@
 #include "Global.h"
 
 // Note : Max RTK packet size id 1029 bytes
-#define MAX_BUFF 2560
+#define MAX_BUFF 1200
 
 const static unsigned int tbl_CRC24Q[] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
@@ -101,10 +105,12 @@ public:
 			{
 				_gpsConnected = true;
 				_timeOfLastMessage = millis();
+				_display.IncrementGpsPackets();
 			}
 		}
 		else
 		{
+			// CHeck for startup logic messages
 			ProcessStream(stream, NULL, NULL, NULL);
 
 			// Check output command queue
@@ -302,13 +308,13 @@ public:
 			auto type = GetUInt(24, 12);
 			if (parity != calculated)
 			{
-				LogX(StringPrintf("Checksum %d (%x != %x) [%d] %s", type, parity, calculated, _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
+				LogX(StringPrintf("Checksum %d (%06x != %06x) [%d] %s", type, parity, calculated, _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
 				return false;
 			}
 
 			_msgTypeTotals[type]++;
-
-			LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
+			if (VERBOSE)
+				LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
 			_buildState = BuildStateNone;
 		}
 		return true;
@@ -437,8 +443,8 @@ private:
 		// Normal log
 		auto s = Logln(text.c_str());
 		_logHistory.push_back(s);
-		if (_logHistory.size() > MAX_LOG_LENGTH)
-			_logHistory.erase(_logHistory.begin());
+
+		TruncateLog(_logHistory);
 		_display.RefreshGpsLog();
 	}
 

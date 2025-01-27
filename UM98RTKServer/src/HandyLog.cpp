@@ -25,6 +25,26 @@ std::string Logln(const char *msg)
 	return s;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+/// @brief Trim the log to the size limit
+void TruncateLog(std::vector<std::string> &log)
+{
+	// Truncate based on total log size
+	while (log.size() > MAX_LOG_LENGTH)
+		log.erase(log.begin());
+
+	// Truncate based on total size
+	while (true)
+	{
+		int total = 0;
+		for (std::string line : log)
+			total += line.length();
+		if (total < MAX_LOG_SIZE)
+			break;
+		log.erase(log.begin());
+	}
+}
+
 std::string AddToLog(const char *msg)
 {
 	std::string s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
@@ -37,7 +57,6 @@ std::string AddToLog(const char *msg)
 		_mainLog.erase(_mainLog.begin());
 
 	// Add everything except the last CR and LF
-	
 
 	_mainLog.push_back(s);
 	return s;

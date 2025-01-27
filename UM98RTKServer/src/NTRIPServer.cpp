@@ -112,23 +112,28 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 		return;
 
 	// Clear out extra send history
-	if (_sendMicroSeconds.size() >= AVERAGE_SEND_TIMERS)
+	while (_sendMicroSeconds.size() >= AVERAGE_SEND_TIMERS)
 		_sendMicroSeconds.erase(_sendMicroSeconds.begin());
 
 	// Send and record time
-	int startT = micros();
+	unsigned long startT = micros();
 	int sent = _client.write(pBytes, length);
+
+	unsigned long time = micros() - startT;
+	if (_maxSendTime == 0)
+		_maxSendTime = time;
+	else
+		_maxSendTime = max(_maxSendTime, time);
 
 	if (sent != length)
 	{
 		LogX(StringPrintf("E500 - %s Only sent %d of %d", _sAddress.c_str(), sent, length));
 		_client.stop();
-		return;
 	}
 	else
 	{
 		// Logf("RTK %s Sent %d OK", _sAddress.c_str(), sent);
-		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, micros() - startT));
+		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_display.RefreshRtk(_index);
@@ -143,23 +148,17 @@ void NTRIPServer::ConnectedProcessingReceive()
 	int buffSize = _client.available();
 	if (buffSize < 1)
 		return;
-	buffSize = min( buffSize, SOCKET_IN_BUFFER_MAX);
+
+	buffSize = min(buffSize, SOCKET_IN_BUFFER_MAX);
+
+	std::unique_ptr<byte[]> buffer(new byte[buffSize + 1]);
+	auto _pSocketBuffer = buffer.get();
 	_client.read(_pSocketBuffer, buffSize);
 
 	_pSocketBuffer[buffSize] = 0;
 
 	// Log the data
-	std::string str = _sAddress + " TCP IN ";
-	if (GpsParser::IsAllAscii(_pSocketBuffer, buffSize))
-	{
-		str.append((const char *)_pSocketBuffer);
-	}
-	else
-	{
-		// Write the byte array as hex text to serial
-		str = HexDump( _pSocketBuffer, buffSize);
-	}
-	LogX(str.c_str());
+	LogX("IN -> " + _sAddress + "\r\n" + HexAsciDump(_pSocketBuffer, buffSize));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -180,9 +179,8 @@ void NTRIPServer::LogX(std::string text)
 {
 	auto s = Logln(text.c_str());
 	_logHistory.push_back(s);
-	if (_logHistory.size() > 100)
-		_logHistory.erase(_logHistory.begin());
-	_display.RefreshGpsLog();
+	TruncateLog(_logHistory);
+	_display.RefreshRtkLog();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +203,7 @@ void NTRIPServer::Reconnect()
 	LogX(StringPrintf("Connected %s OK", _sAddress.c_str()));
 
 	_client.write(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str());
-	_client.write("Source-Agent: NTRIP UM98XX/ESP32_S2_Mini\r\n");
+	_client.write("Source-Agent: NTRIP UM98XX/ESP32_T_Display_SX\r\n");
 	_client.write("STR: \r\n");
 	_client.write("\r\n");
 }

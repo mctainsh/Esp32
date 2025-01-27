@@ -212,8 +212,18 @@ void MyDisplay::RefreshLog(const std::vector<std::string> &log)
 	_tft.setTextDatum(TL_DATUM);
 	_tft.setTextFont(1);
 
+	int rows = 0;
 	for (auto it = log.rbegin(); it != log.rend(); ++it)
-		_tft.println(it->c_str());
+	{
+		std::string truncated = it->c_str();
+		truncated.erase( 0, truncated.find_first_not_of("0 "));
+		truncated = Replace( truncated, "\t", "    " );
+		truncated = Replace( truncated, "\r", "" );
+		truncated = Replace( truncated, "\n", "-" );
+		_tft.println(truncated.substr(0,53).c_str());
+		if (rows++ > 16)
+			break;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

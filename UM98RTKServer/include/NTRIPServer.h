@@ -1,7 +1,7 @@
 #pragma once
 
 // Buffer used to grab data to send
-#define SOCKET_IN_BUFFER_MAX 2048
+#define SOCKET_IN_BUFFER_MAX 512
 
 // Number of items in the averaging buffer for send time calculation
 #define AVERAGE_SEND_TIMERS 256
@@ -31,25 +31,26 @@ public:
 	inline const std::string GetCredential() const { return _sCredential; }
 	inline const std::string GetPassword() const { return _sPassword; }
 	inline const std::vector<int> &GetSendMicroSeconds() const { return _sendMicroSeconds; }
+	inline const int GetMaxSendTime() const { return _maxSendTime; }
 
 private:
-	WiFiClient _client;							   // Socket connection
-	uint16_t _wifiConnectTime = 0;				   // Time we last had good data to prevent reconnects too fast
-	byte _pSocketBuffer[SOCKET_IN_BUFFER_MAX + 1]; // Build buffer
-	MyDisplay &_display;						   // Display for updating packet count
-	bool _wasConnected = false;					   // Was connected last time
-	const int _index;							   // Index of the server used when updating display
-	const char *_status = "-";					   // Connection status
-	std::vector<std::string> _logHistory;		   // History of connection status
-	std::vector<int> _sendMicroSeconds;			   // Collection of send times
-	int _reconnects;							   // Total number of reconnects
-	int _packetsSent;							   // Total number of packets sent
+	WiFiClient _client;					  // Socket connection
+	uint16_t _wifiConnectTime = 0;		  // Time we last had good data to prevent reconnects too fast
+	MyDisplay &_display;				  // Display for updating packet count
+	bool _wasConnected = false;			  // Was connected last time
+	const int _index;					  // Index of the server used when updating display
+	const char *_status = "-";			  // Connection status
+	std::vector<std::string> _logHistory; // History of connection status
+	std::vector<int> _sendMicroSeconds;	  // Collection of send times
+	int _reconnects;					  // Total number of reconnects
+	int _packetsSent;					  // Total number of packets sent
+	unsigned long _maxSendTime;			  // Maximum amount of time it took to send a packet
 
 	std::string _sAddress;
 	int _port;
 	std::string _sCredential;
 	std::string _sPassword;
- 
+
 	void ConnectedProcessing(const byte *pBytes, int length);
 	void ConnectedProcessingSend(const byte *pBytes, int length);
 	void ConnectedProcessingReceive();

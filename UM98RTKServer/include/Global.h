@@ -16,6 +16,7 @@
 #endif
 
 #define MAX_LOG_LENGTH (200)
+#define MAX_LOG_SIZE (MAX_LOG_LENGTH * 80)
 
 #define RTK_SERVERS 3
 
