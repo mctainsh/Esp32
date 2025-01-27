@@ -1,6 +1,6 @@
 # ESP32-S2 Mini Keypad to Keyboard Emulator 
 
-![Keypad](https://github.com/mctainsh/Esp32/blob/main/MarcoKeyboard/Photos/Finished.jpg?raw=true)
+![Keypad](https://github.com/mctainsh/Esp32/blob/main/MacroKeyboard/Photos/Finished.jpg?raw=true)
 
 This project turns an ESP32-S2 Mini microcontroller connected to a 4x3 Matrix Keypad into a fully functioning USB keyboard emulator. It allows the user to press key combinations (e.g., `*1`) on the keypad, which the ESP32 processes and sends predefined key sequences to a connected computer via USB.
 
