@@ -14,6 +14,10 @@
 //		#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
 //	3. Add the following line to the start of the file
 //		#define DISABLE_ALL_LIBRARY_WARNINGS
+//
+// NOTE: When Using rtk2go.com
+//		Username should be a valid email address.
+//		Password “none” if your device requires that a password be entered.
 ///////////////////////////////////////////////////////////////////////////////
 
 
