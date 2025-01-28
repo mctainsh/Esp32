@@ -362,16 +362,16 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
 	TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
 
-	int32_t resetCount, reinitialize, packetCount;
-	_display.GetGpsStats(resetCount, reinitialize, packetCount);
+	int32_t resetCount, reinitialize, messageCount;
+	_display.GetGpsStats(resetCount, reinitialize, messageCount);
 	TableRow(html, 1, "Reset count", resetCount);
 	TableRow(html, 1, "Reinitialize count", reinitialize);
-	TableRow(html, 1, "Packet count", packetCount);
 	TableRow(html, 1, "Read errors", _gpsParser.GetReadErrorCount());
 
 	TableRow(html, 0, "Message counts", "");
 	for (const auto &pair : _gpsParser.GetMsgTypeTotals())
 		TableRow(html, 1, std::to_string(pair.first), pair.second);
+	TableRow(html, 1, "Total messages", messageCount);
 
 	html += "<Table><tr>";
 	ServerStatsHtml(_ntripServer0, html);

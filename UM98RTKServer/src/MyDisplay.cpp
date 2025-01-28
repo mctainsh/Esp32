@@ -108,7 +108,7 @@ void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
 }
 void MyDisplay::IncrementGpsPackets()
 {
-	SetValue(2, (_gpsPacketCount + 1), &_gpsPacketCount, COL2_P0, R3F4, COL2_P0_W, 4);
+	SetValue(0, (_gpsMsgCount + 1), &_gpsMsgCount, COL2_P0, R5F4, COL2_P0_W, 4);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -259,6 +259,7 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Version", COL1, R2F4, 2);
 		DrawLabel("Up time", COL1, R3F4, 2);
 		DrawLabel("Speed", COL1, R4F4, 2);
+		DrawLabel("Packets", COL1, R5F4, 2);
 
 		DrawML(APP_VERSION, COL2_P0, R2F4, COL2_P0_W, 4);
 
@@ -280,7 +281,7 @@ void MyDisplay::RefreshScreen()
 
 		DrawLabel("Type", COL1, R1F4, 2);
 		DrawLabel("Resets", COL1, R2F4, 2);
-		DrawLabel("Packets", COL1, R3F4, 2);
+		//DrawLabel("Packets", COL1, R3F4, 2);
 		DrawLabel("Serial #", COL1, R4F4, 2);
 		DrawLabel("Firmware", COL1, R5F4, 2);
 
@@ -336,7 +337,7 @@ void MyDisplay::RefreshScreen()
 	_graphics.SetGpsConnected(_gpsConnected);
 
 	UpdateGpsStarts(false, false);
-	_gpsPacketCount--;
+	_gpsMsgCount--;
 	IncrementGpsPackets();
 
 	RefreshWiFiState();

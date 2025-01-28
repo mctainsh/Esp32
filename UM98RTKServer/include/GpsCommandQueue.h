@@ -74,6 +74,10 @@ public:
 		{
 			Logln("UM980 Detected");
 			command = "CONFIG SIGNALGROUP 2"; // (for UM980)
+			// New documentation for Unicore. The new firmware (Build17548) has 50 Hz and QZSS L6 reception instead of Galileo E6.
+			// .. From now on, we install the Build17548 firmware on all new UM980 receivers. So we have a new advantage - you can 
+			// .. enable L6 instead of E6 by changing SIGNALGOUP from 2 to 10. Another thing is that this is only needed in Japan 
+			// .. and countries close to it.
 		}
 		else
 		{

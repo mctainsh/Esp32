@@ -39,11 +39,11 @@ public:
 	void DrawMR(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK);
 	void DrawLabel(const char *pstr, int32_t x, int32_t y, uint8_t font);
 
-	inline void GetGpsStats(int32_t &resetCount, int32_t &reinitialize, int32_t &packetCount) const
+	inline void GetGpsStats(int32_t &resetCount, int32_t &reinitialize, int32_t &messageCount) const
 	{
 		resetCount = _gpsResetCount;
 		reinitialize = _gpsReinitialize;
-		packetCount = _gpsPacketCount;
+		messageCount = _gpsMsgCount;
 	}
 
 private:
@@ -55,7 +55,7 @@ private:
 	bool _gpsConnected;			  // GPS connected
 	int32_t _gpsResetCount = 0;	  // Number GPS resets
 	int32_t _gpsReinitialize = 0; // Number GPS initializations
-	int32_t _gpsPacketCount = 0;  // Number GPS of packets received
+	int32_t _gpsMsgCount = 0;  // Number GPS of packets received
 	int _sendGood = 0;			  // Number of good sends
 	int _sendBad = 0;			  // Number of bad sends
 	int _httpCode = 0;			  // Last HTTP code

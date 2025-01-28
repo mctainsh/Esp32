@@ -17,8 +17,32 @@
 #include "NTRIPServer.h"
 #include "Global.h"
 
+// Typical packet sizes	
+// 1005 [25]
+// 1033 [74]
+// 1077 [174]
+// 1077 [266]
+// 1077 [306]
+// 1077 [336]
+// 1087 [255]
+// 1087 [28]
+// 1097 [343]
+// 1097 [433]
+// 1117 [127]
+// 1117 [167]
+// 1117 [86]
+// 1127 [133]
+// 1127 [183]
+// 1127 [183]
+// 1127 [183]
+// 1127 [488]
+// 1127 [498]
+// 1127 [520]
+// 1137 [28]
+
 // Note : Max RTK packet size id 1029 bytes
 #define MAX_BUFF 1200
+
 
 const static unsigned int tbl_CRC24Q[] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
@@ -75,6 +99,7 @@ private:
 	int _skippedIndex = 0;					   // Count of skipped items
 	std::map<int, int> _msgTypeTotals;		   // Collection of totals for each message type
 	int _readErrorCount = 0;				   // Total number of read errors
+	int _missedBytesDuringError = 0;		   // Number of bytes we received during the error
 
 public:
 	MyDisplay &_display;
@@ -103,14 +128,14 @@ public:
 		{
 			if (ProcessStream(stream, &ntripServer0, &ntripServer1, &ntripServer2))
 			{
-				_gpsConnected = true;
-				_timeOfLastMessage = millis();
-				_display.IncrementGpsPackets();
+				//_gpsConnected = true;
+				//_timeOfLastMessage = millis();
+				//_display.IncrementGpsPackets();
 			}
 		}
 		else
 		{
-			// CHeck for startup logic messages
+			// Check for startup logic messages
 			ProcessStream(stream, NULL, NULL, NULL);
 
 			// Check output command queue
@@ -167,38 +192,49 @@ public:
 				continue;
 
 			_buildState = BuildStateNone;
-			_readErrorCount++;
 
 			if (VERBOSE)
 			{
-				LogX(StringPrintf("IN  BUFF %d : %s", n, HexDump(_byteArray, _binaryIndex).c_str()));
+				LogX(StringPrintf("IN  BUFF %d : %s", _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
 				LogX(StringPrintf("IN  DATA %d : %s", n, HexDump(pData, available).c_str()));
 			}
 
 			// Output is made up of the existing buffer less the first byte (_binaryIndex - 1)
-			// .. plus what remains in the new data array (available -  n)
-			int oldBufferSize = _binaryIndex - 1;
-			int remainder = available - n;
-			auto totalSize = oldBufferSize + remainder;
-			// LogX(StringPrintf("Dump Move %d + %d = %d", _binaryIndex, available, totalSize));
-			if (totalSize > 0)
-			{
-				auto pTempData = new byte[totalSize + 1];
-				if (oldBufferSize > 0)
-					memcpy(pTempData, _byteArray + 1, oldBufferSize);
-				if (remainder > 0)
-					memcpy(pTempData + oldBufferSize, pData + n, remainder);
+			// .. plus what remains in the new data array (available - n)
+			// .. _byteArray contains the read byte so n must be incremented
 
-				delete[] pData;
-				n = 0;
-				pData = pTempData;
-				available = totalSize;
+			n += 1;
+
+			// Is the _byteArray completely contained within the current pData set
+			if( _binaryIndex <= n )
+			{
+				n = n - _binaryIndex;
+			}
+			else
+			{
+				int oldBufferSize = _binaryIndex - 1;
+				int remainder = available - n;
+				auto totalSize = oldBufferSize + remainder;
+				// LogX(StringPrintf("Dump Move %d + %d = %d", _binaryIndex, available, totalSize));
+				if (totalSize > 0)
+				{
+					auto pTempData = new byte[totalSize + 1];
+					if (oldBufferSize > 0)
+						memcpy(pTempData, _byteArray + 1, oldBufferSize);
+					if (remainder > 0)
+						memcpy(pTempData + oldBufferSize, pData + n, remainder);
+
+					delete[] pData;
+					n = -1;				// Will be incremented the next time the loop begins
+					pData = pTempData;
+					available = totalSize;
+				}
 			}
 			_binaryIndex = 0;
 
 			if (VERBOSE)
 			{
-				LogX(StringPrintf("OUT BUFF %d : %s", n, HexDump(_byteArray, _binaryIndex).c_str()));
+				//LogX(StringPrintf("OUT BUFF %d : %s", n, HexDump(_byteArray, _binaryIndex).c_str()));
 				LogX(StringPrintf("OUT DATA %d : %s", n, HexDump(pData, available).c_str()));
 			}
 		}
@@ -315,9 +351,22 @@ public:
 				return false;
 			}
 
+			// Record things are good again
+			_gpsConnected = true;
+			_timeOfLastMessage = millis();
+			_display.IncrementGpsPackets();
+
+			// Log what we missed
+			if (_missedBytesDuringError > 0)
+			{
+				_readErrorCount++;
+				LogX(StringPrintf(" >> E: %d - Skipped %d", _readErrorCount, _missedBytesDuringError));
+				_missedBytesDuringError = 0;
+			}
+
 			_msgTypeTotals[type]++;
-			if (VERBOSE)
-				LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
+			//if (VERBOSE)
+			//	LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
 			_buildState = BuildStateNone;
 		}
 		return true;
@@ -440,9 +489,10 @@ private:
 			{
 				_skippedArray[_skippedIndex] = 0;
 				if (IsAllAscii(_skippedArray, _skippedIndex))
-					_logHistory.push_back(StringPrintf("Skipped %d \r\n%s", _skippedIndex, _skippedArray).c_str());
+					_logHistory.push_back(StringPrintf("Skipped [%d] %s", _skippedIndex, _skippedArray).c_str());
 				else
-					_logHistory.push_back(StringPrintf("Skipped %d\r\n%s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str()));
+					_logHistory.push_back(StringPrintf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str()));
+				_missedBytesDuringError += _skippedIndex;
 			}
 			_skippedIndex = 0;
 		}
@@ -472,13 +522,14 @@ private:
 	}
 
 	////////////////////////////////////////////////////////////////////////////
-	// Calculate the CRC24Q checksum. Note, the last 3 bytes are the checksum
-	// so we do not include them in the calculation
-	// RTCM3 format is
-	//  +----------+--------+-----------+--------------------+----------+
-	//  | Preamble | 000000 |  length   |    data message    |  parity  |
-	//  +----------+--------+-----------+--------------------+----------+
-	//  |<--- 8 --->|<--6-->|<-- 10 --->|<--- length x 8 --->|<-- 24 -->|
+	// Calculate the CRC24Q checksum. 
+	// Note, the last 3 bytes are the checksum so we do not include them in the
+	// calculation RTCM3 format is
+	//  +-------+--------+-----------+--------------------+----------+
+	//  |   D3  | 000000 |  length   |    data message    |  parity  |
+	//  +-------+--------+-----------+--------------------+----------+
+	//  |8 bits |6 bits  | 10 bits   | length x 8 bits    | 24 bits  |
+	//  +-------+--------+-----------+--------------------+----------+
 	// @return The checksum
 	unsigned int RtkCrc24()
 	{
