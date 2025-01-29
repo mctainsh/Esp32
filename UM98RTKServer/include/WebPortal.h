@@ -273,7 +273,7 @@ void TableRow(std::string &html, int indent, const std::string &name, const char
 		html += " class='r'";
 	html += ">";
 	html += value;
-	html += "</td></tr>";
+	html += "</td></tr>\n";
 }
 
 void TableRow(std::string &html, int indent, const std::string &name, const char *value)
@@ -355,8 +355,7 @@ void WebPortal::ShowStatusHtml()
 #endif
 #endif
 	TableRow(html, 1, "Uptime", Uptime(millis()));
-	TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
-	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	//TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 0, "GPS", "");
 	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
 	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
@@ -367,11 +366,34 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Reset count", resetCount);
 	TableRow(html, 1, "Reinitialize count", reinitialize);
 	TableRow(html, 1, "Read errors", _gpsParser.GetReadErrorCount());
+	TableRow(html, 1, "Max buffer size", _gpsParser.GetMaxBufferSize());
 
 	TableRow(html, 0, "Message counts", "");
 	for (const auto &pair : _gpsParser.GetMsgTypeTotals())
 		TableRow(html, 1, std::to_string(pair.first), pair.second);
 	TableRow(html, 1, "Total messages", messageCount);
+
+	// Memory stuff
+	html += "<table>";
+	auto free = ESP.getFreeHeap();
+	auto total = ESP.getHeapSize();
+	TableRow(html, 0, "Memory", "");
+	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	TableRow(html, 1, "Port free heap", xPortGetFreeHeapSize());
+	TableRow(html, 1, "Heap", "");
+	TableRow(html, 2, "Free", esp_get_free_heap_size());
+	TableRow(html, 2, "Free", free);
+	TableRow(html, 2, "Total", total);
+	TableRow(html, 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
+	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
+	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
+	TableRow(html, 1, "spiram size", esp_spiram_get_size());
+	TableRow(html, 1, "Stack High", uxTaskGetStackHighWaterMark(NULL));
+	// TableRow(html, 1, "himem free", esp_himem_get_free_size());
+	// TableRow(html, 1, "himem phys", esp_himem_get_phys_size());
+	// TableRow(html, 1, "himem reserved", esp_himem_reserved_area_size());
+
+	html += "</table>";
 
 	html += "<Table><tr>";
 	ServerStatsHtml(_ntripServer0, html);
@@ -379,7 +401,6 @@ void WebPortal::ShowStatusHtml()
 	ServerStatsHtml(_ntripServer2, html);
 	html += "</tr></Table>";
 
-	//	TableRow(html,"", );
-	html += "</table></body>";
+	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 }

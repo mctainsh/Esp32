@@ -119,6 +119,7 @@ void setup(void)
 	_ntripServer0.LoadSettings();
 	_ntripServer1.LoadSettings();
 	_ntripServer2.LoadSettings();
+	_gpsParser.Setup(&_ntripServer0, &_ntripServer1, &_ntripServer2);
 
 	_display.Setup();
 	Logf("Display type %d", USER_SETUP_ID);
@@ -175,7 +176,7 @@ void loop()
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
 	{
-		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2, _ntripServer0, _ntripServer1, _ntripServer2));
+		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2));
 		_webPortal.Loop();
 	}
 	else

@@ -17,7 +17,7 @@
 #include "NTRIPServer.h"
 #include "Global.h"
 
-// Typical packet sizes	
+// Typical packet sizes
 // 1005 [25]
 // 1033 [74]
 // 1077 [174]
@@ -42,7 +42,6 @@
 
 // Note : Max RTK packet size id 1029 bytes
 #define MAX_BUFF 1200
-
 
 const static unsigned int tbl_CRC24Q[] = {
 	0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
@@ -100,11 +99,13 @@ private:
 	std::map<int, int> _msgTypeTotals;		   // Collection of totals for each message type
 	int _readErrorCount = 0;				   // Total number of read errors
 	int _missedBytesDuringError = 0;		   // Number of bytes we received during the error
+	int _maxBufferSize = 0;					   // Maximum size of the serial buffer
 
 public:
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
 	bool _gpsConnected = false; // Are we receiving GPS data from GPS unit (Does not mean we have location)
+	NTRIPServer *_pNtripServer0, *_pNtripServer1, *_pNtripServer2;
 
 	GpsParser(MyDisplay &display) : _display(display), _commandQueue([this](std::string str)
 																	 { LogX(str); })
@@ -116,27 +117,31 @@ public:
 	inline const GpsCommandQueue &GetCommandQueue() const { return _commandQueue; }
 	inline const std::map<int, int> &GetMsgTypeTotals() const { return _msgTypeTotals; }
 	inline const int GetReadErrorCount() const { return _readErrorCount; }
+	inline const int GetMaxBufferSize() const { return _maxBufferSize; }
+
+	/// @brief Save links to the NTRIP casters
+	void Setup(NTRIPServer *pNtripServer0, NTRIPServer *pNtripServer1, NTRIPServer *pNtripServer2)
+	{
+		_pNtripServer0 = pNtripServer0;
+		_pNtripServer1 = pNtripServer1;
+		_pNtripServer2 = pNtripServer2;
+	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
-	bool ReadDataFromSerial(Stream &stream, NTRIPServer &ntripServer0, NTRIPServer &ntripServer1, NTRIPServer &ntripServer2)
+	bool ReadDataFromSerial(Stream &stream)
 	{
 		int count = 0;
 
 		// Are we sending full binary data to the GPS unit
 		if (_commandQueue.StartupComplete())
 		{
-			if (ProcessStream(stream, &ntripServer0, &ntripServer1, &ntripServer2))
-			{
-				//_gpsConnected = true;
-				//_timeOfLastMessage = millis();
-				//_display.IncrementGpsPackets();
-			}
+			ProcessStream(stream);
 		}
 		else
 		{
 			// Check for startup logic messages
-			ProcessStream(stream, NULL, NULL, NULL);
+			ProcessStream(stream);
 
 			// Check output command queue
 			_commandQueue.CheckForTimeouts();
@@ -156,11 +161,13 @@ public:
 	///////////////////////////////////////////////////////////////////////////
 	// Read the latest GPS data and check for timeouts
 	// @returns True if we got some data
-	bool ProcessStream(Stream &stream, NTRIPServer *pSvr0, NTRIPServer *pSvr1, NTRIPServer *pSvr2)
+	bool ProcessStream(Stream &stream)
 	{
 		int available = stream.available();
 		if (available < 1)
 			return false;
+
+		_maxBufferSize = max(_maxBufferSize, available);
 
 		if (available > GPS_BUFFER_SIZE - 10)
 			LogX("GPS - Serial Buffer overflow");
@@ -171,19 +178,6 @@ public:
 		// Read the available bytes from stream
 		auto pData = new byte[available + 1];
 		stream.readBytes(pData, available);
-
-		// Send to server if not in setup mode
-		if (pSvr0 != NULL)
-		{
-			pSvr0->Loop(pData, available);
-			pSvr1->Loop(pData, available);
-			pSvr2->Loop(pData, available);
-			if (!PROCESS_ALL_PACKETS)
-			{
-				delete[] pData;
-				return true;
-			}
-		}
 
 		// Process each byte in turn for rolling buffer
 		for (int n = 0; n < available; n++)
@@ -206,7 +200,7 @@ public:
 			n += 1;
 
 			// Is the _byteArray completely contained within the current pData set
-			if( _binaryIndex <= n )
+			if (_binaryIndex <= n)
 			{
 				n = n - _binaryIndex;
 			}
@@ -225,7 +219,7 @@ public:
 						memcpy(pTempData + oldBufferSize, pData + n, remainder);
 
 					delete[] pData;
-					n = -1;				// Will be incremented the next time the loop begins
+					n = -1; // Will be incremented the next time the loop begins
 					pData = pTempData;
 					available = totalSize;
 				}
@@ -234,7 +228,6 @@ public:
 
 			if (VERBOSE)
 			{
-				//LogX(StringPrintf("OUT BUFF %d : %s", n, HexDump(_byteArray, _binaryIndex).c_str()));
 				LogX(StringPrintf("OUT DATA %d : %s", n, HexDump(pData, available).c_str()));
 			}
 		}
@@ -364,8 +357,13 @@ public:
 				_missedBytesDuringError = 0;
 			}
 
+			// Send to server NTRIP Casters
+			_pNtripServer0->Loop(_byteArray, _binaryLength);
+			_pNtripServer1->Loop(_byteArray, _binaryLength);
+			_pNtripServer2->Loop(_byteArray, _binaryLength);
+
 			_msgTypeTotals[type]++;
-			//if (VERBOSE)
+			// if (VERBOSE)
 			//	LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
 			_buildState = BuildStateNone;
 		}
@@ -522,7 +520,7 @@ private:
 	}
 
 	////////////////////////////////////////////////////////////////////////////
-	// Calculate the CRC24Q checksum. 
+	// Calculate the CRC24Q checksum.
 	// Note, the last 3 bytes are the checksum so we do not include them in the
 	// calculation RTCM3 format is
 	//  +-------+--------+-----------+--------------------+----------+

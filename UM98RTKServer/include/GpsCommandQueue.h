@@ -17,6 +17,7 @@ private:
 	int _timeSent = 0;
 	bool _gotReset = false;
 	bool _startupComplete = false;
+	bool _saveSent = false;						// Only send save to the device once per power cycle
 	std::string _deviceType;					// Device type like UM982
 	std::string _deviceFirmware = "UNKNOWN";	// Firmware version
 	std::string _deviceSerial = "UNKNOWN";		// Serial number
@@ -74,17 +75,21 @@ public:
 		{
 			Logln("UM980 Detected");
 			command = "CONFIG SIGNALGROUP 2"; // (for UM980)
-			// New documentation for Unicore. The new firmware (Build17548) has 50 Hz and QZSS L6 reception instead of Galileo E6.
-			// .. From now on, we install the Build17548 firmware on all new UM980 receivers. So we have a new advantage - you can 
-			// .. enable L6 instead of E6 by changing SIGNALGOUP from 2 to 10. Another thing is that this is only needed in Japan 
-			// .. and countries close to it.
+											  // New documentation for Unicore. The new firmware (Build17548) has 50 Hz and QZSS L6 reception instead of Galileo E6.
+											  // .. From now on, we install the Build17548 firmware on all new UM980 receivers. So we have a new advantage - you can
+											  // .. enable L6 instead of E6 by changing SIGNALGOUP from 2 to 10. Another thing is that this is only needed in Japan
+											  // .. and countries close to it.
 		}
 		else
 		{
 			Logf("DANGER 303 Unknown Device '%s' Detected in %s", _deviceType.c_str(), str.c_str());
 		}
 		_strings.push_back(command);
-		_strings.push_back("saveconfig");
+		if (!_saveSent)
+		{
+			_strings.push_back("SAVECONFIG");
+			_saveSent = true;
+		}
 	}
 
 	// ////////////////////////////////////////////////////////////////////////
@@ -140,6 +145,7 @@ public:
 		if (_gotReset)
 		{
 			_display.UpdateGpsStarts(false, true);
+
 			// Setup RTCM V3
 			_strings.push_back("version"); // Used to determine device type
 			//_strings.push_back("MODE BASE TIME 60 5"); // Set base mode with 60 second startup and 5m optimized save error
@@ -158,14 +164,6 @@ public:
 
 			// Stop everything
 			_strings.push_back("FRESET");
-			//_strings.push_back("RTCM1005 600"); // Base station antenna reference point (ARP) coordinates
-			//_strings.push_back("RTCM1033 600"); // Receiver and antenna description
-			//_strings.push_back("RTCM1077 600");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-			//_strings.push_back("RTCM1087 600");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-			//_strings.push_back("RTCM1097 600");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-			//_strings.push_back("RTCM1117 600");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-			//_strings.push_back("RTCM1127 600");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-			//_strings.push_back("RTCM1137 600");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 		}
 
 		SendTopCommand();
