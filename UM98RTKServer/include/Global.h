@@ -1,5 +1,7 @@
 #pragma once
 
+#define APP_VERSION "1.158"
+
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
 	#define T_DISPLAY_S3 false
@@ -20,6 +22,7 @@
 
 #define RTK_SERVERS 3
 
-#define APP_VERSION "1.128"
+#define GPS_BUFFER_SIZE (16*1024)
 
-#define GPS_BUFFER_SIZE (8*1024)
+// One 1 buttons on right, 3 Buttons on left
+#define TFT_ROTATION  3

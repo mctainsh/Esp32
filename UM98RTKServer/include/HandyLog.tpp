@@ -14,7 +14,7 @@ void Logf(const std::string& format, Args... args)
 	int size_s = std::snprintf(nullptr, 0, format.c_str(), args...) + 1;  // Extra space for '\0'
 	if (size_s <= 0)
 	{
-		Serial.print("E910 - Unable to allocate string size. ");
+		perror("E910 - Unable to allocate string size. ");
 		Logln(format.c_str());
 		return;
 	}

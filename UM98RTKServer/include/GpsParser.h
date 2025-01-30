@@ -1,5 +1,7 @@
 #pragma once
 
+#define GPS_TIMEOUT (60000)
+
 // VERBOSE will log more GPS detail including dump logs and received RTK types
 #define VERBOSE false
 
@@ -111,6 +113,7 @@ public:
 																	 { LogX(str); })
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
+		_timeOfLastMessage = 0 - GPS_TIMEOUT;
 	}
 
 	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }
@@ -148,7 +151,7 @@ public:
 		}
 
 		// Check for timeouts
-		if (_commandQueue.GotReset() && (millis() - _timeOfLastMessage) > 60000)
+		if (_commandQueue.GotReset() && (millis() - _timeOfLastMessage) > GPS_TIMEOUT)
 		{
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();

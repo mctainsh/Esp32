@@ -71,14 +71,18 @@ String MakeHostName();
 // Setup
 void setup(void)
 {
+	//perror("RTL Server - Starting");
+
 	// Setup temporary startup display
 	auto tft = TFT_eSPI();
 	tft.init();
-	tft.setRotation(1);
+	tft.setRotation(TFT_ROTATION); // One 1 buttons on right, 3 Buttons on left
 	tft.fillScreen(TFT_GREEN);
 	tft.setTextColor(TFT_BLACK, TFT_GREEN);
 	tft.setTextFont(2);
 	tft.printf("Starting %\r\n", APP_VERSION);
+
+	SetupLog(); // Call this before any logging
 
 	// No logging before here
 	Serial.begin(115200);

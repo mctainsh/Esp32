@@ -3,13 +3,14 @@
 #include <string>
 #include <vector>
 
-//void Log(const char *msg);
+void SetupLog();
 std::string Logln(const char *msg);
-std::string AddToLog(const char *msg);
-std::string Uptime(unsigned long millis);
-void TruncateLog( std::vector<std::string> &log );
 
 template<typename... Args>
 void Logf(const std::string& format, Args... args);
+
+const std::string Uptime(unsigned long millis);
+const void TruncateLog( std::vector<std::string> &log );
+const std::vector<std::string> CopyMainLog();
 
 #include "HandyLog.tpp"

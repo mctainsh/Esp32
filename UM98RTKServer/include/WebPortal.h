@@ -11,7 +11,6 @@ extern NTRIPServer _ntripServer1;
 extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 extern MyDisplay _display;
-extern std::vector<std::string> _mainLog;
 
 /// @brief Class manages the web pages displayed in the device.
 class WebPortal
@@ -123,7 +122,10 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on("/castergraph", std::bind(&WebPortal::GraphHtml, this));
 	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
 	_wifiManager.server->on("/log", HTTP_GET, [this]()
-							{ HtmlLog("System log", _mainLog); });
+							{
+
+								HtmlLog("System log", CopyMainLog());
+							});
 	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
 							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
 	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
@@ -291,7 +293,7 @@ void TableRow(std::string &html, int indent, const std::string &name, int32_t va
 
 void ServerStatsHtml(NTRIPServer &server, std::string &html)
 {
-	html += "<td><Table>";
+	html += "<td><Table class='striped'>";
 	TableRow(html, 2, "Address", server.GetAddress());
 	TableRow(html, 3, "Port", server.GetPort());
 	TableRow(html, 3, "Credential", server.GetCredential());
@@ -355,7 +357,7 @@ void WebPortal::ShowStatusHtml()
 #endif
 #endif
 	TableRow(html, 1, "Uptime", Uptime(millis()));
-	//TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
+	// TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 0, "GPS", "");
 	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
 	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
@@ -372,34 +374,41 @@ void WebPortal::ShowStatusHtml()
 	for (const auto &pair : _gpsParser.GetMsgTypeTotals())
 		TableRow(html, 1, std::to_string(pair.first), pair.second);
 	TableRow(html, 1, "Total messages", messageCount);
-
-	// Memory stuff
-	html += "<table>";
-	auto free = ESP.getFreeHeap();
-	auto total = ESP.getHeapSize();
-	TableRow(html, 0, "Memory", "");
-	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
-	TableRow(html, 1, "Port free heap", xPortGetFreeHeapSize());
-	TableRow(html, 1, "Heap", "");
-	TableRow(html, 2, "Free", esp_get_free_heap_size());
-	TableRow(html, 2, "Free", free);
-	TableRow(html, 2, "Total", total);
-	TableRow(html, 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
-	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
-	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
-	TableRow(html, 1, "spiram size", esp_spiram_get_size());
-	TableRow(html, 1, "Stack High", uxTaskGetStackHighWaterMark(NULL));
-	// TableRow(html, 1, "himem free", esp_himem_get_free_size());
-	// TableRow(html, 1, "himem phys", esp_himem_get_phys_size());
-	// TableRow(html, 1, "himem reserved", esp_himem_reserved_area_size());
-
 	html += "</table>";
+
 
 	html += "<Table><tr>";
 	ServerStatsHtml(_ntripServer0, html);
 	ServerStatsHtml(_ntripServer1, html);
 	ServerStatsHtml(_ntripServer2, html);
 	html += "</tr></Table>";
+
+		// Memory stuff
+	html += "<table class='striped'>";
+	auto free = ESP.getFreeHeap();
+	auto total = ESP.getHeapSize();
+	TableRow(html, 0, "Memory", "");
+	TableRow(html, 1, "Stack High", uxTaskGetStackHighWaterMark(nullptr));
+	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	TableRow(html, 1, "Port free heap", xPortGetFreeHeapSize());
+	TableRow(html, 1, "Free heap", esp_get_free_heap_size());
+	TableRow(html, 1, "Heap", "");
+	TableRow(html, 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
+	TableRow(html, 2, "Free (Min)", ESP.getMinFreeHeap());
+	TableRow(html, 2, "Free (now)", free);
+	TableRow(html, 2, "Free (Max)", ESP.getMaxAllocHeap());
+	TableRow(html, 2, "Total", total);
+
+	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
+	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
+	TableRow(html, 1, "spiram size", esp_spiram_get_size());
+
+
+	// TableRow(html, 1, "himem free", esp_himem_get_free_size());
+	// TableRow(html, 1, "himem phys", esp_himem_get_phys_size());
+	// TableRow(html, 1, "himem reserved", esp_himem_reserved_area_size());
+
+	html += "</table>";
 
 	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());

@@ -51,7 +51,7 @@ void MyDisplay::Setup()
 	// Setup screen
 	Logln("TFT Init");
 	_tft.init();
-	_tft.setRotation(1);
+	_tft.setRotation(TFT_ROTATION);
 	_graphics.Setup();
 	RefreshScreen();
 }
