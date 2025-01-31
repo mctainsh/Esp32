@@ -281,13 +281,12 @@ void MyDisplay::RefreshScreen()
 
 		DrawLabel("Type", COL1, R1F4, 2);
 		DrawLabel("Resets", COL1, R2F4, 2);
-		//DrawLabel("Packets", COL1, R3F4, 2);
-		DrawLabel("Serial #", COL1, R4F4, 2);
-		DrawLabel("Firmware", COL1, R5F4, 2);
+		DrawLabel("Serial #", COL1, R3F4, 2);
+		DrawLabel("Firmware", COL1, R4F4, 2);
 
 		DrawML(_gpsParser.GetCommandQueue().GetDeviceType().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+		DrawML(_gpsParser.GetCommandQueue().GetDeviceSerial().c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 		DrawML(_gpsParser.GetCommandQueue().GetDeviceFirmware().c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
-		DrawML(_gpsParser.GetCommandQueue().GetDeviceSerial().c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
 
 		break;
 	case 3:

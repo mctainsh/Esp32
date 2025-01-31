@@ -113,11 +113,11 @@ public:
 																	 { LogX(str); })
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
-		_timeOfLastMessage = 0 - GPS_TIMEOUT;
+		_timeOfLastMessage = 5000 - GPS_TIMEOUT;		// Timeout in 5 seconds
 	}
 
 	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }
-	inline const GpsCommandQueue &GetCommandQueue() const { return _commandQueue; }
+	inline GpsCommandQueue &GetCommandQueue() { return _commandQueue; }
 	inline const std::map<int, int> &GetMsgTypeTotals() const { return _msgTypeTotals; }
 	inline const int GetReadErrorCount() const { return _readErrorCount; }
 	inline const int GetMaxBufferSize() const { return _maxBufferSize; }
@@ -136,27 +136,19 @@ public:
 	{
 		int count = 0;
 
-		// Are we sending full binary data to the GPS unit
-		if (_commandQueue.StartupComplete())
-		{
-			ProcessStream(stream);
-		}
-		else
-		{
-			// Check for startup logic messages
-			ProcessStream(stream);
+		ProcessStream(stream);
 
-			// Check output command queue
-			_commandQueue.CheckForTimeouts();
-		}
+		// Check output command queue
+		_commandQueue.CheckForTimeouts();
 
-		// Check for timeouts
-		if (_commandQueue.GotReset() && (millis() - _timeOfLastMessage) > GPS_TIMEOUT)
+		// Check for loss of RTK data
+		if (( millis() - _timeOfLastMessage) > GPS_TIMEOUT)
 		{
+			LogX("RTK Data timeout");
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
 			_commandQueue.StartInitialiseProcess();
-			_display.UpdateGpsStarts(false, true);
+			_display.UpdateGpsStarts(true, false);
 		}
 		return _gpsConnected;
 	}
@@ -429,41 +421,21 @@ public:
 	//		$GNGGA,232306.00,,,,,0,00,9999.0,,,,,,*4E
 	//		$devicename,COM1*67										// Reset response (Checksum is wrong)
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
+	// Note : No non ASCII characters will be passed into this function (BuildAscii() verifies that)
 	void ProcessLine(const std::string &line)
 	{
 		if (line.length() < 1)
 		{
-			LogX("W700 - Too short");
+			LogX("W700 - GPS ASCII Too short");
 			return;
 		}
 
-		_timeOfLastMessage = millis();
-
-		// If line contains any non-simple ascii characters, show in hex
 		LogX(StringPrintf("GPS [- '%s'", line.c_str()));
-
-		bool isSimpleAscii = true;
-		for (int n = 0; n < line.length(); n++)
-		{
-			if (line[n] < 32 || line[n] > 126)
-			{
-				isSimpleAscii = false;
-				break;
-			}
-		}
-		if (!isSimpleAscii)
-		{
-			std::string hex = "";
-			for (int n = 0; n < line.length(); n++)
-			{
-				hex += StringPrintf("%02x ", line[n]);
-			}
-			LogX(StringPrintf("GPS [x] %s", hex.c_str()));
-		}
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
 		{
+			_timeOfLastMessage = millis();
 			_display.UpdateGpsStarts(true, false);
 			return;
 		}

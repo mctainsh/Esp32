@@ -38,8 +38,6 @@
 #include "MyFiles.h"
 #include <WebPortal.h>
 
-const char *AP_PASSWORD = "JohnTLegend";
-
 WiFiManager _wifiManager;
 
 unsigned long _loopWaitTime = 0;	// Time of last second
@@ -71,7 +69,8 @@ String MakeHostName();
 // Setup
 void setup(void)
 {
-	//perror("RTL Server - Starting");
+	perror("RTL Server - Starting");
+	perror(APP_VERSION);
 
 	// Setup temporary startup display
 	auto tft = TFT_eSPI();
@@ -85,7 +84,7 @@ void setup(void)
 	SetupLog(); // Call this before any logging
 
 	// No logging before here
-	Serial.begin(115200);
+	//Serial.begin(115200);		// Using perror() instead
 	Logf("Starting %s", APP_VERSION);
 
 	// Setup the serial buffer for the GPS port

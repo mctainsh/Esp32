@@ -15,9 +15,6 @@ class GpsCommandQueue
 private:
 	std::vector<std::string> _strings;
 	int _timeSent = 0;
-	bool _gotReset = false;
-	bool _startupComplete = false;
-	bool _saveSent = false;						// Only send save to the device once per power cycle
 	std::string _deviceType;					// Device type like UM982
 	std::string _deviceFirmware = "UNKNOWN";	// Firmware version
 	std::string _deviceSerial = "UNKNOWN";		// Serial number
@@ -27,12 +24,7 @@ public:
 	GpsCommandQueue(std::function<void(std::string)> logFunc)
 	{
 		_logToGps = logFunc;
-		StartInitialiseProcess();
 	}
-
-	inline bool StartupComplete() const { return _startupComplete; }
-
-	inline bool GotReset() const { return _gotReset; }
 
 	inline const std::string &GetDeviceType() const { return _deviceType; }
 	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
@@ -65,6 +57,11 @@ public:
 		_deviceSerial = serialPart[0];
 		_display.RefreshScreen();
 
+		// New documentation for Unicore. The new firmware (Build17548) has 50 Hz and QZSS L6 reception instead of Galileo E6.
+		// .. From now on, we install the Build17548 firmware on all new UM980 receivers. So we have a new advantage - you can
+		// .. enable L6 instead of E6 by changing SIGNALGOUP from 2 to 10. Another thing is that this is only needed in Japan
+		// .. and countries close to it.
+
 		// Setup signal groups
 		std::string command = "CONFIG SIGNALGROUP 3 6"; // Assume for UM982)
 		if (_deviceType == "UM982")
@@ -75,21 +72,43 @@ public:
 		{
 			Logln("UM980 Detected");
 			command = "CONFIG SIGNALGROUP 2"; // (for UM980)
-											  // New documentation for Unicore. The new firmware (Build17548) has 50 Hz and QZSS L6 reception instead of Galileo E6.
-											  // .. From now on, we install the Build17548 firmware on all new UM980 receivers. So we have a new advantage - you can
-											  // .. enable L6 instead of E6 by changing SIGNALGOUP from 2 to 10. Another thing is that this is only needed in Japan
-											  // .. and countries close to it.
 		}
 		else
 		{
 			Logf("DANGER 303 Unknown Device '%s' Detected in %s", _deviceType.c_str(), str.c_str());
 		}
 		_strings.push_back(command);
-		if (!_saveSent)
-		{
-			_strings.push_back("SAVECONFIG");
-			_saveSent = true;
-		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////
+	// Get the GPS checksum
+	inline unsigned char CalculateChecksum(const std::string &data)
+	{
+		unsigned char checksum = 0;
+		for (char c : data)
+			checksum ^= c;
+		return checksum;
+	}
+	inline bool VerifyChecksum(const std::string &str)
+	{
+		size_t asterisk_pos = str.find_last_of('*');
+		if (asterisk_pos == std::string::npos || asterisk_pos + 3 > str.size())	
+			return false; // Invalid format
+
+		// Extract the data and the checksum
+		std::string data = str.substr(0, asterisk_pos);
+		std::string provided_checksum_str = str.substr(asterisk_pos + 1, 2);
+
+		// Convert the provided checksum from hex to an integer
+		unsigned int provided_checksum;
+		std::stringstream ss;
+		ss << std::hex << provided_checksum_str;
+		ss >> provided_checksum;
+
+		// Calculate the checksum of the data
+		unsigned char calculated_checksum = CalculateChecksum(data);
+
+		return calculated_checksum == static_cast<unsigned char>(provided_checksum);
 	}
 
 	// ////////////////////////////////////////////////////////////////////////
@@ -99,8 +118,20 @@ public:
 		if (_strings.empty())
 			return false; // List is empty, no match
 
-		// Check for a command match
 		std::string match = "$command,";
+
+		// Check it start correctly
+		if (str.find(match) != 0)
+			return false;
+
+		// Verify checksum
+		if (!VerifyChecksum(str))
+		{
+			Logf("GPS Checksum error in %s", str.c_str());
+			return false;
+		}
+
+		// Check for a command match
 		match += _strings.front();
 		match += ",response: OK*";
 
@@ -110,10 +141,9 @@ public:
 		// Clear the sent command
 		_strings.erase(_strings.begin());
 
-		if (_gotReset && _strings.empty())
+		if (_strings.empty())
 		{
 			Logf("GPS Startup Commands Complete");
-			_startupComplete = true;
 		}
 
 		// Send next command
@@ -129,42 +159,39 @@ public:
 		const std::string match = "$devicename,COM";
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
-		_gotReset = true;
+
+		_display.UpdateGpsStarts(false, true);
 		StartInitialiseProcess();
 		return true;
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Issue RESET command
+	void IssueFReset()
+	{
+		_strings.push_back("FRESET");
+		SendTopCommand();
 	}
 
 	///////////////////////////////////////////////////////////////////////////
 	// Start the initialise process by filling the queue
 	void StartInitialiseProcess()
 	{
-		_startupComplete = false;
 		// Load the commands
-		Logf("GPS Queue StartInitialiseProcess %d", _gotReset);
+		Logf("GPS Queue StartInitialiseProcess");
 		_strings.clear();
-		if (_gotReset)
-		{
-			_display.UpdateGpsStarts(false, true);
 
-			// Setup RTCM V3
-			_strings.push_back("version"); // Used to determine device type
-			//_strings.push_back("MODE BASE TIME 60 5"); // Set base mode with 60 second startup and 5m optimized save error
-			_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
-			_strings.push_back("RTCM1033 30"); // Receiver and antenna description
-			_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-			_strings.push_back("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-			_strings.push_back("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-			_strings.push_back("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-			_strings.push_back("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-			_strings.push_back("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
-		}
-		else
-		{
-			_display.UpdateGpsStarts(true, false);
-
-			// Stop everything
-			_strings.push_back("FRESET");
-		}
+		// Setup RTCM V3
+		_strings.push_back("VERSION"); // Used to determine device type
+		//_strings.push_back("MODE BASE TIME 60 5"); // Set base mode with 60 second startup and 5m optimized save error
+		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
+		_strings.push_back("RTCM1033 30"); // Receiver and antenna description
+		_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
+		_strings.push_back("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
+		_strings.push_back("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
+		_strings.push_back("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
+		_strings.push_back("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+		_strings.push_back("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
 
 		SendTopCommand();
 	}
@@ -173,7 +200,6 @@ public:
 	// Check queue for timeouts
 	void CheckForTimeouts()
 	{
-		// Logf("Check TO %d,  %d\r\n", _strings.size(), (millis() - _timeSent));
 		if (_strings.empty())
 			return;
 

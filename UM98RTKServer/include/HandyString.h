@@ -20,5 +20,7 @@ bool IsValidDouble(const char* str, double *pVal);
 const char* WifiStatus(wl_status_t status);
 std::string ReplaceNewlineWithTab(const std::string& input);
 std::string Replace(const std::string &input, const std::string &search, const std::string &replace);
+void RemoveLastLfCr(std::string &str);
+void ReplaceCrLfEncode(std::string &str);
 
 #include "HandyString.tpp"

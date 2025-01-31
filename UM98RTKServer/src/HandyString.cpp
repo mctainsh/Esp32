@@ -216,3 +216,24 @@ std::string Replace(const std::string &input, const std::string &search, const s
 	}
 	return result;
 }
+
+void RemoveLastLfCr(std::string &str)
+{
+    if (str.size() >= 2 && str.compare(str.size() - 2, 2, "\r\n") == 0)
+        str.erase(str.size() - 2, 2);
+}
+
+void ReplaceCrLfEncode(std::string &str)
+{
+    std::string crlf = "\r\n";
+    std::string newline = "\\r\\n";
+    size_t pos = 0;
+
+    while ((pos = str.find(crlf, pos)) != std::string::npos)
+    {
+        str.replace(pos, crlf.length(), newline);
+        pos += newline.length();
+	}
+}
+    
+
