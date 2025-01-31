@@ -1,6 +1,6 @@
 #pragma once
 
-#define APP_VERSION "1.158"
+#define APP_VERSION "1.178"
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
@@ -26,3 +26,6 @@
 
 // One 1 buttons on right, 3 Buttons on left
 #define TFT_ROTATION  3
+
+// WiFi access point password
+#define AP_PASSWORD "JohnTLegend"

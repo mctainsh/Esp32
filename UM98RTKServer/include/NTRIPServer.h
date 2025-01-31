@@ -35,7 +35,7 @@ public:
 
 private:
 	WiFiClient _client;					  // Socket connection
-	uint16_t _wifiConnectTime = 0;		  // Time we last had good data to prevent reconnects too fast
+	unsigned long _wifiConnectTime = 0;		  // Time we last had good data to prevent reconnects too fast
 	MyDisplay &_display;				  // Display for updating packet count
 	bool _wasConnected = false;			  // Was connected last time
 	const int _index;					  // Index of the server used when updating display
@@ -55,5 +55,6 @@ private:
 	void ConnectedProcessingSend(const byte *pBytes, int length);
 	void ConnectedProcessingReceive();
 	void LogX(std::string text);
-	void Reconnect();
+	bool Reconnect();
+	bool WriteText(const char *str);
 };

@@ -6,12 +6,14 @@
 #include <GpsParser.h>
 #include <MyFiles.h>
 
+#define SOCKET_RETRY_INTERVAL 30000
+
 extern MyFiles _myFiles;
 
 NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 	: _display(display), _index(index)
 {
-	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);
+	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -184,11 +186,11 @@ void NTRIPServer::LogX(std::string text)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void NTRIPServer::Reconnect()
+bool NTRIPServer::Reconnect()
 {
 	// Limit how soon the connection is retried
-	if ((millis() - _wifiConnectTime) < 10000)
-		return;
+	if ((millis() - _wifiConnectTime) < SOCKET_RETRY_INTERVAL)
+		return false;
 
 	_wifiConnectTime = millis();
 
@@ -197,16 +199,39 @@ void NTRIPServer::Reconnect()
 	_client.setNoDelay(false);
 
 	int status = _client.connect(_sAddress.c_str(), _port);
-	_client.setNoDelay(true);
 	if (!_client.connected())
 	{
-		LogX(StringPrintf("E500 - RTK %s Not connected %d", _sAddress.c_str(), status));
-		return;
+		LogX(StringPrintf("E500 - RTK %s Not connected %d. (%dms)", _sAddress.c_str(), status, millis() - _wifiConnectTime));
+		return false;
 	}
-	LogX(StringPrintf("Connected %s OK", _sAddress.c_str()));
+	LogX(StringPrintf("Connected %s OK. (%dms)", _sAddress.c_str(), millis() - _wifiConnectTime));
 
-	_client.write(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str());
-	_client.write("Source-Agent: NTRIP UM98XX/ESP32_T_Display_SX\r\n");
-	_client.write("STR: \r\n");
-	_client.write("\r\n");
+	if (!WriteText(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str()))
+		return false;
+	if (!WriteText("Source-Agent: NTRIP UM98/ESP32_T_Display_SX\r\n"))
+		return false;
+	if (!WriteText("STR: \r\n"))
+		return false;
+	if (!WriteText("\r\n"))
+		return false;
+	return true;
+}
+
+bool NTRIPServer::WriteText(const char *str)
+{
+	if (str == NULL)
+		return true;
+
+	std::string message = StringPrintf("    -> '%s'", str);
+	ReplaceCrLfEncode(message);
+	LogX(message);
+
+	size_t len = strlen(str);
+	size_t written = _client.write((const uint8_t *)str, len);
+	if (len == written)
+		return true;
+
+	// Failed to write
+	LogX(StringPrintf("Write failed %s", _sAddress.c_str()));
+	return false;
 }

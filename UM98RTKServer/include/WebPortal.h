@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Global.h"
 #include <WiFiManager.h>
 #include "HandyString.h"
 #include "NTRIPServer.h"
@@ -22,6 +23,7 @@ public:
 private:
 	void OnBindServerCallback();
 	void IndexHtml();
+	void ConfirmResetHtml();
 	void ShowStatusHtml();
 	void GraphHtml() const;
 	void GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const;
@@ -99,12 +101,12 @@ void WebPortal::Setup()
 	Logf("Start AP %s", apName.c_str());
 
 	// First parameter is name of access point, second is the password
+	// Don't know why this is called again
 	//_wifiManager.resetSettings();
-	auto res = _wifiManager.autoConnect(apName.c_str(), "Test1234");
+	auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
 	if (!res)
 	{
 		Logln("WiFi : Failed to connect OR is running in non-blocking mode");
-		// ESP.restart();
 	}
 
 	Logln("WebPortal setup complete");
@@ -119,13 +121,11 @@ void WebPortal::OnBindServerCallback()
 	// Our main pages
 	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
 	_wifiManager.server->on("/index", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
+	_wifiManager.server->on("/Confirm_Reset", HTTP_GET, std::bind(&WebPortal::ConfirmResetHtml, this));
 	_wifiManager.server->on("/castergraph", std::bind(&WebPortal::GraphHtml, this));
 	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
 	_wifiManager.server->on("/log", HTTP_GET, [this]()
-							{
-
-								HtmlLog("System log", CopyMainLog());
-							});
+							{ HtmlLog("System log", CopyMainLog());	});
 	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
 							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
 	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
@@ -134,6 +134,12 @@ void WebPortal::OnBindServerCallback()
 							{ HtmlLog("Caster 2 log", _ntripServer1.GetLogHistory()); });
 	_wifiManager.server->on("/caster3log", HTTP_GET, [this]()
 							{ HtmlLog("Caster 3 log", _ntripServer2.GetLogHistory()); });
+
+	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET, [this]()
+							{ 
+								_gpsParser.GetCommandQueue().IssueFReset();
+								_wifiManager.server->send(200, "text/html", "<html>Done</html>");
+							});
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -218,10 +224,11 @@ void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPSer
 /// @brief Display a log in html format
 /// @param title Title of the log
 /// @param log The log to display
+/// TODO : Force to DOS Codepage 437
 void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
 {
 	Logf("Show %s", title);
-	std::string html = "<h3>Log ";
+	std::string html = "<html><head></head><h3>Log ";
 	html += title;
 	html += "</h3>";
 	html += "<pre>";
@@ -229,7 +236,7 @@ void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) 
 	{
 		html += (Replace(ReplaceNewlineWithTab(entry), "<", "&lt;") + "\n");
 	}
-	html += "</pre>";
+	html += "</pre></html>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 }
 
@@ -325,11 +332,27 @@ void WebPortal::IndexHtml()
 	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
 	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
 	html += "<li><a href='/castergraph'>Caster graph</a></li>";
+	html += "<li><a href='/Confirm_Reset'>Reset GPS</a></li>";
 	html += "</ul>";
 	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Confirm the GPS Reset
+void WebPortal::ConfirmResetHtml()
+{
+	Logln("ShowConfirmReset");
+	std::string html = "<body style='padding:10px;'>\
+	<h3>CONFIRM RESET</h3>";
+
+	html += "<ul>";
+	html += "<li><a href='/FRESET_GPS_CONFIRMED'>CONFIRM GPS RESET</a></li>";
+	html += "<li><a href='/i'>Cancel</a></li>";
+	html += "</ul>";
+	html += "</body>";
+	_wifiManager.server->send(200, "text/html", html.c_str());
+}
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
