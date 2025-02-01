@@ -37,6 +37,7 @@
 #include "NTRIPServer.h"
 #include "MyFiles.h"
 #include <WebPortal.h>
+#include "WifiBusyTask.h"
 
 WiFiManager _wifiManager;
 
@@ -84,7 +85,7 @@ void setup(void)
 	SetupLog(); // Call this before any logging
 
 	// No logging before here
-	//Serial.begin(115200);		// Using perror() instead
+	Serial.begin(115200); // Using perror() instead
 	Logf("Starting %s", APP_VERSION);
 
 	// Setup the serial buffer for the GPS port
@@ -136,8 +137,19 @@ void setup(void)
 
 	// Block here till we have WiFi credentials (good or bad)
 	Logf("Start listening on %s", MakeHostName().c_str());
-	_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
 
+	const int wifiTimeoutSeconds = 60;
+	 WifiBusyTask wifiBusy(_display);
+	_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		Logln("Try WIFI Connection");
+		wifiBusy.StartCountDown(wifiTimeoutSeconds);
+		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+		delay(1000);
+	}
+
+	// Connected
 	_webPortal.Setup();
 	Logln("Setup complete");
 }
@@ -241,6 +253,7 @@ bool IsWifiConnected()
 	}
 
 	Logln("Try resetting WIfi");
+	delay(1000);
 
 	// Reset the WIFI
 	//_wifiFullResetTime = t;

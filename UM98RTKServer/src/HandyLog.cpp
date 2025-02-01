@@ -52,10 +52,12 @@ std::string Logln(const char *msg)
 	//	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
 	{
 		s = AddToLog(msg);
-
-		perror(s.c_str());
-		// Serial.print(s.c_str());
-		// Serial.print("\r\n");
+		if (SERIAL_LOG)
+		{
+			// perror(s.c_str());
+			Serial.print(s.c_str());
+			Serial.print("\r\n");
+		}
 		//		xSemaphoreGive(_serialMutex);
 	}
 	return s;

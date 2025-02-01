@@ -113,7 +113,7 @@ public:
 																	 { LogX(str); })
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
-		_timeOfLastMessage = 5000 - GPS_TIMEOUT;		// Timeout in 5 seconds
+		_timeOfLastMessage = 10000 - GPS_TIMEOUT;		// Timeout in 5 seconds
 	}
 
 	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }

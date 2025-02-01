@@ -138,7 +138,7 @@ Depending on the device you will need to upload the binary
 	- Power up the TTGO-Display (GPS does not need to be connected)
 	- Using your phone or computer
 	- Connect to the WIFI access point Rtk_XXXXXXXX (Mac address shown on ESP32 screen)
-	- Password will be `JohnTLegend`
+	- Password will be `John123456`
 	- Browse to http://192.168.4.1
 	- Select "Configure WiFi"
 	- Select your HOME WiFi network and enter credential

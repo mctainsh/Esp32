@@ -1,6 +1,9 @@
 #pragma once
 
-#define APP_VERSION "1.178"
+#define APP_VERSION "1.180"
+
+// Disables logging to serial
+#define SERIAL_LOG false
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
@@ -28,4 +31,4 @@
 #define TFT_ROTATION  3
 
 // WiFi access point password
-#define AP_PASSWORD "JohnTLegend"
+#define AP_PASSWORD "John123456"

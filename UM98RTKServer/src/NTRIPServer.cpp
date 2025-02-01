@@ -129,7 +129,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 
 	if (sent != length)
 	{
-		LogX(StringPrintf("E500 - %s Only sent %d of %d", _sAddress.c_str(), sent, length));
+		LogX(StringPrintf("E500 - %s Only sent %d of %d (%sms)", _sAddress.c_str(), sent, length, time/1000));
 		_client.stop();
 	}
 	else
@@ -160,7 +160,7 @@ void NTRIPServer::ConnectedProcessingReceive()
 	_pSocketBuffer[buffSize] = 0;
 
 	// Log the data
-	LogX("IN -> " + _sAddress + "\r\n" + HexAsciDump(_pSocketBuffer, buffSize));
+	LogX("RECV. " + _sAddress + "\r\n" + HexAsciDump(_pSocketBuffer, buffSize));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,6 +199,7 @@ bool NTRIPServer::Reconnect()
 	_client.setNoDelay(false);
 
 	int status = _client.connect(_sAddress.c_str(), _port);
+	_client.setNoDelay(true);					// This results in 0.5s latency when RTK2GO.com is skipped?
 	if (!_client.connected())
 	{
 		LogX(StringPrintf("E500 - RTK %s Not connected %d. (%dms)", _sAddress.c_str(), status, millis() - _wifiConnectTime));

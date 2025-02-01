@@ -17,7 +17,7 @@ public:
 	void Animate();
 	void SetGpsConnected(bool connected);
 	void SetLoopsPerSecond(int n, uint32_t millis);
-	void UpdateGpsStarts( bool restart, bool reinitialize);
+	void UpdateGpsStarts(bool restart, bool reinitialize);
 	void IncrementGpsPackets();
 	void ActionButton();
 	void NextPage();
@@ -35,6 +35,7 @@ public:
 	void SetValueFormatted(int page, T n, T *pMember, const std::string text, int32_t x, int32_t y, int width, uint8_t font);
 	void DrawKeyLine(int y, int tick);
 	void DrawCell(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK, uint8_t datum = MC_DATUM);
+	void SetCell(std::string text, int page, int row, uint8_t datum = MC_DATUM);
 	void DrawML(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK);
 	void DrawMR(const char *pstr, int32_t x, int32_t y, int width, uint8_t font, uint16_t fgColour = TFT_WHITE, uint16_t bgColour = TFT_BLACK);
 	void DrawLabel(const char *pstr, int32_t x, int32_t y, uint8_t font);
@@ -55,7 +56,7 @@ private:
 	bool _gpsConnected;			  // GPS connected
 	int32_t _gpsResetCount = 0;	  // Number GPS resets
 	int32_t _gpsReinitialize = 0; // Number GPS initializations
-	int32_t _gpsMsgCount = 0;  // Number GPS of packets received
+	int32_t _gpsMsgCount = 0;	  // Number GPS of packets received
 	int _sendGood = 0;			  // Number of good sends
 	int _sendBad = 0;			  // Number of bad sends
 	int _httpCode = 0;			  // Last HTTP code

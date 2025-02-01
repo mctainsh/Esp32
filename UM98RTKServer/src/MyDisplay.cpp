@@ -28,6 +28,9 @@
 #define R4F4 110
 #define R5F4 140
 
+static const int F4_ROWS[] = {R1F4, R2F4, R3F4, R4F4, R5F4};
+static const int F4_ROW_COUNT = sizeof(F4_ROWS) / sizeof(F4_ROWS[0]);
+
 // Columns
 #define COL1 5
 #define COL2_P0 60
@@ -216,11 +219,11 @@ void MyDisplay::RefreshLog(const std::vector<std::string> &log)
 	for (auto it = log.rbegin(); it != log.rend(); ++it)
 	{
 		std::string truncated = it->c_str();
-		truncated.erase( 0, truncated.find_first_not_of("0 "));
-		truncated = Replace( truncated, "\t", "    " );
-		truncated = Replace( truncated, "\r", "" );
-		truncated = Replace( truncated, "\n", "-" );
-		_tft.println(truncated.substr(0,53).c_str());
+		truncated.erase(0, truncated.find_first_not_of("0 "));
+		truncated = Replace(truncated, "\t", "    ");
+		truncated = Replace(truncated, "\r", "");
+		truncated = Replace(truncated, "\n", "-");
+		_tft.println(truncated.substr(0, 53).c_str());
 		if (rows++ > 16)
 			break;
 	}
@@ -370,6 +373,15 @@ void MyDisplay::SetValue(int page, T n, T *pMember, int32_t x, int32_t y, int wi
 		text = oss.str();
 	}
 	DrawCell(text.c_str(), x, y, width, font);
+}
+
+void MyDisplay::SetCell(std::string text, int page, int row, uint8_t datum)
+{
+	if (page != _currentPage)
+		return;
+
+	int y = (0 <= row && row < F4_ROW_COUNT) ? F4_ROWS[row] : R1F4;
+	DrawML(text.c_str(), COL2_P0, y, COL2_P0_W, 4);
 }
 
 template <typename T>
