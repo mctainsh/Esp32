@@ -8,7 +8,10 @@
 #include "HandyString.h"
 #include "MyDisplay.h"
 
-#define DISPLAY_ROW 1
+#define DISPLAY_PAGE 0
+#define DISPLAY_ROW 0
+
+extern WiFiManager _wifiManager;
 
 ///////////////////////////////////////////////////////////////////////////
 // Class create a task to update the display showing a count down during
@@ -19,8 +22,8 @@
 class WifiBusyTask
 {
 private:
-	int _wifiConnectingCountDown;
-	TaskHandle_t _connectingTask;
+	int _wifiConnectingCountDown = 0;
+	TaskHandle_t _connectingTask = NULL;
 	MyDisplay &_display;
 	SemaphoreHandle_t _xMutex = NULL;
 
@@ -41,7 +44,7 @@ public:
 	~WifiBusyTask()
 	{
 		Serial.println("----- WifiBusyTask Terminating");
-		_display.SetCell(APP_VERSION, 0, DISPLAY_ROW);
+		//_display.SetCell(APP_VERSION, DISPLAY_PAGE, DISPLAY_ROW);
 		vTaskDelete(_connectingTask);
 	}
 
@@ -60,13 +63,15 @@ public:
 		while (true)
 		{
 			xSemaphoreTake(_xMutex, portMAX_DELAY);
-			if (--_wifiConnectingCountDown < 0)
-				_wifiConnectingCountDown = 0;
+			_wifiConnectingCountDown--;
 			xSemaphoreGive(_xMutex);
 
-			auto message = StringPrintf("%s -> Retry %ds", APP_VERSION, _wifiConnectingCountDown);
+//			auto message = StringPrintf("%s -> Retry %ds", APP_VERSION, _wifiConnectingCountDown);
+//			auto message = StringPrintf("%s -> Retry %ds", _wifiManager.getWiFiSSID(), _wifiConnectingCountDown);
+			auto message = StringPrintf("[R:%d] %s", _wifiConnectingCountDown, WifiStatus(WiFi.status()));
+
 			Serial.println(message.c_str());
-			_display.SetCell(message, 0, DISPLAY_ROW);
+			_display.SetCell(message, DISPLAY_PAGE, DISPLAY_ROW);
 			vTaskDelay(1000 / portTICK_PERIOD_MS);
 		}
 	}

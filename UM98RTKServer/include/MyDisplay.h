@@ -63,5 +63,4 @@ private:
 	std::string _time;			  // GPS time in minutes and seconds
 	int _animationAngle;		  // Animated wheel
 	int _loopsPerSecond;		  // How many loop occur per second
-	wl_status_t _webStatus;		  // WIFI Status of connection to hot spot
 };

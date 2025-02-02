@@ -140,6 +140,12 @@ void WebPortal::OnBindServerCallback()
 								_gpsParser.GetCommandQueue().IssueFReset();
 								_wifiManager.server->send(200, "text/html", "<html>Done</html>");
 							});
+	_wifiManager.server->on("/RESET_WIFI", HTTP_GET, [this]()
+							{ 
+								_wifiManager.erase();
+								ESP.restart();
+							});
+							
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -332,7 +338,7 @@ void WebPortal::IndexHtml()
 	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
 	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
 	html += "<li><a href='/castergraph'>Caster graph</a></li>";
-	html += "<li><a href='/Confirm_Reset'>Reset GPS</a></li>";
+	html += "<li><a href='/Confirm_Reset'>Reset GPS or WIFI/Config</a></li>";
 	html += "</ul>";
 	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
@@ -347,7 +353,14 @@ void WebPortal::ConfirmResetHtml()
 	<h3>CONFIRM RESET</h3>";
 
 	html += "<ul>";
-	html += "<li><a href='/FRESET_GPS_CONFIRMED'>CONFIRM GPS RESET</a></li>";
+	html += "<li><a href='/FRESET_GPS_CONFIRMED'>Confirm GPS RESET</a></li>";	
+	html += "<li></li>";	
+	html += "<li></li>";	
+	html += "<li></li>";	
+	html += "<li><a href='/RESET_WIFI'>COnfirm WIFI and Settings RESET</a></li>";	
+	html += "<li></li>";	
+	html += "<li></li>";	
+	html += "<li></li>";	
 	html += "<li><a href='/i'>Cancel</a></li>";
 	html += "</ul>";
 	html += "</body>";

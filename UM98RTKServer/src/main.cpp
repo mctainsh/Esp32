@@ -138,7 +138,7 @@ void setup(void)
 	// Block here till we have WiFi credentials (good or bad)
 	Logf("Start listening on %s", MakeHostName().c_str());
 
-	const int wifiTimeoutSeconds = 60;
+	const int wifiTimeoutSeconds = 120;
 	 WifiBusyTask wifiBusy(_display);
 	_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
 	while (WiFi.status() != WL_CONNECTED)
@@ -146,7 +146,8 @@ void setup(void)
 		Logln("Try WIFI Connection");
 		wifiBusy.StartCountDown(wifiTimeoutSeconds);
 		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
-		delay(1000);
+		//ESP.restart();
+		//delay(1000);
 	}
 
 	// Connected

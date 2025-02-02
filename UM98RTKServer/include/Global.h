@@ -1,6 +1,6 @@
 #pragma once
 
-#define APP_VERSION "1.180"
+#define APP_VERSION "1.181"
 
 // Disables logging to serial
 #define SERIAL_LOG false

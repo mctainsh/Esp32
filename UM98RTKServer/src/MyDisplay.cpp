@@ -20,6 +20,7 @@
 #include <sstream>
 #include <string>
 #include <NTRIPServer.h>
+#include <WiFiManager.h>
 
 // Font size 4 with 4 rows
 #define R1F4 20
@@ -46,6 +47,7 @@ extern NTRIPServer _ntripServer0;
 extern NTRIPServer _ntripServer1;
 extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
+extern WiFiManager _wifiManager;
 
 ////////////////////////////////////////////////////////////////////////
 // Setup this display
@@ -159,6 +161,7 @@ void MyDisplay::RefreshWiFiState()
 		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
 		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
 		DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
+		DrawML(AP_PASSWORD, COL2_P0, R5F4, COL2_P0_W, 4);
 	}
 }
 
@@ -264,7 +267,7 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Speed", COL1, R4F4, 2);
 		DrawLabel("Packets", COL1, R5F4, 2);
 
-		DrawML(APP_VERSION, COL2_P0, R2F4, COL2_P0_W, 4);
+		DrawML(StringPrintf("%s-%s", APP_VERSION, _wifiManager.getWiFiSSID()).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 
 		break;
 	case 1:
