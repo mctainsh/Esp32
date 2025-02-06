@@ -357,7 +357,7 @@ void WebPortal::ConfirmResetHtml()
 	html += "<li></li>";	
 	html += "<li></li>";	
 	html += "<li></li>";	
-	html += "<li><a href='/RESET_WIFI'>COnfirm WIFI and Settings RESET</a></li>";	
+	html += "<li><a href='/RESET_WIFI'>Confirm WIFI and Settings RESET</a></li>";	
 	html += "<li></li>";	
 	html += "<li></li>";	
 	html += "<li></li>";	

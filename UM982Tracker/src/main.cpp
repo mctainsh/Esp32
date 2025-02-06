@@ -20,7 +20,6 @@
 //		Password “none” if your device requires that a password be entered.
 ///////////////////////////////////////////////////////////////////////////////
 
-
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <iostream>
 #include <sstream>
@@ -35,13 +34,15 @@
 #include "NTRIPClient.h"
 #include "ButtonInterrupt.h"
 #include "WebPortal.h"
+#include <WifiBusyTask.h>
 
 WiFiManager _wifiManager;
 WebPortal _webPortal;
 
 MyFiles _myFiles;
 NTRIPClient _ntripClient;
-MyDisplay _display([](){_ntripClient.DisplaySettings();});
+MyDisplay _display([]()
+				   { _ntripClient.DisplaySettings(); });
 GpsParser _gpsParser(_display);
 
 ButtonInterrupt _button1(BUTTON_1);
@@ -128,16 +129,24 @@ void setup(void)
 	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
 	//_wifiManager.erase();
 
-	// Block and wait till we are connected
-	auto res = _wifiManager.autoConnect(hostname.c_str(), AP_PASSWORD);
-	if (!res)
-		LogI(tft, "Failed to start config Portal (Maybe cos non-blocked)\r\n");
-	else
-		LogI(tft, "WIFI Connected. Please wait..\r\n");
-
-	// Setup the display
+	// Setup display
 	LogI(tft, "Setup display\r\n");
 	_display.Setup();
+	_display.RefreshWiFiState();
+	
+	// Start connecting loop
+	WifiBusyTask wifiBusy(_display);
+	while (WiFi.status() != WL_CONNECTED)
+	{
+		int wifiTimeoutSeconds = wifiBusy.StartCountDown();
+		_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);		
+		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+
+		_display.SetCell(_wifiManager.getWiFiSSID(true).c_str(), 0, 2);	// Only works after first call
+	}
+
+	// Connected
+	_display.SetCell("", 0, 4);
 
 	Serial.println("Setup Web Portal");
 	_webPortal.Setup(hostname.c_str());
@@ -152,7 +161,7 @@ void loop()
 	// Check if we should turn off the display
 	// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
 #if T_DISPLAY_S3 == true
-	//digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
+	// digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
 #endif
 
 	// Trigger something every second
@@ -259,7 +268,7 @@ bool IsWifiConnected()
 /// @brief Maker a unique host name based on the MAC address with Rtk prefix
 String MakeHostName()
 {
-	//return WiFi.getHostname();
+	// return WiFi.getHostname();
 	auto mac = WiFi.macAddress();
 	mac.replace(":", "");
 	return "RT_" + mac;

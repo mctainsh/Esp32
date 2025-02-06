@@ -31,6 +31,11 @@
 #define R2F4 50
 #define R3F4 80
 #define R4F4 110
+#define R5F4 140
+
+static const int F4_ROWS[] = {R1F4, R2F4, R3F4, R4F4, R5F4};
+static const int F4_ROW_COUNT = sizeof(F4_ROWS) / sizeof(F4_ROWS[0]);
+
 
 // Columns
 #define COL1 5
@@ -277,19 +282,18 @@ public:
 		_graphics.SetWebStatus(status);
 		if (_currentPage == 0)
 		{
-			DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
-			if (status != WL_CONNECTED)
-			//{
-			//	DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
-			//}
-			//else
+			if (status == WL_CONNECTED)
 			{
-				
-				DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
-				DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
+				SetCell( WifiStatus(status), 0, 0);
+			}
+			else
+			{
+				SetCell("X:192.168.4.1", 0, 1);
+				SetCell(WiFi.getHostname(), 0, 3);
+				SetCell(AP_PASSWORD, 0, 4);
 			}
 		}
-		if( _currentPage == 5)
+		if (_currentPage == 5)
 		{
 			DrawML(WiFi.localIP().toString().c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
 			DrawML(WiFi.SSID().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
@@ -555,6 +559,15 @@ public:
 		std::ostringstream oss;
 		oss << *pMember;
 		DrawCell(oss.str().c_str(), x, y, width, font);
+	}
+
+	void SetCell(std::string text, int page, int row)
+	{
+		if (page != _currentPage)
+			return;
+
+		int y = (0 <= row && row < F4_ROW_COUNT) ? F4_ROWS[row] : R1F4;
+		DrawML(text.c_str(), COL2_P0, y, COL2_P0_W, 4);
 	}
 
 	template <typename T>
