@@ -11,7 +11,7 @@
 #define DISPLAY_PAGE 0
 #define DISPLAY_ROW 0
 
-static const int WIFI_TIMEOUTS[] = {5, 10, 15, 20, 30, 300};
+static const int WIFI_TIMEOUTS[] = {2, 5, 10, 15, 20, 30, 300};
 static const int WIFI_TIMEOUT_SIZE = sizeof(WIFI_TIMEOUTS) / sizeof(WIFI_TIMEOUTS[0]);
 
 ///////////////////////////////////////////////////////////////////////////
@@ -91,7 +91,7 @@ public:
 
 		// Save with extra time for autoConnect inner workings
 		xSemaphoreTake(_xMutex, portMAX_DELAY);
-		_wifiConnectingCountDown = duration + 3;
+		_wifiConnectingCountDown = duration + 5;
 		xSemaphoreGive(_xMutex);
 
 		// Return duration for WIFI

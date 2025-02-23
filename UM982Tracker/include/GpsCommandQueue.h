@@ -13,17 +13,19 @@ class GpsCommandQueue
 {
 private:
 	std::vector<std::string> _strings;
-	int _timeSent = 0;
-	bool _gotReset = false;
-	int _resetCount = 0;
-	MyDisplay& _display;
+	int _timeSent = 0;				   // Time of last message send. Used for timeouts
+	bool _sendSetupAfterReset = false; // Setup the send all setting after the next reset
+	// int _resetCount = 0;			   // Total resets
+	MyDisplay &_display;
 
 public:
 	///////////////////////////////////////////////////////////////////////////
 	// Constructor
-	GpsCommandQueue(MyDisplay& display) : _display(display)
+	GpsCommandQueue(MyDisplay &display) : _display(display)
 	{
 	}
+
+	// int GetResetCount() { return _resetCount; }
 
 	// ////////////////////////////////////////////////////////////////////////
 	// Check if the first item in the list matches the given string
@@ -54,35 +56,36 @@ public:
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
 
-		Serial.println("E200 - Reset command received");
-		_resetCount++;
-		_display.SetRtkStatus(StringPrintf("GPS Reset %d", _resetCount));
-		StartInitialiseProcess();
+		Serial.printf("I200 - Reset received\r\n");
+		_display.SetRtkStatus("GPS Reset");
+		if (_sendSetupAfterReset)
+			SendInitialiseProcess();
 		return true;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
+	// Start the GPS chip reset process
+	void StartResetProcess()
+	{
+		_sendSetupAfterReset = true;
+		Serial2.println("freset");
+	}
+
+	///////////////////////////////////////////////////////////////////////////
 	// Check if the GPS receiver has reset itself and send all the commands
-	void StartInitialiseProcess()
+	void SendInitialiseProcess()
 	{
 		// Load the commands
 		_strings.clear();
-		if (_gotReset)
-		{
-			Serial.println("GPS Queue StartInitialiseProcess");
-			_strings.push_back("version");
-			_strings.push_back("config signalgroup 3 6");
-			_strings.push_back("MODE ROVER");
-			_strings.push_back("CONFIG RTK TIMEOUT 10");
-			_strings.push_back("GNGGA 1");
-			_strings.push_back("saveconfig");
-		}
-		else
-		{
-			Serial.println("GPS FRESET");
-			_strings.push_back("freset");
-			_gotReset = true;
-		}
+
+		Serial.println("GPS Queue StartInitialiseProcess");
+		_strings.push_back("version");
+		_strings.push_back("config signalgroup 3 6");
+		_strings.push_back("MODE ROVER");
+		_strings.push_back("CONFIG RTK TIMEOUT 10");
+		_strings.push_back("GNGGA 1");
+		_strings.push_back("saveconfig");
+		_sendSetupAfterReset = false;
 
 		SendTopCommand();
 	}
@@ -94,6 +97,7 @@ public:
 		if (_strings.empty())
 			return;
 
+		Serial.printf("Sending command -> '%s'\r\n", _strings.front().c_str());
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
