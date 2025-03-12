@@ -183,7 +183,8 @@ void loop()
 	if (_button2.WasPressed())
 	{
 		Serial.println("Button 2");
-		_display.ActionButton();
+		if( _display.ActionButton() == MyDisplay::Actions::RESET_GPS)
+			_gpsParser.GetCommandQueue().StartResetProcess();
 	}
 
 	// Check for new data GPS serial data

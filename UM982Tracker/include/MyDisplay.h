@@ -9,7 +9,6 @@
 #include "MyFiles.h"
 #include "MyDisplayGraphics.h"
 #include "CredentialPrivate.h"
-// #include "NTRIPClient.h"
 
 #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
 #include <SPI.h>
@@ -35,7 +34,6 @@
 
 static const int F4_ROWS[] = {R1F4, R2F4, R3F4, R4F4, R5F4};
 static const int F4_ROW_COUNT = sizeof(F4_ROWS) / sizeof(F4_ROWS[0]);
-
 
 // Columns
 #define COL1 5
@@ -284,7 +282,7 @@ public:
 		{
 			if (status == WL_CONNECTED)
 			{
-				SetCell( WifiStatus(status), 0, 0);
+				SetCell(WifiStatus(status), 0, 0);
 			}
 			else
 			{
@@ -308,14 +306,16 @@ public:
 			return;
 		_webRtkStatus = status;
 		_graphics.SetRtkStatus(status);
-		if (_currentPage != 0)
-			return;
-		DrawML(status.c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		UpdateRtkStatus();
+	}
+	void UpdateRtkStatus()
+	{
+		SetCell(StringPrintf("%s GR:%d", _webRtkStatus.c_str(), _gpsResetCount), 0, 1);
 	}
 
 	void SetLoopsPerSecond(int n)
 	{
-		SetValue(3, n, &_loopsPerSecond, 2, R2F4, SCR_W - 4, 4);
+		SetValue(3, n, &_loopsPerSecond, COL2_P0, R2F4, COL2_P0_W, 4);
 	}
 
 	void ResetGps()
@@ -323,15 +323,15 @@ public:
 		_gpsResetCount++;
 		_gpsPacketCount--;
 		IncrementGpsPackets();
+		UpdateRtkStatus();
 	}
 	void IncrementGpsPackets()
 	{
 		_gpsPacketCount++;
 		if (_gpsPacketCount > 32000)
 			_gpsPacketCount = 10000;
-		if (_currentPage != 3)
-			return;
-		DrawCell(StringPrintf("%d - %d", _gpsResetCount, _gpsPacketCount).c_str(), 2, ROW4, 116, 4);
+
+		SetCell(StringPrintf("Rst:%d - Pkt:%d", _gpsResetCount, _gpsPacketCount), 3, 3);
 	}
 
 	void ResetRtk()
@@ -344,10 +344,8 @@ public:
 		_rtkPacketCount += completePackets;
 		if (_rtkPacketCount > 32000)
 			_rtkPacketCount = 10000;
-		if (_currentPage != 3)
-			return;
 		_graphics.SetRtkStatus("Connected");
-		DrawCell(StringPrintf("%d - %d", _rtkResetCount, _rtkPacketCount).c_str(), 122, ROW4, 116, 4);
+		SetCell(StringPrintf("Rst:%d - Grp:%d", _rtkResetCount, _rtkPacketCount), 3, 4);
 	}
 
 	void IncrementSendGood(int httpCode)
@@ -366,7 +364,7 @@ public:
 		_httpCode = httpCode;
 		_graphics.SetTxStatus(httpCode);
 		if (_currentPage == 3)
-			DrawCell(StringPrintf("Sends G:%d B:%d", _sendGood, _sendBad).c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
+			DrawCell(StringPrintf("Sends G:%d B:%d", _sendGood, _sendBad).c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 		if (_currentPage == 0)
 		{
 			auto status = StringPrintf("E:%d", _httpCode);
@@ -376,16 +374,22 @@ public:
 		}
 	}
 
+	enum Actions
+	{
+		NONE = 0,
+		RESET_GPS = 1
+	};
+
 	/////////////////////////////////////////////////////////////////////////////
 	// Depends on page currently shown
-	void ActionButton()
+	Actions ActionButton()
 	{
 		switch (_currentPage)
 		{
 		// Save current location
 		case 2:
 			if (!HasLocation())
-				return;
+				return NONE;
 			_lngSaved = _lng;
 			_latSaved = _lat;
 			_heightSaved = _height;
@@ -398,11 +402,11 @@ public:
 
 		// Reset GPS
 		case 3:
-			Serial2.println("freset");
-			break;
+			return RESET_GPS;
 		}
 
 		RefreshScreen();
+		return NONE;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -472,8 +476,14 @@ public:
 			}
 			break;
 		case 3:
-			_tft.fillScreen(TFT_YELLOW);
+			_bg = TFT_YELLOW;
+			_tft.fillScreen(_bg);
 			title = "  3 - System";
+			DrawLabel("RESET GPS - Press top button!", COL1, R1F4, 2);
+			DrawLabel("Speed", COL1, R2F4, 2);
+			DrawLabel("Sends", COL1, R3F4, 2);
+			DrawLabel("GPS", COL1, R4F4, 2);
+			DrawLabel("RTK", COL1, R5F4, 2);
 			break;
 
 		case 4:

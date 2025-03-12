@@ -26,6 +26,7 @@ public:
 	}
 
 	GpsSender &GetGpsSender() { return _gpsSender; }
+	GpsCommandQueue &GetCommandQueue() { return _commandQueue; }
 
 	///////////////////////////////////////////////////////////////////////////
 	// Return the number of lines
@@ -68,11 +69,12 @@ public:
 		}
 
 		// Check for timeouts
-		if ((millis() - _timeOfLastMessage) > 5000)
+		if ((millis() - _timeOfLastMessage) > 30000)
 		{
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
-			_commandQueue.StartInitialiseProcess();
+			Serial.println("W708 - GPS Timeout");
+			//_commandQueue.StartInitialiseProcess();
 		}
 		return _gpsConnected;
 	}
