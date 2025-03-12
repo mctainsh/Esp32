@@ -8,6 +8,8 @@
 // Created
 //		John McTainsh
 // 		19 Sept 2024
+//  Build usiing
+//		LOLIN S2 Mini
 //  This example code is in the public domain.
 //	Built using the sample at
 //	http://www.arduino.cc/en/Tutorial/KeyboardMessage
