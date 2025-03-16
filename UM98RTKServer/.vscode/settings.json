@@ -1,7 +1,9 @@
 {
 	"cSpell.words": [
+		"bodmer",
 		"CIRF",
 		"devicename",
+		"espressif",
 		"freset",
 		"GNGGA",
 		"GNSS",
@@ -10,7 +12,8 @@
 		"PREAMB",
 		"RTCM",
 		"saveconfig",
-		"SIGNALGROUP"
+		"SIGNALGROUP",
+		"tzapu"
 	],
 	"files.associations": {
 		"array": "cpp",

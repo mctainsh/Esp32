@@ -29,6 +29,9 @@
 
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
+void SaveBaseLocation(std::string newBaseLocation);
+void LoadBaseLocation();
+
 #include "Global.h"
 #include "HandyLog.h"
 #include "HandyString.h"
@@ -56,6 +59,7 @@ GpsParser _gpsParser(_display);
 NTRIPServer _ntripServer0(_display, 0);
 NTRIPServer _ntripServer1(_display, 1);
 NTRIPServer _ntripServer2(_display, 2);
+std::string _baseLocation = "";
 
 // WiFi monitoring states
 #define WIFI_STARTUP_TIMEOUT 20000
@@ -117,6 +121,7 @@ void setup(void)
 		Logln("Test file IO");
 	else
 		Logln("E100 - File IO failed");
+	LoadBaseLocation();
 
 	// Load the NTRIP server settings
 	tft.println("Setup NTRIP Connections");
@@ -139,15 +144,15 @@ void setup(void)
 	Logf("Start listening on %s", MakeHostName().c_str());
 
 	const int wifiTimeoutSeconds = 120;
-	 WifiBusyTask wifiBusy(_display);
+	WifiBusyTask wifiBusy(_display);
 	_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
 	while (WiFi.status() != WL_CONNECTED)
 	{
 		Logln("Try WIFI Connection");
 		wifiBusy.StartCountDown(wifiTimeoutSeconds);
 		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
-		//ESP.restart();
-		//delay(1000);
+		// ESP.restart();
+		// delay(1000);
 	}
 
 	// Connected
@@ -202,6 +207,28 @@ void loop()
 
 	// Update animations
 	_display.Animate();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Read the base location from the disk
+void LoadBaseLocation()
+{
+	std::string text;
+	if (_myFiles.ReadFile(BASE_LOCATION_FILENAME, text))
+	{
+		Logln(StringPrintf(" - Read config '%s'", text.c_str()).c_str());
+		_baseLocation = text;
+	}
+	else
+	{
+		_baseLocation = "";
+		Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'" BASE_LOCATION_FILENAME).c_str());
+	}
+}
+void SaveBaseLocation(std::string newBaseLocation)
+{
+	_baseLocation = newBaseLocation;
+	_myFiles.WriteFile(BASE_LOCATION_FILENAME, newBaseLocation.c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////

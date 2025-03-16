@@ -3,7 +3,7 @@
 #define GPS_TIMEOUT (60000)
 
 // VERBOSE will log more GPS detail including dump logs and received RTK types
-#define VERBOSE false
+// #define VERBOSE
 
 // Process the received packets after a GPS is configured and running
 #define PROCESS_ALL_PACKETS true
@@ -113,7 +113,7 @@ public:
 																	 { LogX(str); })
 	{
 		_logHistory.reserve(MAX_LOG_LENGTH);
-		_timeOfLastMessage = 10000 - GPS_TIMEOUT;		// Timeout in 5 seconds
+		_timeOfLastMessage = 10000 - GPS_TIMEOUT; // Timeout in 5 seconds
 	}
 
 	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }
@@ -142,7 +142,7 @@ public:
 		_commandQueue.CheckForTimeouts();
 
 		// Check for loss of RTK data
-		if (( millis() - _timeOfLastMessage) > GPS_TIMEOUT)
+		if ((millis() - _timeOfLastMessage) > GPS_TIMEOUT)
 		{
 			LogX("RTK Data timeout");
 			_gpsConnected = false;
@@ -182,11 +182,10 @@ public:
 
 			_buildState = BuildStateNone;
 
-			if (VERBOSE)
-			{
-				LogX(StringPrintf("IN  BUFF %d : %s", _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
-				LogX(StringPrintf("IN  DATA %d : %s", n, HexDump(pData, available).c_str()));
-			}
+#ifdef VERBOSE
+			LogX(StringPrintf("IN  BUFF %d : %s", _binaryIndex, HexDump(_byteArray, _binaryIndex).c_str()));
+			LogX(StringPrintf("IN  DATA %d : %s", n, HexDump(pData, available).c_str()));
+#endif
 
 			// Output is made up of the existing buffer less the first byte (_binaryIndex - 1)
 			// .. plus what remains in the new data array (available - n)
@@ -221,10 +220,9 @@ public:
 			}
 			_binaryIndex = 0;
 
-			if (VERBOSE)
-			{
-				LogX(StringPrintf("OUT DATA %d : %s", n, HexDump(pData, available).c_str()));
-			}
+#ifdef VERBOSE
+			LogX(StringPrintf("OUT DATA %d : %s", n, HexDump(pData, available).c_str()));
+#endif
 		}
 
 		delete[] pData;
@@ -248,9 +246,6 @@ public:
 				_binaryIndex = 1;
 				_byteArray[0] = ch;
 				_buildState = BuildStateAscii;
-				return true;
-			case 0x0a:
-				AddToSkipped(ch);
 				return true;
 			case 0xD3:
 				// LogX("Build BINARY");
@@ -307,8 +302,8 @@ public:
 			auto lengthPrefix = GetUInt(8, 14 - 8);
 			if (lengthPrefix != 0)
 			{
-				LogX(StringPrintf("Binary length prefix too big %02x %02x", _byteArray[0], _byteArray[1]));
-				return false;
+				LogX(StringPrintf("Binary length prefix too big %02x %02x - %d", _byteArray[0], _byteArray[1], lengthPrefix));
+				//	return false;
 			}
 			_binaryLength = GetUInt(14, 10) + 6;
 			if (_binaryLength == 0 || _binaryLength >= MAX_BUFF)
@@ -358,8 +353,9 @@ public:
 			_pNtripServer2->Loop(_byteArray, _binaryLength);
 
 			_msgTypeTotals[type]++;
-			// if (VERBOSE)
-			//	LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
+#ifdef VERBOSE
+			LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
+#endif
 			_buildState = BuildStateNone;
 		}
 		return true;
@@ -370,8 +366,12 @@ public:
 	// @return true if buffer building good
 	bool BuildAscii(char ch)
 	{
+		// Skip CR (TODO : Only do this for last character)
+		if (ch == '\r')
+			return true;
+
 		// The line complete
-		if (ch == '\r' || ch == '\n')
+		if (ch == '\n')
 		{
 			// Make byte array null terminated
 			_byteArray[_binaryIndex] = 0;
@@ -461,10 +461,14 @@ private:
 			else
 			{
 				_skippedArray[_skippedIndex] = 0;
+				std::string logTest;
 				if (IsAllAscii(_skippedArray, _skippedIndex))
-					_logHistory.push_back(StringPrintf("Skipped [%d] %s", _skippedIndex, _skippedArray).c_str());
+					logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, _skippedArray).c_str();
 				else
-					_logHistory.push_back(StringPrintf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str()));
+					logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str());
+				_logHistory.push_back(logTest.c_str());
+				Logln(logTest.c_str());
+
 				_missedBytesDuringError += _skippedIndex;
 			}
 			_skippedIndex = 0;

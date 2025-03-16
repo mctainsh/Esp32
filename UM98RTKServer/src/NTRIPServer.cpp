@@ -6,14 +6,15 @@
 #include <GpsParser.h>
 #include <MyFiles.h>
 
-#define SOCKET_RETRY_INTERVAL 30000
+#define SOCKET_RETRY_INTERVAL 120000
 
 extern MyFiles _myFiles;
 
 NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 	: _display(display), _index(index)
 {
-	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	
+	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	  // Reserve space for the send times
+	_wifiConnectTime = 10000 - SOCKET_RETRY_INTERVAL; // Start the connection process after 10 seconds
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -21,8 +22,8 @@ NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 void NTRIPServer::LoadSettings()
 {
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
+	
 	// Read the server settings from the config file
-	// Load last lat long
 	std::string llText;
 	if (_myFiles.ReadFile(fileName.c_str(), llText))
 	{
@@ -110,6 +111,7 @@ void NTRIPServer::ConnectedProcessing(const byte *pBytes, int length)
 // Send the data to the RTK Caster
 void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 {
+	// Skip if we have no data
 	if (length < 1)
 		return;
 
@@ -121,19 +123,23 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	unsigned long startT = micros();
 	int sent = _client.write(pBytes, length);
 
+	// Record the time delay and max write time
 	unsigned long time = micros() - startT;
-	if (_maxSendTime == 0)
-		_maxSendTime = time;
-	else
-		_maxSendTime = max(_maxSendTime, time);
 
 	if (sent != length)
 	{
-		LogX(StringPrintf("E500 - %s Only sent %d of %d (%sms)", _sAddress.c_str(), sent, length, time/1000));
+		// Send failed so record the failure and start the reconnect process
+		LogX(StringPrintf("E500 - %s Only sent %d of %d (%dms)", _sAddress.c_str(), sent, length, time / 1000));
 		_client.stop();
 	}
 	else
 	{
+		// Record max send time
+		if (_maxSendTime == 0)
+			_maxSendTime = time;
+		else
+			_maxSendTime = max(_maxSendTime, time);
+
 		// Logf("RTK %s Sent %d OK", _sAddress.c_str(), sent);
 		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
 		_wifiConnectTime = millis();
@@ -196,10 +202,13 @@ bool NTRIPServer::Reconnect()
 
 	// Start the connection process
 	LogX(StringPrintf("RTK Connecting to %s : %d", _sAddress.c_str(), _port));
-	_client.setNoDelay(false);
+	//_client.setNoDelay(false);
 
 	int status = _client.connect(_sAddress.c_str(), _port);
-	_client.setNoDelay(true);					// This results in 0.5s latency when RTK2GO.com is skipped?
+	LogX(StringPrintf("RTK %s Connect status %d", _sAddress.c_str(), status));
+
+	// [ 30824][E][WiFiClient.cpp:320] setSocketOption(): fail on -1, errno: 9, "Bad file number"
+	_client.setNoDelay(true); // This results in 0.5s latency when RTK2GO.com is skipped?
 	if (!_client.connected())
 	{
 		LogX(StringPrintf("E500 - RTK %s Not connected %d. (%dms)", _sAddress.c_str(), status, millis() - _wifiConnectTime));

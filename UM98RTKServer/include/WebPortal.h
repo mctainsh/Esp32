@@ -12,6 +12,7 @@ extern NTRIPServer _ntripServer1;
 extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 extern MyDisplay _display;
+extern std::string _baseLocation;
 
 /// @brief Class manages the web pages displayed in the device.
 class WebPortal
@@ -46,6 +47,8 @@ private:
 	WiFiManagerParameter *_pCaster2Port;
 	WiFiManagerParameter *_pCaster2Credential;
 	WiFiManagerParameter *_pCaster2Password;
+
+	WiFiManagerParameter *_pBaseLocation;
 };
 
 /// @brief Startup the portal
@@ -74,6 +77,8 @@ void WebPortal::Setup()
 	_pCaster2Credential = new WiFiManagerParameter("credential2", "Caster 3 credential", _ntripServer2.GetCredential().c_str(), 40);
 	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password", _ntripServer2.GetPassword().c_str(), 40);
 
+	_pBaseLocation = new WiFiManagerParameter("baseLocation", "Base Location (Lat Long Height)", _baseLocation.c_str(), 100);
+
 	_wifiManager.addParameter(_pCaster0Address);
 	_wifiManager.addParameter(_pCaster0Port);
 	_wifiManager.addParameter(_pCaster0Credential);
@@ -88,6 +93,8 @@ void WebPortal::Setup()
 	_wifiManager.addParameter(_pCaster2Port);
 	_wifiManager.addParameter(_pCaster2Credential);
 	_wifiManager.addParameter(_pCaster2Password);
+
+	_wifiManager.addParameter(_pBaseLocation);
 
 	_wifiManager.setConfigPortalTimeout(0);
 	_wifiManager.setConfigPortalBlocking(false);
@@ -174,6 +181,10 @@ void WebPortal::OnSaveParamsCallback()
 	_ntripServer0.Save(_pCaster0Address->getValue(), _pCaster0Port->getValue(), _pCaster0Credential->getValue(), _pCaster0Password->getValue());
 	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(), _pCaster1Credential->getValue(), _pCaster1Password->getValue());
 	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(), _pCaster2Credential->getValue(), _pCaster2Password->getValue());
+
+	SaveBaseLocation( _pBaseLocation->getValue());
+
+	delay(1000);
 
 	ESP.restart();
 }

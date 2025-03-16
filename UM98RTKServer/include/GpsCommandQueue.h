@@ -4,6 +4,7 @@
 #include <string>
 
 extern MyDisplay _display;
+extern std::string _baseLocation;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Holds a collection of commands
@@ -19,6 +20,7 @@ private:
 	std::string _deviceFirmware = "UNKNOWN";	// Firmware version
 	std::string _deviceSerial = "UNKNOWN";		// Serial number
 	std::function<void(std::string)> _logToGps; // Log to GPS function
+	bool _resetProcessed = false;				// Flag used to prevent reset being sent several times
 
 public:
 	GpsCommandQueue(std::function<void(std::string)> logFunc)
@@ -29,6 +31,40 @@ public:
 	inline const std::string &GetDeviceType() const { return _deviceType; }
 	inline const std::string &GetDeviceFirmware() const { return _deviceFirmware; }
 	inline const std::string &GetDeviceSerial() const { return _deviceSerial; }
+
+	///////////////////////////////////////////////////////////////////////////
+	// Start the initialise process by filling the queue
+	void StartInitialiseProcess()
+	{
+		// Load the commands
+		Logf("GPS Queue StartInitialiseProcess");
+		_strings.clear();
+
+		// Setup RTCM V3
+		_strings.push_back("VERSION");	   // Used to determine device type
+		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
+		_strings.push_back("RTCM1033 30"); // Receiver and antenna description
+		_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
+		_strings.push_back("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
+		_strings.push_back("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
+		_strings.push_back("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
+		_strings.push_back("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
+		_strings.push_back("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
+
+		// Setup base station mode
+		if (_baseLocation.empty())
+			_strings.push_back("MODE BASE TIME 600 1"); // Set base mode with 600 second startup and 1m optimized save error
+		else
+			_strings.push_back("MODE BASE " + _baseLocation); // Set base mode with location
+		// It is better to workout your exact location and set it here as latitude, longitude, height
+		//_strings.push_back("MODE BASE  latitude longitude height");
+
+		// Only ever save one to protect the flash
+		if (!_resetProcessed)
+			_strings.push_back("SAVECONFIG");
+
+		SendTopCommand();
+	}
 
 	///////////////////////////////////////////////////////////////////////////
 	/// @brief Process a line of text from the GPS unit checking got version information
@@ -92,7 +128,7 @@ public:
 	inline bool VerifyChecksum(const std::string &str)
 	{
 		size_t asterisk_pos = str.find_last_of('*');
-		if (asterisk_pos == std::string::npos || asterisk_pos + 3 > str.size())	
+		if (asterisk_pos == std::string::npos || asterisk_pos + 3 > str.size())
 			return false; // Invalid format
 
 		// Extract the data and the checksum
@@ -156,12 +192,16 @@ public:
 	// .. reset command looks like "$devicename,COM1*67"
 	bool HasDeviceReset(const std::string &str)
 	{
+		if (_resetProcessed)
+			return false;
+
 		const std::string match = "$devicename,COM";
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
 
 		_display.UpdateGpsStarts(false, true);
 		StartInitialiseProcess();
+		_resetProcessed = true;
 		return true;
 	}
 
@@ -170,29 +210,6 @@ public:
 	void IssueFReset()
 	{
 		_strings.push_back("FRESET");
-		SendTopCommand();
-	}
-
-	///////////////////////////////////////////////////////////////////////////
-	// Start the initialise process by filling the queue
-	void StartInitialiseProcess()
-	{
-		// Load the commands
-		Logf("GPS Queue StartInitialiseProcess");
-		_strings.clear();
-
-		// Setup RTCM V3
-		_strings.push_back("VERSION"); // Used to determine device type
-		//_strings.push_back("MODE BASE TIME 60 5"); // Set base mode with 60 second startup and 5m optimized save error
-		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
-		_strings.push_back("RTCM1033 30"); // Receiver and antenna description
-		_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
-		_strings.push_back("RTCM1087 1");  // GLONASS MSM7. The type 7 Multiple Signal Message format for the Russian GLONASS system.
-		_strings.push_back("RTCM1097 1");  // Galileo MSM7. The type 7 Multiple Signal Message format for Europe’s Galileo system.
-		_strings.push_back("RTCM1117 1");  // QZSS MSM7. The type 7 Multiple Signal Message format for Japan’s QZSS system.
-		_strings.push_back("RTCM1127 1");  // BeiDou MSM7. The type 7 Multiple Signal Message format for China’s BeiDou system.
-		_strings.push_back("RTCM1137 1");  // NavIC MSM7. The type 7 Multiple Signal Message format for India’s NavIC system.
-
 		SendTopCommand();
 	}
 
