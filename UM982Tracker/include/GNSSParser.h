@@ -164,8 +164,13 @@ class GNSSParser
 				int temp = std::stoi(_lengthInHex, nullptr, 16);
 				std::string check = StringPrintf("%x", temp);
 
+				// Check if the length is too short
+				if( temp < 1 )
+				{
+					Serial.printf("E905 - Length is too small %d\r\n", temp);
+				}
 				// Check if the length is too long
-				if (temp > MaxLength)
+				else if (temp > MaxLength)
 				{
 					Serial.printf("E907 - Length too long %d\r\n", temp);
 				}
@@ -185,7 +190,7 @@ class GNSSParser
 				}
 			}
 			_lengthInHex = "";
-			return;
+			//return;
 		}
 
 		// Skip non hex characters upper and lower case
