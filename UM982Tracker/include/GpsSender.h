@@ -50,9 +50,10 @@ public:
 
 private:
 	MyDisplay &_display;
-	uint16_t _lastSend;
+	unsigned long _lastSend;
 	std::string _sUrl;
 	std::string _sDeviceId;
+	int _resentDelay = 10000;	// Period to wait before resending data
 	const char *SETTING_FILE = "/GpsSenderSettings.txt";
 };
 
@@ -67,7 +68,7 @@ void GpsSender::LoadSettings()
 {
 	// Load default settings
 	_sUrl = "https://www.yoursite.com/api/weatherforecast/SaveLocation";
-	_sDeviceId = "McTainsh001";
+	_sDeviceId = "5558802";
 
 	// Read the server settings from the config file
 	std::string llText;
@@ -102,34 +103,46 @@ void GpsSender::Save(const char *url, const char *deviceId)
 
 void GpsSender::SendHttpData(double latitude, double longitude, double altitude, int satellites, int fixMode)
 {
+	//Serial.printf("Wait %d < %d\r\n", millis() - _lastSend, _resentDelay);
 	// Is it time to send?
-	if (millis() - _lastSend < 4500)
+	if (millis() - _lastSend < _resentDelay)
 		return;
 
+	_lastSend = millis();
+	_resentDelay = 60000; // Wait a minute before trying again if an error occurs
+
+	// Changed to send to @Track server
+	// .. +RESP:GTFRI,F50904,015181003555787,,0,0,1,1,0.0,0,106.2,153.057701,-27.594989,20220513005727,0505,0001,7028,08C8C20D,,97,20220513005750,07E0$
+	//auto line = StringPrintf("+RESP:GTFRI,F50904,888881111000787,,0,0,1,1,0.0,0,106.2,%.6lf,%.6lf,20220513005727,0505,0001,7028,08C8C20D,,97,20220513005750,07E0$\r\n", longitude, latitude);
+	//SendTcpData("165.228.16.3", 22392, line.c_str());
+	//return;
+
 	// Build and send
-	std::string httpStr = StringPrintf("%s/%.9lf/%.9lf/%lf/%d/%d", _sUrl.c_str(), longitude, latitude, altitude, satellites, fixMode);
-	const char *httpBuff = httpStr.c_str();
+	//std::string httpStr = StringPrintf("%s/%.9lf/%.9lf/%lf/%d/%d", _sUrl.c_str(), longitude, latitude, altitude, satellites, fixMode);
+	std::string httpStr = StringPrintf("%s/%.9lf/%.9lf/%lf/%d/%d/%s", _sUrl.c_str(), longitude, latitude, altitude, satellites, fixMode, _sDeviceId.c_str());
 	if (WiFi.status() == WL_CONNECTED)
 	{
 		HTTPClient http;
-		http.begin(httpBuff);
+		http.begin(httpStr.c_str()); //Specify the URL
 		int httpCode = http.GET();
 		if (httpCode == 200)
 		{
 			String payload = http.getString();
 			if (payload.startsWith("OK-"))
 			{
+				Serial.println(payload);
 				_lastSend = millis();
 				_display.IncrementSendGood(httpCode);
+				_resentDelay = 4500;
 				return;
 			}
-			Serial.println(httpBuff);
+			Serial.println(httpStr.c_str());
 			Serial.println(httpCode);
 			Serial.println(payload);
 		}
 		else
 		{
-			Serial.printf("Error %d on HTTP in %s request\r\n", httpCode, httpBuff);
+			Serial.printf("Error %d on HTTP in %s request\r\n", httpCode, httpStr.c_str());
 		}
 		http.end(); // Free the resources
 		_display.IncrementSendBad(httpCode);

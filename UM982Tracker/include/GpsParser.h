@@ -45,8 +45,12 @@ public:
 			//	continue;
 			//}
 
+			// Skip the CR
+			if( ch == '\r' )
+				continue;
+
 			// The line complete
-			if (ch == '\r' || ch == '\n')
+			if (ch == '\n')
 			{
 				if (_buildBuffer.length() < 1)
 					continue;
@@ -74,7 +78,7 @@ public:
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
 			Serial.println("W708 - GPS Timeout");
-			//_commandQueue.StartInitialiseProcess();
+			_commandQueue.SendInitialiseProcess();
 		}
 		return _gpsConnected;
 	}
@@ -91,6 +95,8 @@ private:
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
 	void ProcessLine(const std::string &line)
 	{
+
+		
 		if (line.length() < 1)
 		{
 			Serial.println("W700 - Too short");
@@ -125,12 +131,12 @@ private:
 
 		std::vector<std::string> parts = Split(line, ",");
 
-		// Skip unused types
-		if (!EndsWith(parts.at(0), "GGA"))
-		{
-			Serial.printf("\tNot GGA %s\r\n", line.c_str());
-			return;
-		}
+		// // Skip unused types
+		// if (!EndsWith(parts.at(0), "GGA"))
+		// {
+		// 	Serial.printf("\tNot GGA %s\r\n", line.c_str());
+		// 	return;
+		// }
 
 		if (parts.size() < 14)
 		{

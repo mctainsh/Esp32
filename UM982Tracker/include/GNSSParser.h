@@ -186,18 +186,18 @@ class GNSSParser
 				}
 				else
 				{
-					Serial.printf("E900 - Failed to parse length %s as %s\r\n", _lengthInHex, check);
+					Serial.printf("E900 - Failed to parse length %s as %s\r\n", _lengthInHex.c_str(), check.c_str());
 				}
 			}
 			_lengthInHex = "";
-			//return;
+			return;
 		}
 
 		// Skip non hex characters upper and lower case
 		//const string GOOD_HEX = "0123456789ABCDEF";
 		if (('0' > b || b > '9') && ('A' > b || b > 'F') && ('a' > b || b > 'f'))
 		{
-			Serial.printf("E910 - Non Hex number %s\r\n", _lengthInHex.c_str());
+			Serial.printf("E910 - Non Hex number '%s'\r\n", _lengthInHex.c_str());
 			_lengthInHex = "";
 			return;
 		}

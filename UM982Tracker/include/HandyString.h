@@ -106,7 +106,7 @@ bool VerifyChecksum(const std::string &nmeaSentence)
 
 	if (calculatedChecksum != providedChecksum)
 	{
-		Serial.printf("\tE101 %02x != %02x\r\n", calculatedChecksum, providedChecksum);
+		Serial.printf("\tE103 Checksum %02x != %02x\r\n", calculatedChecksum, providedChecksum);
 		return false;
 	}
 	return true;
