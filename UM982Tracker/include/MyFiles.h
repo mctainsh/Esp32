@@ -17,23 +17,23 @@ class MyFiles
 	{
 		if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
 			return true;
-		Serial.println("SPIFFS Mount Failed");
+		Logln("SPIFFS Mount Failed");
 		return false;
 	}
 
 
 	bool WriteFile(const char* path, const char* message)
 	{
-		Serial.printf("Writing file: %s -> '%s'\r\n\t", path, message);
+		Logf("Writing file: %s -> '%s'", path, message);
 		fs::File file = SPIFFS.open(path, FILE_WRITE);
 		if (!file)
 		{
-			Serial.println("- failed to open file for writing");
+			Logln("- failed to open file for writing");
 			return false;
 		}
 
 		bool error = file.print(message);
-		Serial.println(error ? "- file written" : "- write failed");
+		Logln(error ? "- file written" : "- write failed");
 
 		file.close();
 		return error;
@@ -42,20 +42,20 @@ class MyFiles
 
 	void AppendFile(const char* path, const char* message)
 	{
-		Serial.printf("Appending to file: %s -> '%s'\r\n\t", path, message);
+		Logf("Appending to file: %s -> '%s'", path, message);
 		fs::File file = SPIFFS.open(path, FILE_APPEND);
 		if (!file)
 		{
-			Serial.println("- failed to open file for appending");
+			Logln("- failed to open file for appending");
 			return;
 		}
 		if (file.print(message))
 		{
-			Serial.println("- message appended");
+			Logln("- message appended");
 		}
 		else
 		{
-			Serial.println("- append failed");
+			Logln("- append failed");
 		}
 		file.close();
 	}
@@ -63,15 +63,15 @@ class MyFiles
 
 	bool ReadFile(const char* path, std::string& text)
 	{
-		Serial.printf("Reading file: %s\r\n\t", path);
+		Logf("Reading file: %s", path);
 
 		fs::File file = SPIFFS.open(path);
 		if (!file || file.isDirectory())
 		{
-			Serial.println("- failed to open file for reading");
+			Logln("- failed to open file for reading");
 			return false;
 		}
-		Serial.println("- read from file:");
+		Logln("- read from file:");
 		while (file.available())
 			text += file.read();
 		file.close();

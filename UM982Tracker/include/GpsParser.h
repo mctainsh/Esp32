@@ -9,6 +9,9 @@
 #include "GpsCommandQueue.h"
 #include "HandyString.h"
 #include "GpsSender.h"
+#include "HandyLog.h"
+
+#define MAX_GPS_LOG_LENGTH (200)
 
 class GpsParser
 {
@@ -16,17 +19,20 @@ private:
 	GpsSender _gpsSender;
 	MyDisplay &_display;
 	GpsCommandQueue _commandQueue;
-	bool _gpsConnected = false; // Are we receiving GPS data from GPS unit (Does not mean we have location)
+	bool _gpsConnected = false;			  // Are we receiving GPS data from GPS unit (Does not mean we have location)
+	std::vector<std::string> _logHistory; // Last few log messages
 
 public:
 	GpsParser(MyDisplay &display) : _display(display),
 									_gpsSender(display),
 									_commandQueue(display)
 	{
+		_logHistory.reserve(MAX_GPS_LOG_LENGTH);
 	}
 
 	GpsSender &GetGpsSender() { return _gpsSender; }
 	GpsCommandQueue &GetCommandQueue() { return _commandQueue; }
+	inline std::vector<std::string> GetLogHistory() const { return _logHistory; }
 
 	///////////////////////////////////////////////////////////////////////////
 	// Return the number of lines
@@ -46,7 +52,7 @@ public:
 			//}
 
 			// Skip the CR
-			if( ch == '\r' )
+			if (ch == '\r')
 				continue;
 
 			// The line complete
@@ -63,7 +69,7 @@ public:
 			// Is the line too long
 			if (_buildBuffer.length() > 254)
 			{
-				Serial.printf("Overflowing %s\r\n", _buildBuffer.c_str());
+				LogGps(StringPrintf("Overflowing %s", _buildBuffer.c_str()));
 				_buildBuffer.clear();
 				continue;
 			}
@@ -77,7 +83,7 @@ public:
 		{
 			_gpsConnected = false;
 			_timeOfLastMessage = millis();
-			Serial.println("W708 - GPS Timeout");
+			LogGps("W708 - GPS Timeout");
 			_commandQueue.SendInitialiseProcess();
 		}
 		return _gpsConnected;
@@ -95,17 +101,15 @@ private:
 	//		$command,CONFIG RTK TIMEOUT 10,response: OK*63			// Command response (Note Checksum is wrong)
 	void ProcessLine(const std::string &line)
 	{
-
-		
 		if (line.length() < 1)
 		{
-			Serial.println("W700 - Too short");
+			LogGps("W700 - Too short");
 			return;
 		}
 
 		_timeOfLastMessage = millis();
 
-		Serial.printf("Processing UN98x %s\r\n", line.c_str());
+		LogGps(StringPrintf("-] '%s'", line.c_str()));
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
@@ -119,7 +123,7 @@ private:
 		// Ignore '#' responses
 		if (line[0] == '#')
 		{
-			Serial.println("\tW701 - Ignored");
+			LogGps("\tW701 - Ignored");
 			return;
 		}
 
@@ -140,14 +144,14 @@ private:
 
 		if (parts.size() < 14)
 		{
-			Serial.printf("\tPacket length too short %d\r\n", parts.size());
+			LogGps(StringPrintf("\tPacket length too short %d", parts.size()));
 			return;
 		}
 
 		// Skip unused types
 		if (parts.at(0) != "$GNGGA")
 		{
-			Serial.printf("\tNot GNGGA %s\r\n", line.c_str());
+			LogGps(StringPrintf("\tNot GNGGA %s", line.c_str()));
 			return;
 		}
 		_gpsConnected = true;
@@ -180,7 +184,10 @@ private:
 		if (!IsValidDouble(parts.at(9).c_str(), &height))
 			height = -1;
 
-		_display.SetPosition(lng, lat, height);
+		// RTK Age
+		std::string rtkAge = parts.at(13);
+
+		_display.SetPosition(lng, lat, height, rtkAge);
 
 		// Serial.printf("\tLL %.10lf, %.10lf\r\n", lat, lng);
 		// Serial.print("\t LL ");
@@ -212,5 +219,20 @@ private:
 		std::string minutes = text.substr(degreeDigits);
 		double value = std::stod(degree) + (std::stod(minutes) / 60.0);
 		return isNegative ? value * -1 : value;
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Write to the debug log and keep the last few messages for display
+	void LogGps(std::string text)
+	{
+		// Normal log
+		std::string s = StringPrintf("%s %s", Uptime(millis()).c_str(), text.c_str());
+#ifdef SERIAL_LOG
+		Serial.println(s.c_str());
+#endif
+		_logHistory.push_back(s);
+
+		TruncateLog(_logHistory);
+		//_display.RefreshGpsLog();
 	}
 };

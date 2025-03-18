@@ -106,6 +106,7 @@ void setup(void)
 
 	// Verify file IO
 	LogI(tft, "Check file access, ");
+	SetupLog();
 	if (_myFiles.Setup())
 	{
 		//_myFiles.WriteFile("/hello.txt", "Hello ");
@@ -124,7 +125,10 @@ void setup(void)
 	auto hostname = MakeHostName();
 	WiFi.setHostname(hostname.c_str());
 	_wifiManager.setHostname(hostname.c_str());
-	LogI(tft, StringPrintf("Host : %s\r\n", WiFi.getHostname()).c_str());
+	auto hostNameMsg = StringPrintf("Host : %s", WiFi.getHostname()).c_str();
+	Logln(hostNameMsg);
+	LogI(tft, hostNameMsg);
+	LogI(tft, "\r\n");
 	LogI(tft, "IP : 192.168.4.1\r\n");
 	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
 	//_wifiManager.erase();
@@ -148,10 +152,10 @@ void setup(void)
 	// Connected
 	_display.SetCell("", 0, 4);
 
-	Serial.println("Setup Web Portal");
+	Logln("Setup Web Portal");
 	_webPortal.Setup(hostname.c_str());
 
-	Serial.printf("Startup Complete. Connected to %s\r\n", WiFi.SSID().c_str());
+	Logf("Startup Complete. Connected to %s\r\n", WiFi.SSID().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////

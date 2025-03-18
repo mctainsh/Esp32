@@ -55,6 +55,7 @@ private:
 	bool _gpsConnected;			 // GPS connected
 	int8_t _fixMode = -1;		 // Fix mode for RTK
 	int8_t _satellites = -1;	 // Number of satellites
+	std::string _rtkAge;		 // RTK Age in seconds
 	int16_t _gpsResetCount = 0;	 // Number GPS resets
 	int16_t _gpsPacketCount = 0; // Number GPS of packets received
 	int16_t _rtkResetCount = 0;	 // Number RTK restarts
@@ -125,14 +126,15 @@ public:
 	// ************************************************************************//
 	// Page 1 - CurrentGPS
 	// ************************************************************************//
-	void SetPosition(double lngNew, double latNew, double height)
+	void SetPosition(double lngNew, double latNew, double height, std::string rtkAge)
 	{
 		int e2 = SCR_W - 4 - 74; // End just before N0-. Satellites
 		if (_currentPage == 1)
 		{
 			SetValueFormatted(1, lngNew, &_lng, StringPrintf("%.9lf", lngNew), 3, R1F4, e2, 4);
 			SetValueFormatted(1, latNew, &_lat, StringPrintf("%.9lf", latNew), 3, R2F4, e2, 4);
-			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", latNew), 3, R3F4, 120, 4);
+			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", latNew), 3, R3F4, 124, 4);
+			SetValueFormatted(1, rtkAge, &_rtkAge, _rtkAge, 138, R3F4, e2-138, 4);
 		}
 
 		// Save new value
@@ -249,7 +251,7 @@ public:
 
 	void SetTime(const std::string t)
 	{
-		SetValue(1, t, &_time, 2, ROW4, 124, 4);
+		SetValue(1, t, &_time, 2, R4F4, 124, 4);
 	}
 
 	void SetSatellites(int8_t n)
@@ -519,8 +521,8 @@ public:
 
 		// Redraw
 		double lng = _lng, lat = _lat, h = _height;
-		SetPosition(lng + 10, lat + 10, h + 10);
-		SetPosition(lng, lat, _height);
+		SetPosition(lng + 10, lat + 10, h + 10, _rtkAge);
+		SetPosition(lng, lat, _height, _rtkAge);
 
 		_graphics.SetGpsConnected(_gpsConnected);
 		int8_t n = _fixMode;

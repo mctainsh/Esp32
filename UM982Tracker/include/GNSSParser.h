@@ -2,6 +2,9 @@
 
 #include "HandyString.h"
 
+// Note : Max RTK packet size id 1029 bytes
+#define MAX_BUFF 1200
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Process the GNSS data from TCPIP stream. Format of the packet is
 ///		Length of body in ASCII hex
@@ -24,10 +27,10 @@
 ///		See : https://github.com/tomojitakasu/RTKLIB/tree/master
 class GNSSParser
 {
-  public:
+public:
 	///////////////////////////////////////////////////////////////////////
 	// Add what we have to the buffer
-	int Parse(byte* pBuffer, int bytesRead)
+	int Parse(byte *pBuffer, int bytesRead)
 	{
 		_completePackets = 0;
 		for (int i = 0; i < bytesRead; i++)
@@ -35,17 +38,19 @@ class GNSSParser
 		return _completePackets;
 	}
 
-  private:
+private:
 	const int MaxLength = 1024;
 	const int MAX_LENGTH_BYTES = 4;
 	std::string _lengthInHex;
 	int _packetLength = 0;
 	int _bodyLength = 0;
-	byte* _body = NULL;
+	byte *_body = NULL;
 	int _completePackets;
+	unsigned char _skippedArray[MAX_BUFF + 2]; // Skipped item array
+	int _skippedIndex = 0;					   // Count of skipped items
 
-	const byte RTCM2PREAMB = 0x66;	// rtcm ver.2 frame preamble
-	const byte RTCM3PREAMB = 0xD3;	// rtcm ver.3 frame preamble
+	const byte RTCM2PREAMB = 0x66; // rtcm ver.2 frame preamble
+	const byte RTCM3PREAMB = 0xD3; // rtcm ver.3 frame preamble
 
 	enum PacketBuildState
 	{
@@ -62,93 +67,106 @@ class GNSSParser
 	// Add a single byte to the build process
 	void ParseByte(byte b)
 	{
-		//Serial.printf("%d '%c, %02x'", _state, b, b);
+		// Logf("%d '%c, %02x'", _state, b, b);
 		switch (_state)
 		{
-			case PacketBuildState::GettingFirstLength:
-				LookingForLength(b);
-				break;
-			case PacketBuildState::WaitingFor0A:
-				{
-					if (b == 0x0a)
-					{
-						_state = PacketBuildState::BuildingBody;
-					}
-					else
-					{
-						Serial.println("E920 - Failed to get OA after length");
-						_state = PacketBuildState::GettingFirstLength;
-					}
-					break;
-				}
-
-			case PacketBuildState::BuildingBody:
-				{
-					// Build the body
-					_body[_bodyLength - _packetLength] = b;
-					_packetLength--;
-					if (_packetLength == 0)
-					{
-						if (_body[0] != RTCM3PREAMB)
-						{
-							Serial.printf("E921 - Preamble %02x != RTCM3\r\n", _body[0]);
-						}
-						else
-						{
-							// TODO : Check packet type and length
-							//var length = GetBitU(_body, 14, 10)+3;
-							//var type = GetBitU(_body, 24, 12);
-
-							// TODO : Verify Checksum
-							//if (RtkCrc24Q(_body, (int)length)!=GetBitU(_body, length*8, 24))
-							//{
-							//	Console.WriteLine("rtcm3 parity error");
-							//}
-							//else
-							//{
-							//Console.WriteLine($"Length {length}");
-							//	_port?.Write(_body, 0, _body.Length);
-							//}
-							_completePackets++;
-							Serial2.write(_body, _bodyLength);
-						}
-						_state = PacketBuildState::WaitingForEnd0D;
-					}
-					return;
-				}
-			case PacketBuildState::WaitingForEnd0D:
-				{
-					if (b == 0x0d)
-					{
-						_state = PacketBuildState::WaitingForEnd0A;
-					}
-					else
-					{
-						Serial.println("E922 - Failed to get 0D after body");
-						_state = PacketBuildState::GettingFirstLength;
-					}
-					break;
-				}
-			case PacketBuildState::WaitingForEnd0A:
-				{
-					if (b == 0x0a)
-					{
-						// TODO : Process the body
-						//Console.WriteLine(BitConverter.ToString(_body));
-					}
-					else
-					{
-						Serial.println("E925 - Failed to get 0A after body");
-					}
-					_state = PacketBuildState::GettingFirstLength;
-					break;
-				}
-			default:
-				{
-					Serial.println("E930 - Unknown state " + _state);
-					break;
-				}
+		case PacketBuildState::GettingFirstLength:
+			LookingForLength(b);
+			break;
+		case PacketBuildState::WaitingFor0A:
+		{
+			if (b == 0x0a)
+			{
+				_state = PacketBuildState::BuildingBody;
+			}
+			else
+			{
+				Logln("E920 - Failed to get OA after length");
+				_state = PacketBuildState::GettingFirstLength;
+			}
+			break;
 		}
+
+		case PacketBuildState::BuildingBody:
+		{
+			// Build the body
+			_body[_bodyLength - _packetLength] = b;
+			_packetLength--;
+			if (_packetLength == 0)
+			{
+				if (_body[0] != RTCM3PREAMB)
+				{
+					Logf("E921 - Preamble %02x != RTCM3", _body[0]);
+				}
+				else
+				{
+					// TODO : Check packet type and length
+					// var length = GetBitU(_body, 14, 10)+3;
+					// var type = GetBitU(_body, 24, 12);
+
+					// TODO : Verify Checksum
+					// if (RtkCrc24Q(_body, (int)length)!=GetBitU(_body, length*8, 24))
+					//{
+					//	Console.WriteLine("rtcm3 parity error");
+					//}
+					// else
+					//{
+					// Console.WriteLine($"Length {length}");
+					//	_port?.Write(_body, 0, _body.Length);
+					//}
+					_completePackets++;
+					LogSkipped();
+					Serial2.write(_body, _bodyLength);
+				}
+				_state = PacketBuildState::WaitingForEnd0D;
+			}
+			return;
+		}
+		case PacketBuildState::WaitingForEnd0D:
+		{
+			if (b == 0x0d)
+			{
+				_state = PacketBuildState::WaitingForEnd0A;
+			}
+			else
+			{
+				Logln("E922 - Failed to get 0D after body");
+				_state = PacketBuildState::GettingFirstLength;
+			}
+			break;
+		}
+		case PacketBuildState::WaitingForEnd0A:
+		{
+			if (b == 0x0a)
+			{
+				// TODO : Process the body
+				// Console.WriteLine(BitConverter.ToString(_body));
+			}
+			else
+			{
+				Logln("E925 - Failed to get 0A after body");
+			}
+			_state = PacketBuildState::GettingFirstLength;
+			break;
+		}
+		default:
+		{
+			Logln("E930 - Unknown state " + _state);
+			break;
+		}
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Add to buffer of skipped data
+	void AddToSkipped(char ch)
+	{
+		if (_skippedIndex >= MAX_BUFF)
+		{
+			Logln("Skip buffer overflowed");
+			_skippedIndex = 0;
+		}
+		_skippedArray[_skippedIndex++] = ch;
 	}
 
 	///////////////////////////////////////////////////////////////////////
@@ -165,14 +183,14 @@ class GNSSParser
 				std::string check = StringPrintf("%x", temp);
 
 				// Check if the length is too short
-				if( temp < 1 )
+				if (temp < 1)
 				{
-					Serial.printf("E905 - Length is too small %d\r\n", temp);
+					Logf("E905 - Length '%s' is too small %d", _lengthInHex.c_str(), temp);
 				}
 				// Check if the length is too long
 				else if (temp > MaxLength)
 				{
-					Serial.printf("E907 - Length too long %d\r\n", temp);
+					Logf("E907 - Length '%s' too long %d", _lengthInHex.c_str(), temp);
 				}
 				// Check the read length matches the calculated length
 				else if (strcasecmp(_lengthInHex.c_str(), check.c_str()) == 0)
@@ -186,7 +204,7 @@ class GNSSParser
 				}
 				else
 				{
-					Serial.printf("E900 - Failed to parse length %s as %s\r\n", _lengthInHex.c_str(), check.c_str());
+					Logf("E900 - Failed to parse length '%s' as %s", _lengthInHex.c_str(), check.c_str());
 				}
 			}
 			_lengthInHex = "";
@@ -194,10 +212,11 @@ class GNSSParser
 		}
 
 		// Skip non hex characters upper and lower case
-		//const string GOOD_HEX = "0123456789ABCDEF";
+		// const string GOOD_HEX = "0123456789ABCDEF";
 		if (('0' > b || b > '9') && ('A' > b || b > 'F') && ('a' > b || b > 'f'))
 		{
-			Serial.printf("E910 - Non Hex number '%s'\r\n", _lengthInHex.c_str());
+			AddToSkipped(b);
+			// Logf("E910 - Non Hex number '%s'", _lengthInHex.c_str());
 			_lengthInHex = "";
 			return;
 		}
@@ -205,12 +224,48 @@ class GNSSParser
 		// Is it too long?
 		if (_lengthInHex.length() > MAX_LENGTH_BYTES)
 		{
-			Serial.printf("E900 - MAX Length HIT %d\r\n", _lengthInHex);
+			Logf("E900 - '%s' max length%d", _lengthInHex.c_str(), _lengthInHex.length());
 			_lengthInHex = "";
 			return;
 		}
 
 		// Add to the length
 		_lengthInHex += static_cast<char>(b);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Check if the byte array is all ASCII
+	static bool IsAllAscii(const byte *pBytes, int length)
+	{
+		for (int n = 0; n < length; n++)
+		{
+			if (pBytes[n] == 0x0A || pBytes[n] == 0x0D)
+				continue;
+			if (pBytes[n] < 32 || pBytes[n] > 126)
+				return false;
+		}
+		return true;
+	}
+
+	///////////////////////////////////////////////////////////////////////
+	// Log the skipped data
+	void LogSkipped()
+	{
+		if (_skippedIndex < 1)
+			return;
+		if (_skippedIndex == 1 && _skippedArray[0] == 0x0A)
+		{
+			// Don't dump the end of ASCII line
+		}
+		else
+		{
+			_skippedArray[_skippedIndex] = 0;
+			if (IsAllAscii(_skippedArray, _skippedIndex))
+				Logf("Skipped [%d] %s", _skippedIndex, _skippedArray);
+			else
+				Logf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str());
+			//_missedBytesDuringError += _skippedIndex;
+		}
+		_skippedIndex = 0;
 	}
 };

@@ -10,7 +10,7 @@ extern WiFiManager _wifiManager;
 extern GpsParser _gpsParser;
 extern MyDisplay _display;
 extern NTRIPClient _ntripClient;
-// extern std::vector<std::string> _mainLog;
+extern std::vector<std::string> _mainLog;
 
 /// @brief Class manages the web pages displayed in the device.
 class WebPortal
@@ -39,7 +39,7 @@ private:
 };
 
 /// @brief Startup the portal
-void WebPortal::Setup( const char *hostname)
+void WebPortal::Setup(const char *hostname)
 {
 	// Setup callbacks
 	_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
@@ -72,7 +72,7 @@ void WebPortal::Setup( const char *hostname)
 	// First parameter is name of access point, second is the password
 	//_wifiManager.resetSettings();
 	//*wm:StartAP with SSID:
-	//auto res = _wifiManager.startConfigPortal(hostname, AP_PASSWORD);
+	// auto res = _wifiManager.startConfigPortal(hostname, AP_PASSWORD);
 	auto res = _wifiManager.autoConnect(hostname, AP_PASSWORD);
 	if (!res)
 	{
@@ -94,8 +94,10 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on("/index", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
 	//_wifiManager.server->on("/castergraph", std::bind(&WebPortal::GraphHtml, this));
 	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
-	//_wifiManager.server->on("/log", HTTP_GET, [this]()
-	//						{ HtmlLog("System log", _mainLog); });
+	_wifiManager.server->on("/log", HTTP_GET, [this]()
+							{ HtmlLog("System log", _mainLog); });
+	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
+							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -122,7 +124,7 @@ void WebPortal::OnSaveParamsCallback()
 	Serial.println("SaveParamsCallback");
 	_ntripClient.Save(_pNtripAddress->getValue(), _pNtripPort->getValue(), _pNtripMountPoint->getValue(), _pNtripUsername->getValue(), _pNtripPassword->getValue());
 	_gpsParser.GetGpsSender().Save(_pGpsSenderUrl->getValue(), _pGpsSenderDeviceId->getValue());
-	
+
 	ESP.restart();
 }
 
@@ -230,10 +232,6 @@ void WebPortal::IndexHtml()
 	html += "<li><a href='/info?'>Device info</a></li>";
 	html += "<li><a href='/log'>System log</a></li>";
 	html += "<li><a href='/gpslog'>GPS log</a></li>";
-	html += "<li><a href='/caster1log'>Caster 1 log</a></li>";
-	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
-	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
-	html += "<li><a href='/castergraph'>Caster graph</a></li>";
 	html += "</ul>";
 	html += "</body>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
@@ -269,7 +267,7 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
 	TableRow(html, 0, "GPS", "");
-	// TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
+	TableRow(html, 1, "Resets", _gpsParser.GetCommandQueue().GetResetCount());
 	// TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
 	// TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
 

@@ -21,17 +21,15 @@ private:
 	GNSSParser _gnssParser;					// Parser for extracting RTK
 	bool _wasConnected = false;				// Was connected last time
 	bool _firstPacketAfterConnect = true;	// Dump the first packet after connect
-
-	std::string _sAddress;
-	int _port;
-	std::string _sMountPoint;
+	std::string _sAddress;					// ntrip.data.gnss.ga.gov.au
+	int _port;								// 2101
+	std::string _sMountPoint;				// CLEV00AUS0
 	std::string _sUsername;
 	std::string _sPassword;
 
 	const char *SETTING_FILE = "/NtripClientSettings.txt";
 
 public:
-
 	//////////////////////////////////////////////////////////////////////////////
 	// Load the configurations if they exist
 	void LoadSettings()
@@ -56,22 +54,31 @@ public:
 				_sMountPoint = parts[2];
 				_sUsername = parts[3];
 				_sPassword = parts[4];
-				Serial.printf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mount    : %s\r\n\t User     : %s\r\n\t Pass     : %s\r\n", _sAddress.c_str(), _port, _sMountPoint.c_str(), _sUsername.c_str(), _sPassword.c_str());
+				Logf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mount    : %s\r\n\t User     : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sMountPoint.c_str(), _sUsername.c_str(), _sPassword.c_str());
+				_display.SetRtkStatus("PENDING");
 				// LogX(StringPrintf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mid/Cred : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
 			}
 			else
 			{
+				_display.SetRtkStatus("E341:BAD SETTINGS");
 				// LogX(StringPrintf(" - E341 - Cannot read saved Server settings %s", llText.c_str()));
 			}
 		}
 		else
 		{
+			_display.SetRtkStatus("E342:NO SETTINGS");
 			// LogX(StringPrintf(" - E342 - Cannot read saved Server setting %s", fileName.c_str()));
 		}
+		if (_port == 0)
+			_display.SetRtkStatus("DISABLED");
 	}
 
 	void Loop()
 	{
+		// Disable RTK if port is not set
+		if (_port == 0)
+			return;
+
 		// Wifi check interval
 		if (_client.connected())
 		{
@@ -97,7 +104,7 @@ public:
 				std::string built;
 				for (int n = 0; n < buffSize; n++)
 					built += static_cast<char>(_pSocketBuffer[n]);
-				Serial.printf("%d %s\r\n", buffSize, built.c_str());
+				Logf("%d %s", buffSize, built.c_str());
 			}
 
 			int completePackets = _gnssParser.Parse(_pSocketBuffer, buffSize);
@@ -149,17 +156,18 @@ public:
 	void Reconnect()
 	{
 		// Limit how soon the connection is retried
-		if ((millis() - _wifiConnectTime) < 10000)
+		if ((millis() - _wifiConnectTime) < 30000)
 			return;
 
 		_wifiConnectTime = millis();
 
 		// Start the connection process
-		Serial.printf("RTK Not connecting to %s %d\r\n", _sAddress.c_str(), _port);
+		Logln("*******************************************************************");
+		Logf("RTK Not connecting to %s : %d", _sAddress.c_str(), _port);
 		_client.connect(_sAddress.c_str(), _port);
 		if (!_client.connected())
 		{
-			Serial.println("E500 - RTK Not connecting");
+			Logln("E500 - RTK Not connecting");
 			return;
 		}
 
@@ -170,16 +178,12 @@ public:
 
 		// Add credentials
 		size_t output_length;
-		const char *userNamePassword = (_sUsername + ":" + _sPassword).c_str();
-		Serial.println("*******************************************************************");
-		Serial.println("*******************************************************************");
-		Serial.printf("'%s'\r\n", userNamePassword);
-		Serial.println("*******************************************************************");
-		Serial.println("*******************************************************************");
-		const unsigned char *u_str = reinterpret_cast<const unsigned char *>(userNamePassword);
+		std::string userNamePassword = (_sUsername + ":" + _sPassword);
+		Logf("'%s'", userNamePassword.c_str());
+		//const unsigned char *u_str = reinterpret_cast<const unsigned char *>(userNamePassword.c_str());
 		// char *bearer = Base64Encode((const unsigned char *)u_str, strlen(userNamePassword), &output_length);
-		auto bearer = Base64Encode(userNamePassword);
-		Serial.printf("Bearer '%s'\r\n", bearer.c_str());
+		std::string bearer = Base64Encode(userNamePassword);
+		Logf("Bearer '%s'", bearer.c_str());
 		if (bearer.length() > 0)
 		{
 			_client.write(("Authorization: Basic " + bearer + "\r\n").c_str());
@@ -187,7 +191,7 @@ public:
 		}
 		else
 		{
-			Serial.println("E501 - Base 64 encoding failed");
+			Logln("E501 - Base 64 encoding failed");
 		}
 
 		//_client.write("Accept: */*");

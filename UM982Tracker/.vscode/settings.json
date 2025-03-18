@@ -55,6 +55,10 @@
 		"stdexcept": "cpp",
 		"streambuf": "cpp",
 		"cinttypes": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"*.tpp": "cpp",
+		"cstring": "cpp",
+		"unordered_set": "cpp",
+		"map": "cpp"
 	}
 }

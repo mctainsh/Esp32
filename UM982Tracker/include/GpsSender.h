@@ -53,7 +53,7 @@ private:
 	unsigned long _lastSend;
 	std::string _sUrl;
 	std::string _sDeviceId;
-	int _resentDelay = 10000;	// Period to wait before resending data
+	int _sendDelay = 10000;	// Period to wait before resending data
 	const char *SETTING_FILE = "/GpsSenderSettings.txt";
 };
 
@@ -74,22 +74,22 @@ void GpsSender::LoadSettings()
 	std::string llText;
 	if (_myFiles.ReadFile(SETTING_FILE, llText))
 	{
-		Serial.printf(" - Read config '%s'\r\n", llText.c_str());
+		Logf(" - Read config '%s'", llText.c_str());
 		auto parts = Split(llText, "\n");
 		if (parts.size() > 1)
 		{
 			_sUrl = parts[0];
 			_sDeviceId = parts[1];
-			Serial.printf(" - Recovered\r\n\t URL      : %s\r\n\t DeviceId : %s\r\n", _sUrl.c_str(), _sDeviceId.c_str());
+			Logf(" - Recovered\r\n\t URL      : %s\r\n\t DeviceId : %s", _sUrl.c_str(), _sDeviceId.c_str());
 		}
 		else
 		{
-			Serial.printf(" - E341 - Cannot read saved Server settings %s\r\n", llText.c_str());
+			Logf(" - E341 - Cannot read saved Server settings %s", llText.c_str());
 		}
 	}
 	else
 	{
-		Serial.printf(" - E342 - Cannot read saved Server setting %s\r\n", SETTING_FILE);
+		Logf(" - E342 - Cannot read saved Server setting %s", SETTING_FILE);
 	}
 }
 
@@ -103,18 +103,18 @@ void GpsSender::Save(const char *url, const char *deviceId)
 
 void GpsSender::SendHttpData(double latitude, double longitude, double altitude, int satellites, int fixMode)
 {
-	//Serial.printf("Wait %d < %d\r\n", millis() - _lastSend, _resentDelay);
+	//Logf("Wait %d < %d\r\n", millis() - _lastSend, _sendDelay);
 	// Is it time to send?
-	if (millis() - _lastSend < _resentDelay)
+	if (millis() - _lastSend < _sendDelay)
 		return;
 
 	_lastSend = millis();
-	_resentDelay = 60000; // Wait a minute before trying again if an error occurs
+	_sendDelay = 60000; // Wait a minute before trying again if an error occurs
 
 	// Changed to send to @Track server
 	// .. +RESP:GTFRI,F50904,015181003555787,,0,0,1,1,0.0,0,106.2,153.057701,-27.594989,20220513005727,0505,0001,7028,08C8C20D,,97,20220513005750,07E0$
-	//auto line = StringPrintf("+RESP:GTFRI,F50904,888881111000787,,0,0,1,1,0.0,0,106.2,%.6lf,%.6lf,20220513005727,0505,0001,7028,08C8C20D,,97,20220513005750,07E0$\r\n", longitude, latitude);
-	//SendTcpData("165.228.16.3", 22392, line.c_str());
+	//auto line = StringPrintf("+RESP:GTFRI,F50904,888881111000787,,0,0,1,1,0.0,0,106.2,%.6lf,%.6lf,yyyyMMddHHmmss,0505,0001,7028,08C8C20D,,97,yyyyMMddHHmmss,07E0$\r\n", longitude, latitude);
+	//SendTcpData("some address", 22392, line.c_str());
 	//return;
 
 	// Build and send
@@ -130,19 +130,19 @@ void GpsSender::SendHttpData(double latitude, double longitude, double altitude,
 			String payload = http.getString();
 			if (payload.startsWith("OK-"))
 			{
-				Serial.println(payload);
+				Logln(payload.c_str());
 				_lastSend = millis();
 				_display.IncrementSendGood(httpCode);
-				_resentDelay = 4500;
+				_sendDelay = 4500;
 				return;
 			}
-			Serial.println(httpStr.c_str());
-			Serial.println(httpCode);
-			Serial.println(payload);
+			Logln(httpStr.c_str());
+			Logf("Http code:%d",httpCode);
+			Logln(payload.c_str());
 		}
 		else
 		{
-			Serial.printf("Error %d on HTTP in %s request\r\n", httpCode, httpStr.c_str());
+			Logf("Error %d on HTTP in %s request", httpCode, httpStr.c_str());
 		}
 		http.end(); // Free the resources
 		_display.IncrementSendBad(httpCode);
@@ -159,6 +159,6 @@ void GpsSender::SendTcpData(const char *ip, uint16_t port, const String &text)
 	}
 	else
 	{
-		Serial.printf("Failed to connect to server %s %d\r\n", ip, port);
+		Logf("Failed to connect to server %s %d", ip, port);
 	}
 }

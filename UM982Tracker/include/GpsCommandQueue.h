@@ -15,7 +15,7 @@ private:
 	std::vector<std::string> _strings;
 	int _timeSent = 0;				   // Time of last message send. Used for timeouts
 	bool _sendSetupAfterReset = false; // Setup the send all setting after the next reset
-	// int _resetCount = 0;			   // Total resets
+	int _resetCount = 0;			   // Total resets
 	MyDisplay &_display;
 
 public:
@@ -25,7 +25,7 @@ public:
 	{
 	}
 
-	// int GetResetCount() { return _resetCount; }
+	int GetResetCount() { return _resetCount; }
 
 	// ////////////////////////////////////////////////////////////////////////
 	// Check if the first item in the list matches the given string
@@ -56,7 +56,8 @@ public:
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
 
-		Serial.printf("I200 - Reset received\r\n");
+		Logf("I200 - Reset received");
+		_resetCount++;
 		_display.SetRtkStatus("GPS Reset");
 		if (_sendSetupAfterReset)
 			SendInitialiseProcess();
@@ -97,7 +98,7 @@ public:
 		if (_strings.empty())
 			return;
 
-		Serial.printf("Sending command -> '%s'\r\n", _strings.front().c_str());
+		Logf("Sending command -> '%s'", _strings.front().c_str());
 		Serial2.println(_strings.front().c_str());
 		_timeSent = millis();
 	}
