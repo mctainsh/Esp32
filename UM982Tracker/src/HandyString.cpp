@@ -279,12 +279,12 @@ bool VerifyChecksum(const std::string &nmeaSentence)
 	// Check starts with $
 	if (nmeaSentence.length() < 1)
 	{
-		Serial.println("\tE100 - Too short");
+		Logln("\tE100 - Too short");
 		return false;
 	}
 	if (nmeaSentence[0] != '$' && nmeaSentence[0] != '#')
 	{
-		Serial.println("\tE101 = Missing '$'");
+		Logln("\tE101 = Missing '$'");
 		return false;
 	}
 
@@ -292,7 +292,7 @@ bool VerifyChecksum(const std::string &nmeaSentence)
 	size_t endPos = nmeaSentence.find('*');
 	if (endPos == std::string::npos)
 	{
-		Serial.println("\tE102 - Missing '*'");
+		Logln("\tE102 - Missing '*'");
 		return false;
 	}
 
@@ -310,7 +310,7 @@ bool VerifyChecksum(const std::string &nmeaSentence)
 
 	if (calculatedChecksum != providedChecksum)
 	{
-		Serial.printf("\tE103 Checksum %02x != %02x\r\n", calculatedChecksum, providedChecksum);
+		Logf("\tE103 Checksum %02x != %02x", calculatedChecksum, providedChecksum);
 		return false;
 	}
 	return true;

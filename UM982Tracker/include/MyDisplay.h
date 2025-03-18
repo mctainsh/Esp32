@@ -93,13 +93,13 @@ public:
 		std::string llText;
 		if (_myFiles.ReadFile(SAVE_LNG_LAT_FILE, llText))
 		{
-			Serial.printf("\tRead LL '%s'\r\n", llText.c_str());
+			Logf("\tRead LL '%s'", llText.c_str());
 			std::stringstream ss(llText);
 			ss >> _lngSaved >> _latSaved >> _heightSaved;
 			if (ss.fail())
-				Serial.println("\tE341 - Cannot read saved Lng Lat");
+				Logln("\tE341 - Cannot read saved Lng Lat");
 			else
-				Serial.printf("\tRecovered LL %.9lf,%.9lf, %.3lf m\r\n", _lngSaved, _latSaved, _heightSaved);
+				Logf("\tRecovered LL %.9lf,%.9lf, %.3lf m", _lngSaved, _latSaved, _heightSaved);
 		}
 
 		// Setup screen
@@ -133,7 +133,7 @@ public:
 		{
 			SetValueFormatted(1, lngNew, &_lng, StringPrintf("%.9lf", lngNew), 3, R1F4, e2, 4);
 			SetValueFormatted(1, latNew, &_lat, StringPrintf("%.9lf", latNew), 3, R2F4, e2, 4);
-			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", latNew), 3, R3F4, 124, 4);
+			SetValueFormatted(1, height, &_height, StringPrintf("%.3lf m", height), 3, R3F4, 124, 4);
 			SetValueFormatted(1, rtkAge, &_rtkAge, _rtkAge, 138, R3F4, e2-138, 4);
 		}
 
@@ -397,7 +397,7 @@ public:
 			_heightSaved = _height;
 			{
 				auto saveText = StringPrintf("%.9lf %.9lf %.3lf", _lng, _lat, _height);
-				Serial.printf("Saving X,Y %s\r\n", saveText.c_str());
+				Logf("Saving X,Y %s", saveText.c_str());
 				_myFiles.WriteFile(SAVE_LNG_LAT_FILE, saveText.c_str());
 			}
 			break;
@@ -418,7 +418,7 @@ public:
 		_currentPage++;
 		if (_currentPage > 6)
 			_currentPage = 0;
-		Serial.printf("Switch to page %d\r\n", _currentPage);
+		Logf("Switch to page %d", _currentPage);
 		RefreshScreen();
 	}
 

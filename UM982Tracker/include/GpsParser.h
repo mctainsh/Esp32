@@ -38,6 +38,7 @@ public:
 	// Return the number of lines
 	bool ReadDataFromSerial(Stream &stream)
 	{
+		// Read each byte in turn
 		int count = 0;
 		while (stream.available() > 0)
 		{
@@ -86,6 +87,10 @@ public:
 			LogGps("W708 - GPS Timeout");
 			_commandQueue.SendInitialiseProcess();
 		}
+		
+		// Check output command queue
+		_commandQueue.CheckForTimeouts();
+
 		return _gpsConnected;
 	}
 
@@ -123,7 +128,7 @@ private:
 		// Ignore '#' responses
 		if (line[0] == '#')
 		{
-			LogGps("\tW701 - Ignored");
+			_commandQueue.CheckForVersion(line);
 			return;
 		}
 

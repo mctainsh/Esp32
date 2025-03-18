@@ -114,7 +114,7 @@ void setup(void)
 
 		// std::string response;
 		//_myFiles.ReadFile("/hello.txt", response);
-		// Serial.println(response.c_str());
+		// Logln(response.c_str());
 		_ntripClient.LoadSettings();
 
 		_gpsParser.GetGpsSender().LoadSettings();
@@ -155,7 +155,7 @@ void setup(void)
 	Logln("Setup Web Portal");
 	_webPortal.Setup(hostname.c_str());
 
-	Logf("Startup Complete. Connected to %s\r\n", WiFi.SSID().c_str());
+	Logf("Startup Complete. Connected to %s", WiFi.SSID().c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,12 +181,12 @@ void loop()
 	// Check for push buttons
 	if (_button1.WasPressed())
 	{
-		Serial.println("Button 1");
+		Logln("Button 1");
 		_display.NextPage();
 	}
 	if (_button2.WasPressed())
 	{
-		Serial.println("Button 2");
+		Logln("Button 2");
 		if( _display.ActionButton() == MyDisplay::Actions::RESET_GPS)
 			_gpsParser.GetCommandQueue().StartResetProcess();
 	}
@@ -231,7 +231,7 @@ bool IsWifiConnected()
 	if (_lastWifiStatus != status)
 	{
 		_lastWifiStatus = status;
-		Serial.printf("Wifi Status %d %s\r\n", status, WifiStatus(status));
+		Logf("Wifi Status %d %s", status, WifiStatus(status));
 		_display.RefreshWiFiState();
 		if (status == WL_CONNECTED)
 		{
@@ -243,14 +243,14 @@ bool IsWifiConnected()
 		return true;
 
 	// Start the connection process
-	// Serial.println("E310 - No WIFI");
+	// Logln("E310 - No WIFI");
 	unsigned long t = millis();
 	unsigned long tDelta = t - _wifiFullResetTime;
 	if (tDelta < WIFI_STARTUP_TIMEOUT)
 	{
 
 		// if( status != WL_DISCONNECTED)
-		//	Serial.println(stateTitle.c_str());
+		//	Logln(stateTitle.c_str());
 		//_display.SetWebStatus(stateTitle.c_str());
 
 		// Create a string of dots to show progress. 1 dot per second

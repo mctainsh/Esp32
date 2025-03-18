@@ -67,7 +67,7 @@ void WebPortal::Setup(const char *hostname)
 	_wifiManager.setConfigPortalTimeout(0);
 	_wifiManager.setConfigPortalBlocking(false);
 
-	Serial.printf("Start AP %s\r\n", WiFi.getHostname());
+	Logf("Start AP %s", WiFi.getHostname());
 
 	// First parameter is name of access point, second is the password
 	//_wifiManager.resetSettings();
@@ -76,18 +76,18 @@ void WebPortal::Setup(const char *hostname)
 	auto res = _wifiManager.autoConnect(hostname, AP_PASSWORD);
 	if (!res)
 	{
-		Serial.println("WiFi : Failed to connect OR is running in non-blocking mode");
+		Logln("WiFi : Failed to connect OR is running in non-blocking mode");
 		// ESP.restart();
 	}
 
-	Serial.println("WebPortal setup complete");
+	Logln("WebPortal setup complete");
 }
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief Setup all the URL bindings. Called when the server is ready
 void WebPortal::OnBindServerCallback()
 {
-	Serial.println("Binding server callback");
+	Logln("Binding server callback");
 
 	// Our main pages
 	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
@@ -121,7 +121,7 @@ void WebPortal::Loop()
 
 void WebPortal::OnSaveParamsCallback()
 {
-	Serial.println("SaveParamsCallback");
+	Logln("SaveParamsCallback");
 	_ntripClient.Save(_pNtripAddress->getValue(), _pNtripPort->getValue(), _pNtripMountPoint->getValue(), _pNtripUsername->getValue(), _pNtripPassword->getValue());
 	_gpsParser.GetGpsSender().Save(_pGpsSenderUrl->getValue(), _pGpsSenderDeviceId->getValue());
 
@@ -134,7 +134,7 @@ void WebPortal::OnSaveParamsCallback()
 /// @param log The log to display
 void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
 {
-	Serial.printf("Show %s\n", title);
+	Logf("Show %s", title);
 	std::string html = "<h3>Log ";
 	html += title;
 	html += "</h3>";
@@ -220,7 +220,7 @@ void TableRow(std::string &html, int indent, const std::string &name, int32_t va
 /// @brief Display a list of possible pages
 void WebPortal::IndexHtml()
 {
-	Serial.println("ShowIndexHtml");
+	Logln("ShowIndexHtml");
 	std::string html = "<head>\
 	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
 	</head>\
@@ -239,7 +239,7 @@ void WebPortal::IndexHtml()
 
 void WebPortal::ShowStatusHtml()
 {
-	Serial.println("ShowStatusHtml");
+	Logln("ShowStatusHtml");
 	std::string html = "<head>\
 	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
 	</head>\
@@ -263,19 +263,40 @@ void WebPortal::ShowStatusHtml()
 	TableRow(html, 1, "Device", "Generic ESP32");
 #endif
 #endif
-	// TableRow(html, 1, "Uptime", Uptime(millis()));
+	TableRow(html, 1, "Uptime", Uptime(millis()));
 	TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
 	TableRow(html, 0, "GPS", "");
 	TableRow(html, 1, "Resets", _gpsParser.GetCommandQueue().GetResetCount());
-	// TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
-	// TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
+	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
+	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
+	TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
 
 	// int32_t resetCount, reinitialize, packetCount;
-	// _display.GetGpsStats(resetCount, reinitialize, packetCount);
+	//_display.GetGpsStats(resetCount, reinitialize, packetCount);
 	// TableRow(html, 1, "Reset count", resetCount);
 	// TableRow(html, 1, "Reinitialize count", reinitialize);
 	// TableRow(html, 1, "Packet count", packetCount);
+
+	// Memory stuff
+	html += "<table class='striped'>";
+	auto free = ESP.getFreeHeap();
+	auto total = ESP.getHeapSize();
+	TableRow(html, 0, "Memory", "");
+	TableRow(html, 1, "Stack High", uxTaskGetStackHighWaterMark(nullptr));
+	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	TableRow(html, 1, "Port free heap", xPortGetFreeHeapSize());
+	TableRow(html, 1, "Free heap", esp_get_free_heap_size());
+	TableRow(html, 1, "Heap", "");
+	TableRow(html, 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
+	TableRow(html, 2, "Free (Min)", ESP.getMinFreeHeap());
+	TableRow(html, 2, "Free (now)", free);
+	TableRow(html, 2, "Free (Max)", ESP.getMaxAllocHeap());
+	TableRow(html, 2, "Total", total);
+
+	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
+	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
+	TableRow(html, 1, "spiram size", esp_spiram_get_size());
 
 	//	TableRow(html,"", );
 	html += "</table></body>";
