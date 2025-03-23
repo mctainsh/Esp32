@@ -6,18 +6,21 @@
 #include <GpsParser.h>
 #include <MyFiles.h>
 
-#define SOCKET_RETRY_INTERVAL 120000
-
 extern MyFiles _myFiles;
 
-NTRIPServer::NTRIPServer(MyDisplay &display, int index)
-	: _display(display),
-	  _index(index),
+// Progressive time out for reconnecting
+static const unsigned long WIFI_TIMEOUTS[] = {15000, 30000, 60000, 120000, 300000};
+static const int WIFI_TIMEOUT_SIZE = sizeof(WIFI_TIMEOUTS) / sizeof(WIFI_TIMEOUTS[0]);
+
+///////////////////////////////////////////////////////////////////////////////
+// Constructor
+NTRIPServer::NTRIPServer(int index)
+	: _index(index),
 	  _logMutex(xSemaphoreCreateMutex()),
 	  _queMutex(xSemaphoreCreateMutex())
 {
 	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	  // Reserve space for the send times
-	_wifiConnectTime = 10000 - SOCKET_RETRY_INTERVAL; // Start the connection process after 10 seconds
+	_wifiConnectTime = 10000 - WIFI_TIMEOUTS[_timeOutIndex]; // Start the connection process after 10 seconds
 
 	// Check mutexs
 	if (_logMutex == nullptr)
@@ -137,7 +140,6 @@ void NTRIPServer::TaskFunction()
 			vTaskDelay(200 / portTICK_PERIOD_MS);
 			_wasConnected = false;
 			_status = ConnectionState::Disconnected;
-			//		_display.RefreshRtk(_index);
 			Reconnect();
 		}
 
@@ -154,7 +156,6 @@ void NTRIPServer::ConnectedProcessing(const byte *pBytes, int length)
 	{
 		_reconnects++;
 		_status = ConnectionState::Connected;
-		//		_display.RefreshRtk(_index);
 		_wasConnected = true;
 	}
 
@@ -203,7 +204,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
 		_wifiConnectTime = millis();
 		_packetsSent++;
-		//		_display.RefreshRtk(_index);
+		_timeOutIndex = 0;
 	}
 }
 
@@ -255,7 +256,6 @@ void NTRIPServer::LogX(std::string text)
 	{
 		perror("LogX:Failed to take log mutex\n");
 	}
-	//	_display.RefreshRtkLog();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -279,8 +279,13 @@ std::vector<std::string> NTRIPServer::GetLogHistory()
 bool NTRIPServer::Reconnect()
 {
 	// Limit how soon the connection is retried
-	if ((millis() - _wifiConnectTime) < SOCKET_RETRY_INTERVAL)
+	if ((millis() - _wifiConnectTime) < WIFI_TIMEOUTS[_timeOutIndex])
 		return false;
+
+	// Get next timeout period
+	_timeOutIndex++;
+	if (_timeOutIndex >= WIFI_TIMEOUT_SIZE)
+			_timeOutIndex = WIFI_TIMEOUT_SIZE - 1;
 
 	_wifiConnectTime = millis();
 

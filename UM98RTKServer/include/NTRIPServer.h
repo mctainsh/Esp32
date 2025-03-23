@@ -1,5 +1,7 @@
 #pragma once
 
+#include <WiFi.h>
+
 // Buffer used to grab data to send
 #define SOCKET_IN_BUFFER_MAX 512
 
@@ -10,14 +12,12 @@
 #include <vector>
 #include "QueueData.h"
 
-#include "MyDisplay.h"
-
 ///////////////////////////////////////////////////////////////////////////////
 // Class manages the connection to the RTK Service client
 class NTRIPServer
 {
 public:
-	NTRIPServer(MyDisplay &display, int index);
+	NTRIPServer(int index);
 	void LoadSettings();
 	void Save(const char *address, const char *port, const char *credential, const char *password) const;
 	bool EnqueueData(const byte *pBytes, int length);
@@ -49,7 +49,6 @@ public:
 private:
 	WiFiClient _client;									// Socket connection
 	unsigned long _wifiConnectTime = 0;					// Time we last had good data to prevent reconnects too fast
-	MyDisplay &_display;								// Display for updating packet count
 	bool _wasConnected = false;							// Was connected last time
 	const int _index;									// Index of the server used when updating display
 	ConnectionState _status = ConnectionState::Unknown; // Connection status
@@ -63,6 +62,7 @@ private:
 	UBaseType_t _maxStackHeight = 0;					// Stack height
 	unsigned long _expiredPackets = 0;					// Number of packets that were expired
 	int _overflowSetSize = 0;							// Number of times the overflow set was used in single set
+	int _timeOutIndex = 0;								// Index even increasing timeout periods
 
 	std::string _sAddress;
 	int _port;

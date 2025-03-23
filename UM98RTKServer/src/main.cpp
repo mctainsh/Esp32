@@ -56,9 +56,9 @@ uint8_t _button2Current = HIGH; // Bottom button when
 MyFiles _myFiles;
 MyDisplay _display;
 GpsParser _gpsParser(_display);
-NTRIPServer _ntripServer0(_display, 0);
-NTRIPServer _ntripServer1(_display, 1);
-NTRIPServer _ntripServer2(_display, 2);
+NTRIPServer _ntripServer0(0);
+NTRIPServer _ntripServer1(1);
+NTRIPServer _ntripServer2(2);
 std::string _baseLocation = "";
 
 // WiFi monitoring states
