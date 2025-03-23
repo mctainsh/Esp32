@@ -189,6 +189,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 		// Send failed so record the failure and start the reconnect process
 		LogX(StringPrintf("E500 - %s Only sent %d of %d (%dms)", _sAddress.c_str(), sent, length, time / 1000));
 		_client.stop();
+		_status = ConnectionState::Disconnected;
 	}
 	else
 	{
@@ -353,15 +354,25 @@ bool NTRIPServer::EnqueueData(const byte *pBytes, int length)
 {
 	if (xSemaphoreTake(_queMutex, portMAX_DELAY))
 	{
+		bool overflowed = false;
 		while (_dataQueue.size() > 20)
 		{
+			overflowed = true;
+			_overflowSetSize++;
 			// Don't count dumps when not connected
-			//if (_status != ConnectionState::Connected)
-				_queueOverflows++;
+			// if (_status != ConnectionState::Connected)
+			_queueOverflows++;
 			QueueData *pOldItem = _dataQueue[0];
-			LogX(StringPrintf("Queue %d overflow %d bytes", _index, pOldItem->getLength()));
+			// LogX(StringPrintf("Queue %d overflow %d bytes", _index, pOldItem->getLength()));
 			_dataQueue.erase(_dataQueue.begin());
 			delete pOldItem;
+		}
+
+		// Log the number of overflows
+		if (!overflowed && _overflowSetSize > 0)
+		{
+			LogX(StringPrintf("Queue %d overflow %d", _index, _overflowSetSize));
+			_overflowSetSize = 0;
 		}
 
 		// Create queue item
@@ -393,13 +404,32 @@ QueueData *NTRIPServer::DequeueData()
 {
 	if (xSemaphoreTake(_queMutex, portMAX_DELAY))
 	{
-		if (_dataQueue.size() > 0)
+		while (_dataQueue.size() > 0)
 		{
 			QueueData *pItem = _dataQueue[0];
 			_dataQueue.erase(_dataQueue.begin());
+
+			// CHeck for null item (This should never happen)
+			if (pItem == nullptr)
+			{
+				LogX("DequeueData: Null item in queue");
+				continue;
+			}
+
+			// Check for expired items
+			if (pItem->IsExpired(500))
+			{
+				_expiredPackets++;
+				delete pItem;
+				continue;
+			}
+
+			// Return the item
 			xSemaphoreGive(_queMutex);
 			return pItem;
 		}
+
+		// Queue is empty
 		xSemaphoreGive(_queMutex);
 	}
 	return nullptr;

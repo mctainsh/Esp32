@@ -35,6 +35,7 @@ public:
 	inline int GetMaxSendTime() const { return _maxSendTime; }
 	inline UBaseType_t GetMaxStackHeight() const { return _maxStackHeight; }
 	inline unsigned long GetQueueOverflows() const { return _queueOverflows; }
+	inline unsigned long GetExpiredPackets() const { return _expiredPackets; }
 	void TaskFunction();
 
 	enum class ConnectionState
@@ -60,6 +61,8 @@ private:
 	unsigned long _queueOverflows = 0;					// Number of packets dropped from the queue
 	unsigned long _lastStackCheck = 0;					// Last time we checked the stack height
 	UBaseType_t _maxStackHeight = 0;					// Stack height
+	unsigned long _expiredPackets = 0;					// Number of packets that were expired
+	int _overflowSetSize = 0;							// Number of times the overflow set was used in single set
 
 	std::string _sAddress;
 	int _port;

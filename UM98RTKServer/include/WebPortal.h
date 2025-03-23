@@ -325,6 +325,7 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "Reconnects", server.GetReconnects());
 	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
 	TableRow(html, 3, "Queue overflows", server.GetQueueOverflows());
+	TableRow(html, 3, "Expired packets", server.GetExpiredPackets());
 	TableRow(html, 3, "Speed (Mbps)", server.AverageSendTime());
 	TableRow(html, 3, "Max send (us)", server.GetMaxSendTime());
 	TableRow(html, 3, "Max Stack Height", server.GetMaxStackHeight());

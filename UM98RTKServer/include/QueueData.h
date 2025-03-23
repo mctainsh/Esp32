@@ -3,12 +3,14 @@
 
 #include <cstddef>
 #include <cstring>
+#include <Arduino.h>
 
 class QueueData
 {
 private:
 	unsigned char *_pData;
 	size_t _length;
+	unsigned long _timestamp;
 
 public:
 	////////////////////////////////////////
@@ -21,6 +23,7 @@ public:
 			_pData = new unsigned char[inputLength];
 			std::memcpy(_pData, inputData, inputLength);
 		}
+		_timestamp = millis();
 	}
 
 	////////////////////////////////////////
@@ -29,6 +32,13 @@ public:
 	{
 		if( _pData != nullptr )
 			delete[] _pData;
+	}
+
+	////////////////////////////////////////
+	// Check if the data is expired
+	bool IsExpired(unsigned long timeoutMs) const
+	{
+		return (millis() - _timestamp) > timeoutMs;
 	}
 
 	////////////////////////////////////////
