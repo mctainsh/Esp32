@@ -55,7 +55,7 @@ std::string ToThousands(int number)
 
 ///////////////////////////////////////////////////////////////////////////
 /// @brief Convert a array of bytes to string of hex numbers
-std::string HexDump( const unsigned char *data, int len )
+std::string HexDump(const unsigned char *data, int len)
 {
 	std::string hex;
 	for (int n = 0; n < len; n++)
@@ -68,19 +68,19 @@ std::string HexDump( const unsigned char *data, int len )
 ///////////////////////////////////////////////////////////////////////////
 /// @brief Convert a array of bytes to string of hex numbers and ASCII characters
 /// Format: "00 01 02 03 04 05 06 07-08 09 0a 0b 0c 0d 0e 0f 0123456789abcdef"
-std::string HexAsciDump(const unsigned char* data, int len)
+std::string HexAsciDump(const unsigned char *data, int len)
 {
 	if (len == 0)
 		return "";
 	std::string lines;
-	const int SIZE = 64;
-	char szText[SIZE + 1];
+	const int SIZE = 4 * 16 + 1;
+	char szText[SIZE+1];
 	for (int n = 0; n < len; n++)
 	{
 		auto index = n % 16;
 		if (index == 0)
 		{
-			szText[SIZE - 1] = '\0';
+			szText[SIZE] = '\0';
 			if (n > 0)
 				lines += (std::string(szText) + "\r\n");
 
@@ -92,9 +92,9 @@ std::string HexAsciDump(const unsigned char* data, int len)
 		auto offset = 3 * index;
 		snprintf(szText + offset, 3, "%02x", data[n]);
 		szText[offset + 2] = ' ';
-		szText[3 * 16 + 1 + index] = data[n] < 0x20 ? 0xfa : data[n];
+		szText[3 * 16 + index] = data[n] < 0x20 ? 0xfa : data[n];
 	}
-	szText[SIZE - 1] = '\0';
+	szText[SIZE] = '\0';
 	lines += std::string(szText);
 	return lines;
 }
@@ -219,21 +219,19 @@ std::string Replace(const std::string &input, const std::string &search, const s
 
 void RemoveLastLfCr(std::string &str)
 {
-    if (str.size() >= 2 && str.compare(str.size() - 2, 2, "\r\n") == 0)
-        str.erase(str.size() - 2, 2);
+	if (str.size() >= 2 && str.compare(str.size() - 2, 2, "\r\n") == 0)
+		str.erase(str.size() - 2, 2);
 }
 
 void ReplaceCrLfEncode(std::string &str)
 {
-    std::string crlf = "\r\n";
-    std::string newline = "\\r\\n";
-    size_t pos = 0;
+	std::string crlf = "\r\n";
+	std::string newline = "\\r\\n";
+	size_t pos = 0;
 
-    while ((pos = str.find(crlf, pos)) != std::string::npos)
-    {
-        str.replace(pos, crlf.length(), newline);
-        pos += newline.length();
+	while ((pos = str.find(crlf, pos)) != std::string::npos)
+	{
+		str.replace(pos, crlf.length(), newline);
+		pos += newline.length();
 	}
 }
-    
-

@@ -11,10 +11,30 @@
 extern MyFiles _myFiles;
 
 NTRIPServer::NTRIPServer(MyDisplay &display, int index)
-	: _display(display), _index(index)
+	: _display(display),
+	  _index(index),
+	  _logMutex(xSemaphoreCreateMutex()),
+	  _queMutex(xSemaphoreCreateMutex())
 {
 	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	  // Reserve space for the send times
 	_wifiConnectTime = 10000 - SOCKET_RETRY_INTERVAL; // Start the connection process after 10 seconds
+
+	// Check mutexs
+	if (_logMutex == nullptr)
+		perror("Failed to create log mutex\n");
+	else
+		Serial.printf("Log %d Mutex Created\r\n", index);
+	if (_queMutex == nullptr)
+		perror("Failed to create queue mutex\n");
+	else
+		Serial.printf("Queue %d Mutex Created\r\n", index);
+}
+
+static void TaskWrapper(void *param)
+{
+	// Cast the parameter back to MyClass and call the member function
+	NTRIPServer *instance = static_cast<NTRIPServer *>(param);
+	instance->TaskFunction();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +42,7 @@ NTRIPServer::NTRIPServer(MyDisplay &display, int index)
 void NTRIPServer::LoadSettings()
 {
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
-	
+
 	// Read the server settings from the config file
 	std::string llText;
 	if (_myFiles.ReadFile(fileName.c_str(), llText))
@@ -46,6 +66,31 @@ void NTRIPServer::LoadSettings()
 	{
 		LogX(StringPrintf(" - E342 - Cannot read saved Server setting %s", fileName.c_str()));
 	}
+
+	// Don't start thread if disabled
+	if (_port < 1 || _sAddress.length() < 1)
+	{
+		LogX(StringPrintf(" - E343 - Server %d is disabled", _index));
+		_status = ConnectionState::Disabled;
+		return;
+	}
+
+	// Check the index is valid
+	if (_index > RTK_SERVERS)
+	{
+		LogX(StringPrintf("E501 - RTK Server index %d too high", index));
+		return;
+	}
+
+	// Start the connection process
+	xTaskCreatePinnedToCore(
+		TaskWrapper,
+		StringPrintf("NtripSvrTask%d", index).c_str(), // Task name
+		5000,										   // Stack size (bytes)
+		this,										   // Parameter
+		1,											   // Task priority
+		&_connectingTask,							   // Task handle
+		APP_CPU_NUM);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -58,45 +103,58 @@ void NTRIPServer::Save(const char *address, const char *port, const char *creden
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Loop called when we have new data to send
-void NTRIPServer::Loop(const byte *pBytes, int length)
+// Loop here forever in a separate thread
+// This is the main loop for the RTK connection
+void NTRIPServer::TaskFunction()
 {
-	// Disable the port if not used
-	if (_port < 1 || _sAddress.length() < 1)
+	Serial.printf("+++++ NTRIP Server %d Starting\r\n", _index);
+	while (true)
 	{
-		_status = "Disabled";
-		_display.RefreshRtk(_index);
-		return;
-	}
+		// Get the next item from the queue
+		QueueData *pItem = DequeueData();
+		if (pItem == nullptr)
+		{
+			// No data to send so wait a bit
+			vTaskDelay(1 / portTICK_PERIOD_MS);
+			continue;
+		}
 
-	// Check the index is valid
-	if (_index > RTK_SERVERS)
-	{
-		LogX(StringPrintf("E501 - RTK Server index %d too high", index));
-		return;
-	}
+		// Every 10 seconds log stack height and task stack height
+		if ((millis() - _lastStackCheck) > 10000)
+		{
+			_lastStackCheck = millis();
+			_maxStackHeight = uxTaskGetStackHighWaterMark(NULL);
+			Serial.printf("%d) Stack %d\r\n", _index, _maxStackHeight);
+		}
 
-	// Wifi check interval
-	if (_client.connected())
-	{
-		ConnectedProcessing(pBytes, length);
-	}
-	else
-	{
-		_wasConnected = false;
-		_status = "Disconn...";
-		_display.RefreshRtk(_index);
-		Reconnect();
+		// Wifi check interval
+		if (_client.connected())
+		{
+			ConnectedProcessing(pItem->getData(), pItem->getLength());
+		}
+		else
+		{
+			vTaskDelay(200 / portTICK_PERIOD_MS);
+			_wasConnected = false;
+			_status = ConnectionState::Disconnected;
+			//		_display.RefreshRtk(_index);
+			Reconnect();
+		}
+
+		// Delete the item
+		delete pItem;
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Process the data when connected
 void NTRIPServer::ConnectedProcessing(const byte *pBytes, int length)
 {
 	if (!_wasConnected)
 	{
 		_reconnects++;
-		_status = "Connected";
-		_display.RefreshRtk(_index);
+		_status = ConnectionState::Connected;
+		//		_display.RefreshRtk(_index);
 		_wasConnected = true;
 	}
 
@@ -144,7 +202,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
 		_wifiConnectTime = millis();
 		_packetsSent++;
-		_display.RefreshRtk(_index);
+		//		_display.RefreshRtk(_index);
 	}
 }
 
@@ -186,9 +244,34 @@ int NTRIPServer::AverageSendTime()
 void NTRIPServer::LogX(std::string text)
 {
 	auto s = Logln(text.c_str());
-	_logHistory.push_back(s);
-	TruncateLog(_logHistory);
-	_display.RefreshRtkLog();
+	if (xSemaphoreTake(_logMutex, portMAX_DELAY))
+	{
+		_logHistory.push_back(s);
+		TruncateLog(_logHistory);
+		xSemaphoreGive(_logMutex);
+	}
+	else
+	{
+		perror("LogX:Failed to take log mutex\n");
+	}
+	//	_display.RefreshRtkLog();
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Get a copy of the log safely
+std::vector<std::string> NTRIPServer::GetLogHistory()
+{
+	std::vector<std::string> copyVector;
+	if (xSemaphoreTake(_logMutex, portMAX_DELAY))
+	{
+		copyVector.insert(copyVector.end(), _logHistory.begin(), _logHistory.end());
+		xSemaphoreGive(_logMutex);
+	}
+	else
+	{
+		perror("CopyMainLog:Failed to take log mutex\n");
+	}
+	return copyVector;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,4 +327,80 @@ bool NTRIPServer::WriteText(const char *str)
 	// Failed to write
 	LogX(StringPrintf("Write failed %s", _sAddress.c_str()));
 	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Get the connection status as a string
+const char *NTRIPServer::GetStatus() const
+{
+	switch (_status)
+	{
+	case ConnectionState::Connected:
+		return "Connected";
+	case ConnectionState::Disconnected:
+		return "Disconnected";
+	case ConnectionState::Disabled:
+		return "Disabled";
+	default:
+		return "Unknown";
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Add an item to the queue
+// If memory allocation for QueueData fails, the method returns false.
+bool NTRIPServer::EnqueueData(const byte *pBytes, int length)
+{
+	if (xSemaphoreTake(_queMutex, portMAX_DELAY))
+	{
+		while (_dataQueue.size() > 20)
+		{
+			// Don't count dumps when not connected
+			//if (_status != ConnectionState::Connected)
+				_queueOverflows++;
+			QueueData *pOldItem = _dataQueue[0];
+			LogX(StringPrintf("Queue %d overflow %d bytes", _index, pOldItem->getLength()));
+			_dataQueue.erase(_dataQueue.begin());
+			delete pOldItem;
+		}
+
+		// Create queue item
+		QueueData *pItem = new (std::nothrow) QueueData(pBytes, length);
+		if (pItem == nullptr)
+		{
+			// Memory allocation failed
+			LogX("Failed to allocate memory for QueueData");
+			xSemaphoreGive(_queMutex);
+			return false;
+		}
+		_dataQueue.push_back(pItem);
+
+		xSemaphoreGive(_queMutex);
+		return true;
+	}
+	else
+	{
+		LogX("Failed to take queue mutex");
+		return false;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Get the next item from the queue
+// Returns nullptr if the queue is empty.
+// WARNING : The caller is responsible for deleting the returned item.
+QueueData *NTRIPServer::DequeueData()
+{
+	if (xSemaphoreTake(_queMutex, portMAX_DELAY))
+	{
+		if (_dataQueue.size() > 0)
+		{
+			QueueData *pItem = _dataQueue[0];
+			_dataQueue.erase(_dataQueue.begin());
+			xSemaphoreGive(_queMutex);
+			return pItem;
+		}
+		xSemaphoreGive(_queMutex);
+	}
+	return nullptr;
 }

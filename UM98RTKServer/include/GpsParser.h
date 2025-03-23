@@ -3,7 +3,7 @@
 #define GPS_TIMEOUT (60000)
 
 // VERBOSE will log more GPS detail including dump logs and received RTK types
-// #define VERBOSE
+//#define VERBOSE
 
 // Process the received packets after a GPS is configured and running
 #define PROCESS_ALL_PACKETS true
@@ -348,9 +348,9 @@ public:
 			}
 
 			// Send to server NTRIP Casters
-			_pNtripServer0->Loop(_byteArray, _binaryLength);
-			_pNtripServer1->Loop(_byteArray, _binaryLength);
-			_pNtripServer2->Loop(_byteArray, _binaryLength);
+			_pNtripServer0->EnqueueData(_byteArray, _binaryLength);
+			_pNtripServer1->EnqueueData(_byteArray, _binaryLength);
+			_pNtripServer2->EnqueueData(_byteArray, _binaryLength);
 
 			_msgTypeTotals[type]++;
 #ifdef VERBOSE

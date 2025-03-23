@@ -13,70 +13,92 @@
 // File access routines
 class MyFiles
 {
-  public:
-
+public:
 	bool Setup()
 	{
+		// Setup mutex
+		_mutex = xSemaphoreCreateMutex();
+		if (_mutex == NULL)
+			perror("Failed to create FILE mutex\n");
+		else
+			Serial.printf("File Mutex Created\r\n", index);
+
+		// Check if the file system is mounted
 		if (SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
 			return true;
 		Logln("SPIFFS Mount Failed");
 		return false;
 	}
 
-	bool WriteFile(const char* path, const char* message)
+	bool WriteFile(const char *path, const char *message)
 	{
 		Logf("Writing file: %s -> '%s'", path, message);
-		fs::File file = SPIFFS.open(path, FILE_WRITE);
-		if (!file)
+		bool error = true;
+		if (xSemaphoreTake(_mutex, portMAX_DELAY))
 		{
-			Logln("- failed to open file for writing");
-			return false;
+			fs::File file = SPIFFS.open(path, FILE_WRITE);
+			if (!file)
+			{
+				Logln("- failed to open file for writing");
+				xSemaphoreGive(_mutex);
+				return false;
+			}
+
+			error = file.print(message);
+			Logln(error ? "- file written" : "- write failed");
+
+			file.close();
+			xSemaphoreGive(_mutex);
 		}
-
-		bool error = file.print(message);
-		Logln(error ? "- file written" : "- write failed");
-
-		file.close();
 		return error;
 	}
 
-
-	void AppendFile(const char* path, const char* message)
+	void AppendFile(const char *path, const char *message)
 	{
 		Logf("Appending to file: %s -> '%s'", path, message);
-		fs::File file = SPIFFS.open(path, FILE_APPEND);
-		if (!file)
+		if (xSemaphoreTake(_mutex, portMAX_DELAY))
 		{
-			Logln("- failed to open file for appending");
-			return;
+			fs::File file = SPIFFS.open(path, FILE_APPEND);
+			if (!file)
+			{
+				Logln("- failed to open file for appending");
+				xSemaphoreGive(_mutex);
+				return;
+			}
+			if (file.print(message))
+			{
+				Logln("- message appended");
+			}
+			else
+			{
+				Logln("- append failed");
+			}
+			file.close();
+			xSemaphoreGive(_mutex);
 		}
-		if (file.print(message))
-		{
-			Logln("- message appended");
-		}
-		else
-		{
-			Logln("- append failed");
-		}
-		file.close();
 	}
 
-
-	bool ReadFile(const char* path, std::string& text)
+	bool ReadFile(const char *path, std::string &text)
 	{
 		Logf("Reading file: %s", path);
-
-		fs::File file = SPIFFS.open(path);
-		if (!file || file.isDirectory())
+		if (xSemaphoreTake(_mutex, portMAX_DELAY))
 		{
-			Logln("- failed to open file for reading");
-			return false;
+			fs::File file = SPIFFS.open(path);
+			if (!file || file.isDirectory())
+			{
+				Logln("- failed to open file for reading");
+				xSemaphoreGive(_mutex);
+				return false;
+			}
+			Logln("- read from file:");
+			while (file.available())
+				text += file.read();
+			file.close();
+			xSemaphoreGive(_mutex);
 		}
-		Logln("- read from file:");
-		while (file.available())
-			text += file.read();
-		file.close();
 		return true;
 	}
-  private:
+
+private:
+	SemaphoreHandle_t _mutex; // Thread safe access
 };

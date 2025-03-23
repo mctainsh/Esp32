@@ -7,17 +7,21 @@ std::string AddToLog(const char *msg);
 
 std::vector<std::string> _mainLog;
 
-// static SemaphoreHandle_t _serialMutex;
+static SemaphoreHandle_t _serialMutex;
 
 //////////////////////////////////////////////////////////////////////////
 // Setup the logging stuff
 void SetupLog()
 {
-	//	_serialMutex = xSemaphoreCreateMutex();
-	//	if (_serialMutex == NULL)
+	_serialMutex = xSemaphoreCreateMutex();
+	if (_serialMutex == NULL)
 	{
 		perror("Failed to create serial mutex\n");
 	}
+	else
+	{
+		Logln("Serial Mutex Created");
+	}	
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -25,10 +29,14 @@ void SetupLog()
 const std::vector<std::string> CopyMainLog()
 {
 	std::vector<std::string> copyVector;
-	//	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
+	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
 	{
 		copyVector.insert(copyVector.end(), _mainLog.begin(), _mainLog.end());
-		//		xSemaphoreGive(_serialMutex);
+		xSemaphoreGive(_serialMutex);
+	}
+	else
+	{
+		perror("CopyMainLog:Failed to take serial mutex\n");
 	}
 	return copyVector;
 }
@@ -48,17 +56,12 @@ const std::string Uptime(unsigned long millis)
 
 std::string Logln(const char *msg)
 {
-	std::string s;
-	//	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
-	{
-		s = AddToLog(msg);
-		#ifdef SERIAL_LOG
-			// perror(s.c_str());
-			Serial.print(s.c_str());
-			Serial.print("\r\n");
-		#endif
-		//		xSemaphoreGive(_serialMutex);
-	}
+	std::string s = AddToLog(msg);
+#ifdef SERIAL_LOG
+	// perror(s.c_str());
+	Serial.print(s.c_str());
+	Serial.print("\r\n");
+#endif
 	return s;
 }
 
@@ -84,17 +87,26 @@ const void TruncateLog(std::vector<std::string> &log)
 
 std::string AddToLog(const char *msg)
 {
-	std::string s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
+	std::string s;
+	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
+	{
+		s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
 
-	if (_mainLog.capacity() < MAX_LOG_LENGTH)
-		_mainLog.reserve(MAX_LOG_LENGTH);
+		if (_mainLog.capacity() < MAX_LOG_LENGTH)
+			_mainLog.reserve(MAX_LOG_LENGTH);
 
-	// Remove the oldest while too long
-	while (_mainLog.size() > MAX_LOG_LENGTH)
-		_mainLog.erase(_mainLog.begin());
+		// Remove the oldest while too long
+		while (_mainLog.size() > MAX_LOG_LENGTH)
+			_mainLog.erase(_mainLog.begin());
 
-	// Add everything except the last CR and LF
+		// Add everything except the last CR and LF
 
-	_mainLog.push_back(s);
+		_mainLog.push_back(s);
+		xSemaphoreGive(_serialMutex);
+	}
+	else
+	{
+		perror("AddToLog:Failed to take serial mutex\n");
+	}
 	return s;
 }
