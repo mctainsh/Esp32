@@ -169,9 +169,14 @@ void loop()
 	_loopPersSecondCount++;
 	if ((t - _loopWaitTime) > 1000)
 	{
+		// Update the loop performance counter
 		_loopWaitTime = t;
 		_display.SetLoopsPerSecond(_loopPersSecondCount, t);
 		_loopPersSecondCount = 0;
+
+		// Refresh RTK Display
+		for (int i = 0; i < RTK_SERVERS; i++)
+			_display.RefreshRtk(i);
 	}
 
 	// Check for push buttons

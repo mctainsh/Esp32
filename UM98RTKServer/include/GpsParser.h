@@ -3,7 +3,7 @@
 #define GPS_TIMEOUT (60000)
 
 // VERBOSE will log more GPS detail including dump logs and received RTK types
-//#define VERBOSE
+// #define VERBOSE
 
 // Process the received packets after a GPS is configured and running
 #define PROCESS_ALL_PACKETS true
@@ -440,9 +440,15 @@ public:
 			return;
 		}
 
+		// Check for command responses
 		if (_commandQueue.IsCommandResponse(line))
 			return;
 
+		// Config responses
+		if (_commandQueue.IsConfigResponse(line))
+			return;
+
+		// Check for version responses
 		_commandQueue.CheckForVersion(line);
 	}
 

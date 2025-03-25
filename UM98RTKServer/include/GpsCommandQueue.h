@@ -20,12 +20,17 @@ private:
 	std::string _deviceFirmware = "UNKNOWN";	// Firmware version
 	std::string _deviceSerial = "UNKNOWN";		// Serial number
 	std::function<void(std::string)> _logToGps; // Log to GPS function
+	std::string _signalGroup;					// Signal group read from config
 	bool _resetProcessed = false;				// Flag used to prevent reset being sent several times
-
 public:
 	GpsCommandQueue(std::function<void(std::string)> logFunc)
 	{
 		_logToGps = logFunc;
+		_strings.push_back("MASK");
+		_strings.push_back("MODE");
+		_strings.push_back("CONFIG");
+		_strings.push_back("VERSION"); // Used to determine device type
+									   //_strings.push_back("GPGGA 1");
 	}
 
 	inline const std::string &GetDeviceType() const { return _deviceType; }
@@ -41,7 +46,7 @@ public:
 		_strings.clear();
 
 		// Setup RTCM V3
-		_strings.push_back("VERSION");	   // Used to determine device type
+		//_strings.push_back("VERSION");	   // Used to determine device type
 		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
 		_strings.push_back("RTCM1033 30"); // Receiver and antenna description
 		_strings.push_back("RTCM1077 1");  // GPS MSM7. The type 7 Multiple Signal Message format for the USA’s GPS system, popular.
@@ -59,9 +64,8 @@ public:
 		// It is better to workout your exact location and set it here as latitude, longitude, height
 		//_strings.push_back("MODE BASE  latitude longitude height");
 
-		// Only ever save one to protect the flash
-		if (!_resetProcessed)
-			_strings.push_back("SAVECONFIG");
+		// TODO :Only ever save once to protect the flash
+		_strings.push_back("SAVECONFIG");
 
 		SendTopCommand();
 	}
@@ -111,9 +115,18 @@ public:
 		}
 		else
 		{
-			Logf("DANGER 303 Unknown Device '%s' Detected in %s", _deviceType.c_str(), str.c_str());
+			Logf("E301 Unknown Device '%s' Detected in %s", _deviceType.c_str(), str.c_str());
 		}
-		_strings.push_back(command);
+
+		// If current signal group is different then set it
+		if (_signalGroup != command)
+		{
+			_strings.push_back(command);
+		}
+		else
+		{
+			Logf("GPS : Signal Group '%s' already set", _signalGroup.c_str());
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -199,9 +212,49 @@ public:
 		if (str.compare(0, match.size(), match) != 0)
 			return false;
 
+		// Depending on the reset count we send different parameters
+		// First reset we set the signal group (This will only reset if SG changes)
+		// Second reset we set the RTCM3 messages
+		// Third reset we save config
+
 		_display.UpdateGpsStarts(false, true);
 		StartInitialiseProcess();
 		_resetProcessed = true;
+		return true;
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Check if the we got a config response and save the current setting
+	// 		'$CONFIG,SIGNALGROUP,CONFIG SIGNALGROUP 3 6*01'
+	// 		'$CONFIG,ANTENNA,CONFIG ANTENNA POWERON*7A'
+	bool IsConfigResponse(const std::string &str)
+	{
+		const std::string match = "$CONFIG,";
+		if (str.compare(0, match.size(), match) != 0)
+			return false;
+
+		// Remove the checksum
+		auto body = Split(str, "*");
+		if (body.size() < 2)
+		{
+			Logf("E303 : Unknown split '%s' Detected", str.c_str());
+			return false;
+		}
+
+		// Extract the config type
+		auto parts = Split(body[0], ",");
+		if (parts.size() < 3)
+		{
+			Logf("E304 : Unknown split '%s' Detected", str.c_str());
+			return false;
+		}
+
+		// If config type is "SIGNALGROUP" then we need to set the RTCM3 messages
+		if (parts[1] == "SIGNALGROUP")
+		{
+			_signalGroup = parts[2];
+			Logf("GPS : Detected '%s'", _signalGroup.c_str());
+		}
 		return true;
 	}
 
