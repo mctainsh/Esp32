@@ -245,7 +245,7 @@ int NTRIPServer::AverageSendTime()
 // Write to the debug log and keep the last few messages for display
 void NTRIPServer::LogX(std::string text)
 {
-	auto s = Logln(text.c_str());
+	auto s = Uptime(millis()) + " " + text;
 	if (xSemaphoreTake(_logMutex, portMAX_DELAY))
 	{
 		_logHistory.push_back(s);
@@ -291,7 +291,6 @@ bool NTRIPServer::Reconnect()
 
 	// Start the connection process
 	LogX(StringPrintf("RTK Connecting to %s : %d", _sAddress.c_str(), _port));
-	//_client.setNoDelay(false);
 
 	int status = _client.connect(_sAddress.c_str(), _port);
 	LogX(StringPrintf("RTK %s Connect status %d", _sAddress.c_str(), status));
@@ -303,7 +302,9 @@ bool NTRIPServer::Reconnect()
 		LogX(StringPrintf("E500 - RTK %s Not connected %d. (%dms)", _sAddress.c_str(), status, millis() - _wifiConnectTime));
 		return false;
 	}
-	LogX(StringPrintf("Connected %s OK. (%dms)", _sAddress.c_str(), millis() - _wifiConnectTime));
+	auto s= StringPrintf("Connected %s OK. (%dms)", _sAddress.c_str(), millis() - _wifiConnectTime);
+	LogX(s);
+	Logln(s.c_str());
 
 	if (!WriteText(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str()))
 		return false;

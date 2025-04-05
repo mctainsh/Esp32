@@ -102,6 +102,7 @@ private:
 	int _readErrorCount = 0;				   // Total number of read errors
 	int _missedBytesDuringError = 0;		   // Number of bytes we received during the error
 	int _maxBufferSize = 0;					   // Maximum size of the serial buffer
+	bool _startup = true;					   // Are we starting up?
 
 public:
 	MyDisplay &_display;
@@ -134,6 +135,13 @@ public:
 	// Read the latest GPS data and check for timeouts
 	bool ReadDataFromSerial(Stream &stream)
 	{
+		if (_startup)
+		{
+			LogX(StringPrintf("GPS Startup RX:%d TX:%d", SERIAL_RX, SERIAL_TX));
+			Serial2.begin(115200, SERIAL_8N1, SERIAL_RX, SERIAL_TX);
+			_startup = false;
+			return false;
+		}
 		int count = 0;
 
 		ProcessStream(stream);

@@ -72,7 +72,8 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////
 	/// @brief Process a line of text from the GPS unit checking got version information
-	///	#VERSION,0,GPS,UNKNOWN,0,0,0,0,0,1261;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225104240,ff27289609cf869d,2023/11/24*4d0ec3ba
+	///		'#VERSION,0,GPS,UNKNOWN,0,0,0,0,0,1261;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225104240,ff27289609cf869d,2023/11/24*4d0ec3ba'
+	//  	'#VERSION,96,GPS,FINE,2359,203543000,0,0,18,326;UM982,R4.10Build11826,HRPT00-S10C-P,2310415000012-LR23A0225105243,ff279b9611292f1d,2023/11/24*e84c236b'
 	inline void CheckForVersion(const std::string &str)
 	{
 		if (!StartsWith(str, "#VERSION"))

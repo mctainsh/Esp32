@@ -26,6 +26,7 @@ public:
 	// Constructor
 	GpsCommandQueue(MyDisplay &display) : _display(display)
 	{
+		_strings.push_back("config");
 		_strings.push_back("version");
 	}
 

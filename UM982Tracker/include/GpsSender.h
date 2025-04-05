@@ -133,7 +133,7 @@ void GpsSender::SendHttpData(double latitude, double longitude, double altitude,
 				Logln(payload.c_str());
 				_lastSend = millis();
 				_display.IncrementSendGood(httpCode);
-				_sendDelay = 4500;
+				_sendDelay = 500;
 				return;
 			}
 			Logln(httpStr.c_str());

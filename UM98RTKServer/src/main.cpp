@@ -98,12 +98,9 @@ void setup(void)
 	Logln("Enable RS232 pins");
 	tft.println("Enable RS232 pins");
 #if T_DISPLAY_S3 == true
-	Serial2.begin(115200, SERIAL_8N1, 12, 13);
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
 	pinMode(DISPLAY_POWER_PIN, OUTPUT);
 	digitalWrite(DISPLAY_POWER_PIN, HIGH);
-#else
-	Serial2.begin(115200, SERIAL_8N1, 25, 26);
 #endif
 
 	tft.println("Enable WIFI");
@@ -227,7 +224,7 @@ void LoadBaseLocation()
 	else
 	{
 		_baseLocation = "";
-		Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'" BASE_LOCATION_FILENAME).c_str());
+		Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'", BASE_LOCATION_FILENAME).c_str());
 	}
 }
 void SaveBaseLocation(std::string newBaseLocation)
