@@ -90,7 +90,7 @@ void setup(void)
 
 	// No logging before here
 	Serial.begin(115200); // Using perror() instead
-	Logf("Starting %s", APP_VERSION);
+	Logf("Starting %s. Cores:%d", APP_VERSION, configNUM_CORES);
 
 	// Setup the serial buffer for the GPS port
 	Logf("GPS Buffer size %d", Serial2.setRxBufferSize(GPS_BUFFER_SIZE));

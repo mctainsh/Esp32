@@ -1,9 +1,9 @@
 #pragma once
 
-#define APP_VERSION "2.188"
+#define APP_VERSION "2.189"
 
 // Disables logging to serial
-//#define SERIAL_LOG
+#define SERIAL_LOG
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
