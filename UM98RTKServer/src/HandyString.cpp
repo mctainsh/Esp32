@@ -197,10 +197,9 @@ std::string ReplaceNewlineWithTab(const std::string &input)
 	std::string output;
 	for (char c : input)
 	{
+		output += c;
 		if (c == '\n')
 			output += '\t';
-		else
-			output += c;
 	}
 	return output;
 }

@@ -19,29 +19,6 @@
 #include "NTRIPServer.h"
 #include "Global.h"
 
-// Typical packet sizes
-// 1005 [25]
-// 1033 [74]
-// 1077 [174]
-// 1077 [266]
-// 1077 [306]
-// 1077 [336]
-// 1087 [255]
-// 1087 [28]
-// 1097 [343]
-// 1097 [433]
-// 1117 [127]
-// 1117 [167]
-// 1117 [86]
-// 1127 [133]
-// 1127 [183]
-// 1127 [183]
-// 1127 [183]
-// 1127 [488]
-// 1127 [498]
-// 1127 [520]
-// 1137 [28]
-
 // Note : Max RTK packet size id 1029 bytes
 #define MAX_BUFF 1200
 
@@ -86,7 +63,8 @@ class GpsParser
 	{
 		BuildStateNone,
 		BuildStateBinary,
-		BuildStateAscii
+		BuildStateAscii,
+		BuildStateRtkAscii,
 	};
 
 private:
@@ -103,6 +81,10 @@ private:
 	int _missedBytesDuringError = 0;		   // Number of bytes we received during the error
 	int _maxBufferSize = 0;					   // Maximum size of the serial buffer
 	bool _startup = true;					   // Are we starting up?
+	int32_t _gpsResetCount = 0;				   // Number GPS resets
+	int32_t _gpsReinitialize = 0;			   // Number GPS initializations
+	int32_t _asciiMsgCount = 0;				   // Number ASCII of packets received
+	int32_t _bytesReceived = 0;				   // Total number of received GPS bytes
 
 public:
 	MyDisplay &_display;
@@ -122,6 +104,11 @@ public:
 	inline const std::map<int, int> &GetMsgTypeTotals() const { return _msgTypeTotals; }
 	inline const int GetReadErrorCount() const { return _readErrorCount; }
 	inline const int GetMaxBufferSize() const { return _maxBufferSize; }
+	inline const int GetGpsBytesRec() const { return _bytesReceived; }
+	inline const int32_t GetGpsResetCount() const { return _gpsResetCount; }
+	inline const int32_t GetGpsReinitialize() const { return _gpsReinitialize; }
+	inline const int32_t GetAsciiMsgCount() const { return _asciiMsgCount; }
+	inline const bool HasGpsExpired(unsigned long millis) const { return (millis - _timeOfLastMessage) > GPS_TIMEOUT; }
 
 	/// @brief Save links to the NTRIP casters
 	void Setup(NTRIPServer *pNtripServer0, NTRIPServer *pNtripServer1, NTRIPServer *pNtripServer2)
@@ -157,6 +144,7 @@ public:
 			_timeOfLastMessage = millis();
 			_commandQueue.StartInitialiseProcess();
 			_display.UpdateGpsStarts(true, false);
+			_gpsReinitialize++;
 		}
 		return _gpsConnected;
 	}
@@ -174,6 +162,8 @@ public:
 
 		if (available > GPS_BUFFER_SIZE - 10)
 			LogX("GPS - Serial Buffer overflow");
+
+		_bytesReceived += available;
 
 		// Limit the number of bytes we read
 		available = min(available, MAX_BUFF);
@@ -250,12 +240,14 @@ public:
 			{
 			case '$':
 			case '#':
+				DumpSkippedBytes();
 				// LogX("Build ASCII");
 				_binaryIndex = 1;
 				_byteArray[0] = ch;
 				_buildState = BuildStateAscii;
 				return true;
 			case 0xD3:
+				DumpSkippedBytes();
 				// LogX("Build BINARY");
 				_buildState = BuildStateBinary;
 				_binaryLength = 0;
@@ -271,9 +263,14 @@ public:
 		case BuildStateBinary:
 			return BuildBinary(ch);
 
+		// Building RTK ASCII packet
+		case BuildStateRtkAscii:
+			return BuildRtkAscii(ch);
+
 		// Plain text processing
 		case BuildStateAscii:
 			return BuildAscii(ch);
+
 		default:
 			AddToSkipped(ch);
 			LogX(StringPrintf("Unknown state %d", _buildState));
@@ -301,7 +298,23 @@ public:
 	{
 		_byteArray[_binaryIndex++] = ch;
 
-		if (_binaryIndex < 12)
+		// Check for text messages
+		if (_binaryIndex == 3)
+		{
+			uint lengthPrefix = GetUInt(8, 14 - 8);
+			if (lengthPrefix == 2)
+			{
+				_buildState = BuildStateRtkAscii;
+				return true;
+			}
+			if (lengthPrefix != 0)
+			{
+				LogX(StringPrintf("Binary length prefix too big %02x %02x - %d", _byteArray[0], _byteArray[1], lengthPrefix));
+				return false;
+			}
+		}
+
+		if (_binaryIndex < 6)
 			return true;
 
 		// Extract length
@@ -311,7 +324,7 @@ public:
 			if (lengthPrefix != 0)
 			{
 				LogX(StringPrintf("Binary length prefix too big %02x %02x - %d", _byteArray[0], _byteArray[1], lengthPrefix));
-				//	return false;
+				return false;
 			}
 			_binaryLength = GetUInt(14, 10) + 6;
 			if (_binaryLength == 0 || _binaryLength >= MAX_BUFF)
@@ -362,9 +375,51 @@ public:
 
 			_msgTypeTotals[type]++;
 #ifdef VERBOSE
-			LogX(StringPrintf("GOOD %d [%d]", type, _binaryLength));
+			Serial.Printf("G %d [%d]\n", type, _binaryLength));
 #endif
 			_buildState = BuildStateNone;
+		}
+		return true;
+	}
+
+	// Process a new byte in RTK ASCII format
+	/// <summary>
+	/// Process the RTK ASCII data
+	/// </summary>
+	bool BuildRtkAscii(byte ch)
+	{
+		if (ch == '\r' || ch == '\n')
+			return true;
+
+		if (ch == '\0')
+		{
+			if (_binaryIndex < 2)
+			{
+				LogX("RTK <- ''");
+			}
+			else
+			{
+				_byteArray[_binaryIndex] = 0;
+				LogX(StringPrintf("RTK <- %s ", _byteArray + 2));
+			}
+			_buildState = BuildStateNone;
+			return true;
+		}
+
+		if (_binaryIndex > 254)
+		{
+			LogX(StringPrintf("RTK ASCII Overflowing %s", HexAsciDump(_byteArray, _binaryIndex).c_str()));
+			_buildState = BuildStateNone;
+			return false;
+		}
+
+		_byteArray[_binaryIndex++] = ch;
+
+		if (ch < 32 || ch > 126)
+		{
+			LogX(StringPrintf("RTK Non-ASCII %s", HexAsciDump(_byteArray, _binaryIndex).c_str()));
+			_buildState = BuildStateNone;
+			return false;
 		}
 		return true;
 	}
@@ -437,13 +492,15 @@ public:
 			LogX("W700 - GPS ASCII Too short");
 			return;
 		}
-
-		LogX(StringPrintf("GPS [- '%s'", line.c_str()));
+		_asciiMsgCount++;
+			
+		LogX(StringPrintf("GPS <- '%s'", line.c_str()));
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))
 		{
 			_timeOfLastMessage = millis();
+			_gpsResetCount++;
 			_display.UpdateGpsStarts(true, false);
 			return;
 		}
@@ -465,35 +522,36 @@ private:
 	// Write to the debug log and keep the last few messages for display
 	void LogX(std::string text)
 	{
-		// Dump any skipped data
-		if (_skippedIndex > 0)
-		{
-			if (_skippedIndex == 1 && _skippedArray[0] == 0x0A)
-			{
-				// Don't dump the end of ASCII line
-			}
-			else
-			{
-				_skippedArray[_skippedIndex] = 0;
-				std::string logTest;
-				if (IsAllAscii(_skippedArray, _skippedIndex))
-					logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, _skippedArray).c_str();
-				else
-					logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str());
-				_logHistory.push_back(logTest.c_str());
-				Logln(logTest.c_str());
-
-				_missedBytesDuringError += _skippedIndex;
-			}
-			_skippedIndex = 0;
-		}
-
 		// Normal log
 		auto s = Logln(text.c_str());
-		_logHistory.push_back(s);
+		if (s.length() > MAX_LOG_ROW_LENGTH)
+			_logHistory.push_back(s.substr(0, MAX_LOG_ROW_LENGTH) + "...");
+		else
+			_logHistory.push_back(s);
 
 		TruncateLog(_logHistory);
-		_display.RefreshGpsLog();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Dump any skipped bytes we have gathered
+	void DumpSkippedBytes()
+	{
+		if (_skippedIndex < 1)
+			return;
+
+		_skippedArray[_skippedIndex] = 0;
+		std::string logTest;
+		if (IsAllAscii(_skippedArray, _skippedIndex))
+			logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, _skippedArray).c_str();
+		else
+			logTest = StringPrintf("Skipped [%d] %s", _skippedIndex, HexDump(_skippedArray, _skippedIndex).c_str());
+		LogX(logTest.c_str());
+
+		_missedBytesDuringError += _skippedIndex;
+		_skippedIndex = 0;
+
+		// TODO : Make it safe to call this from the main thread
+		//	_display.RefreshGpsLog();
 	}
 
 	////////////////////////////////////////////////////////////////////////////

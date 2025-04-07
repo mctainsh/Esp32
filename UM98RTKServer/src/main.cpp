@@ -27,6 +27,8 @@
 #include <sstream>
 #include <string>
 
+#include "driver/temp_sensor.h"
+
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 void SaveBaseLocation(std::string newBaseLocation);
@@ -41,12 +43,16 @@ void LoadBaseLocation();
 #include "MyFiles.h"
 #include <WebPortal.h>
 #include "WifiBusyTask.h"
+#include "WiFiEvents.h"
 
 WiFiManager _wifiManager;
 
 unsigned long _loopWaitTime = 0;	// Time of last second
 int _loopPersSecondCount = 0;		// Number of times the main loops runs in a second
 unsigned long _lastButtonPress = 0; // Time of last button press to turn off display on T-Display-S3
+
+// Temperature history
+char _tempHistory[TEMP_HISTORY_SIZE];
 
 WebPortal _webPortal;
 
@@ -84,7 +90,7 @@ void setup(void)
 	tft.fillScreen(TFT_GREEN);
 	tft.setTextColor(TFT_BLACK, TFT_GREEN);
 	tft.setTextFont(2);
-	tft.printf("Starting %\r\n", APP_VERSION);
+	tft.printf("Starting %. Cores %d\r\n", APP_VERSION, configNUM_CORES);
 
 	SetupLog(); // Call this before any logging
 
@@ -95,15 +101,20 @@ void setup(void)
 	// Setup the serial buffer for the GPS port
 	Logf("GPS Buffer size %d", Serial2.setRxBufferSize(GPS_BUFFER_SIZE));
 
-	Logln("Enable RS232 pins");
-	tft.println("Enable RS232 pins");
+	tft.println("Enable Display pins");
 #if T_DISPLAY_S3 == true
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
 	pinMode(DISPLAY_POWER_PIN, OUTPUT);
 	digitalWrite(DISPLAY_POWER_PIN, HIGH);
 #endif
 
+	// Zero out the temperature history
+	for (size_t i = 0; i < TEMP_HISTORY_SIZE; i++)
+		_tempHistory[i] = 0;
+
+	Logln("Enable WIFI");
 	tft.println("Enable WIFI");
+	SetupWiFiEvents();
 	WiFi.mode(WIFI_AP_STA);
 
 	Logln("Enable Buttons");
@@ -174,6 +185,35 @@ void loop()
 		// Refresh RTK Display
 		for (int i = 0; i < RTK_SERVERS; i++)
 			_display.RefreshRtk(i);
+
+			// Check memory pressure
+			auto free = ESP.getFreeHeap();
+			auto total = ESP.getHeapSize();
+
+		// Enable temperature sensor
+		if ((temp_sensor_start()) != ESP_OK)
+			Logln("E100 - Failed to start temperature sensor");
+		// Get converted sensor data
+		float tsens_out;
+		if (temp_sensor_read_celsius(&tsens_out))
+			Logln("E101 - Failed to read temperature sensor");
+		// Disable the temperature sensor if it is not needed and save the power
+		if (temp_sensor_stop())
+			Logln("E102 - Failed to stop temperature sensor");
+
+		// Save the temperature history once per 60 seconds
+		auto tempIndex = (millis() / (60 * 1000)) % TEMP_HISTORY_SIZE;
+		_tempHistory[tempIndex] = (char)tsens_out;
+
+				// Update the loop performance counter
+				// Serial.printf("Loop %d G:%ld 1:%ld, 2:%ld 3:%ld Heap:%d%% %.1f°C\n",
+				// 	_loopPersSecondCount,
+				// 	_gpsParser.GetGpsBytesRec(),
+				// 	_ntripServer0.GetPacketsSent(),
+				// 	_ntripServer1.GetPacketsSent(),
+				// 	_ntripServer2.GetPacketsSent(),
+				// 	(int)(100.0 * free / total),
+				// 	tsens_out); 
 	}
 
 	// Check for push buttons
@@ -262,6 +302,7 @@ bool IsWifiConnected()
 		if (status == WL_CONNECTED)
 		{
 			// Setup the access point to prevend device getting stuck on a nearby network
+			_wifiManager.setConfigPortalTimeout(0);
 			auto res = _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
 			if (!res)
 				Logln("Failed to start config Portal (Maybe cos non-blocked)");

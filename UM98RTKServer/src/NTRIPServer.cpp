@@ -188,7 +188,32 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	if (sent != length)
 	{
 		// Send failed so record the failure and start the reconnect process
-		LogX(StringPrintf("E500 - %s Only sent %d of %d (%dms)", _sAddress.c_str(), sent, length, time / 1000));
+		LogX(StringPrintf("E500 - %s Only sent %d of %d (%dms)",
+						  _sAddress.c_str(),
+						  sent,
+						  length,
+						  time / 1000));
+
+		int errorCode = errno;
+		const char *errorMsg = strerror(errno);
+		LogX(StringPrintf(" --- Error: %d - %s", errorCode, errorMsg));
+
+		// Check specific error conditions
+		if (errorCode == EWOULDBLOCK)
+			LogX(" --- Socket would block - buffer full");
+		else if (errorCode == ENOTCONN)
+			LogX(" --- Socket not connected");
+		else if (errorCode == ECONNRESET)
+			LogX(" --- Connection reset by peer");
+		else if (errorCode == ETIMEDOUT)
+			LogX(" --- Connection timed out");
+		else if (errorCode == ENOTCONN)
+			LogX(" --- Socket not connected");
+		else if (errorCode == EPIPE)
+			LogX(" --- Broken pipe - connection closed by peer");
+		else if (errorCode == EINVAL)
+			LogX(" --- Invalid argument - check socket options");
+
 		_client.stop();
 		_status = ConnectionState::Disconnected;
 	}
@@ -201,7 +226,8 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 			_maxSendTime = max(_maxSendTime, time);
 
 		// Logf("RTK %s Sent %d OK", _sAddress.c_str(), sent);
-		_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
+		//_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
+		_sendMicroSeconds.push_back((int)time);
 		_wifiConnectTime = millis();
 		_packetsSent++;
 		_timeOutIndex = 0;

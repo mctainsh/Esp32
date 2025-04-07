@@ -99,9 +99,12 @@ std::string AddToLog(const char *msg)
 		while (_mainLog.size() > MAX_LOG_LENGTH)
 			_mainLog.erase(_mainLog.begin());
 
-		// Add everything except the last CR and LF
+		// Add the first 127 characters of the message
+		if (s.length() > MAX_LOG_ROW_LENGTH)
+			_mainLog.push_back(s.substr(0, MAX_LOG_ROW_LENGTH) + "...");
+		else
+			_mainLog.push_back(s);
 
-		_mainLog.push_back(s);
 		xSemaphoreGive(_serialMutex);
 	}
 	else
