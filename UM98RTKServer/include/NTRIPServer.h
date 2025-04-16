@@ -21,17 +21,16 @@ public:
 	void LoadSettings();
 	void Save(const char *address, const char *port, const char *credential, const char *password) const;
 	bool EnqueueData(const byte *pBytes, int length);
-	int AverageSendTime();
 	std::vector<std::string> GetLogHistory();
 	const char *GetStatus() const;
 
+	inline const int GetIndex() const { return _index; }
 	inline int GetReconnects() const { return _reconnects; }
 	inline int GetPacketsSent() const { return _packetsSent; }
 	inline const std::string GetAddress() const { return _sAddress; }
 	inline int GetPort() const { return _port; }
 	inline const std::string GetCredential() const { return _sCredential; }
 	inline const std::string GetPassword() const { return _sPassword; }
-	inline const std::vector<int> &GetSendMicroSeconds() const { return _sendMicroSeconds; }
 	inline int GetMaxSendTime() const { return _maxSendTime; }
 	inline UBaseType_t GetMaxStackHeight() const { return _maxStackHeight; }
 	inline unsigned long GetQueueOverflows() const { return _queueOverflows; }
@@ -54,7 +53,6 @@ private:
 	const int _index;									// Index of the server used when updating display
 	ConnectionState _status = ConnectionState::Unknown; // Connection status
 	std::vector<std::string> _logHistory;				// History of connection status
-	std::vector<int> _sendMicroSeconds;					// Collection of send times
 	int _reconnects;									// Total number of reconnects
 	int _packetsSent;									// Total number of packets sent
 	unsigned long _maxSendTime;							// Maximum amount of time it took to send a packet
@@ -66,7 +64,7 @@ private:
 	int _timeOutIndex = 0;								// Index even increasing timeout periods
 	int _totalTimeouts = 0;								// Total number of timeouts
  	int _consecutiveTimeouts = 0;						// Number of consecutive timeouts
-	
+
 	std::string _sAddress;
 	int _port;
 	std::string _sCredential;

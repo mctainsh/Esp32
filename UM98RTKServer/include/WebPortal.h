@@ -221,11 +221,11 @@ void WebPortal::GraphHtml() const
 /// @param server The server to plot. Source of title and data
 void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const
 {
-
+	auto sendMicrosecondList = _history.GetNtripSendTime(server.GetIndex());
 	html += "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
 	html += "<script>";
 	html += "const xValues" + divId + " = [";
-	for (int n = 0; n < server.GetSendMicroSeconds().size(); n++)
+	for (int n = 0; n < sendMicrosecondList.size(); n++)
 	{
 		if (n != 0)
 			html += ",";
@@ -233,14 +233,14 @@ void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPSer
 	}
 	html += "];";
 	html += "const yValues" + divId + " = [";
-	for (int n = 0; n < server.GetSendMicroSeconds().size(); n++)
+	for (int n = 0; n < sendMicrosecondList.size(); n++)
 	{
 		if (n != 0)
 			html += ",";
-		html += StringPrintf("%d", server.GetSendMicroSeconds()[n]);
+		html += StringPrintf("%d", sendMicrosecondList[n]);
 	}
 	html += "];";
-	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '" + server.GetAddress() + " (Mbps)'});";
+	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '" + server.GetAddress() + " (&#181;s)'});";
 	html += "</script>\n";
 }
 
@@ -379,7 +379,7 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "Queue overflows", server.GetQueueOverflows());
 	TableRow(html, 3, "Send timeouts", server.GetTotalTimeouts());
 	TableRow(html, 3, "Expired packets", server.GetExpiredPackets());
-	TableRow(html, 3, "Avg. Send (&micro;s)", server.AverageSendTime());
+	TableRow(html, 3, "Median Send (&micro;s)", _history.MedianSendTime(server.GetIndex()));
 	TableRow(html, 3, "Max send (&#181;s)", server.GetMaxSendTime());
 	TableRow(html, 3, "Max Stack Height", server.GetMaxStackHeight());
 	html += "</td></Table>";

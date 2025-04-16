@@ -10,6 +10,7 @@
 #include "GpsParser.h"
 
 #include "HandyLog.h"
+#include "History.h"
 
 #include <iostream>
 #include <sstream>
@@ -48,6 +49,7 @@ extern NTRIPServer _ntripServer1;
 extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 extern WiFiManager _wifiManager;
+extern History _history;
 
 ////////////////////////////////////////////////////////////////////////
 // Setup this display
@@ -192,7 +194,7 @@ void MyDisplay::RefreshRtk(int index)
 	DrawML(pServer->GetStatus(), col, R1F4, COL_W_P4, 4);
 	DrawMR(ToThousands(pServer->GetReconnects()).c_str(), col, R2F4, COL_W_P4, 4);
 	DrawMR(ToThousands(pServer->GetPacketsSent()).c_str(), col, R3F4, COL_W_P4, 4);
-	DrawMR(ToThousands(pServer->AverageSendTime()).c_str(), col, R4F4, COL_W_P4, 4);
+	DrawMR(ToThousands(_history.MedianSendTime(pServer->GetIndex())).c_str(), col, R4F4, COL_W_P4, 4);
 }
 
 void MyDisplay::RefreshRtkLog()

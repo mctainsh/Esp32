@@ -5,8 +5,10 @@
 #include "HandyLog.h"
 #include <GpsParser.h>
 #include <MyFiles.h>
+#include "History.h"
 
 extern MyFiles _myFiles;
+extern History _history;
 
 // Progressive time out for reconnecting
 static const unsigned long WIFI_TIMEOUTS[] = {15000, 30000, 60000, 120000, 300000};
@@ -19,7 +21,6 @@ NTRIPServer::NTRIPServer(int index)
 	  _logMutex(xSemaphoreCreateMutex()),
 	  _queMutex(xSemaphoreCreateMutex())
 {
-	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);			 // Reserve space for the send times
 	_wifiConnectTime = 10000 - WIFI_TIMEOUTS[_timeOutIndex]; // Start the connection process after 10 seconds
 
 	// Check mutexs
@@ -174,10 +175,6 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	if (length < 1)
 		return;
 
-	// Clear out extra send history
-	while (_sendMicroSeconds.size() >= AVERAGE_SEND_TIMERS)
-		_sendMicroSeconds.erase(_sendMicroSeconds.begin());
-
 	// Send and record time
 	unsigned long startT = micros();
 	int sent = _client.write(pBytes, length);
@@ -232,7 +229,12 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	}
 	else
 	{
+		// Good send so clear the timeout count and record the time
 		_consecutiveTimeouts = 0;
+		_wifiConnectTime = millis();
+		_packetsSent++;
+		_timeOutIndex = 0;
+
 		// Record max send time
 		if (_maxSendTime == 0)
 			_maxSendTime = time;
@@ -241,10 +243,7 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 
 		// Logf("RTK %s Sent %d OK", _sAddress.c_str(), sent);
 		//_sendMicroSeconds.push_back(sent * 8 * 1000 / max(1UL, time));
-		_sendMicroSeconds.push_back((int)time);
-		_wifiConnectTime = millis();
-		_packetsSent++;
-		_timeOutIndex = 0;
+		_history.AddNtripSendTime(_index, (int)time);
 	}
 }
 
@@ -267,18 +266,6 @@ void NTRIPServer::ConnectedProcessingReceive()
 
 	// Log the data
 	LogX("RECV. " + _sAddress + "\r\n" + HexAsciDump(_pSocketBuffer, buffSize));
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Get the average send time
-int NTRIPServer::AverageSendTime()
-{
-	if (_sendMicroSeconds.size() < 1)
-		return 0;
-	int total = 0;
-	for (int n : _sendMicroSeconds)
-		total += n;
-	return total / _sendMicroSeconds.size();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -348,7 +335,7 @@ bool NTRIPServer::Reconnect()
 
 	if (!WriteText(StringPrintf("SOURCE %s %s\r\n", _sPassword.c_str(), _sCredential.c_str()).c_str()))
 		return false;
-	if (!WriteText("Source-Agent: NTRIP UM98/ESP32_T_Display_SX\r\n"))
+	if (!WriteText("Source-Agent: NTRIP UM98/ESP32_T_Display_S3\r\n"))
 		return false;
 	if (!WriteText("STR: \r\n"))
 		return false;
