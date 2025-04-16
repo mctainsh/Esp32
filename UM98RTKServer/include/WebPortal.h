@@ -5,6 +5,7 @@
 #include "HandyString.h"
 #include "NTRIPServer.h"
 #include "GpsParser.h"
+#include "History.h"
 
 extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
@@ -13,7 +14,7 @@ extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 extern MyDisplay _display;
 extern std::string _baseLocation;
-extern char _tempHistory[TEMP_HISTORY_SIZE];
+extern History _history;
 
 /// @brief Class manages the web pages displayed in the device.
 class WebPortal
@@ -30,7 +31,7 @@ private:
 	void GraphHtml() const;
 	void GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const;
 	void GraphTemperature() const;
-	void GraphArray(std::string &html, std::string divId, const char *pBytes, int length) const;
+	void GraphArray(std::string &html, std::string divId, std::string title, const char *pBytes, int length) const;
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
 	void OnSaveParamsCallback();
 
@@ -252,17 +253,16 @@ void WebPortal::GraphTemperature() const
 	<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>\
 	</head>\n\
 	<body style='padding:10px;'>\
-	<h3>Temperature C</h3>";
+	<h3>Temperature &deg;C</h3>";
 
-	GraphArray(html, "T", _tempHistory, TEMP_HISTORY_SIZE);
+	GraphArray(html, "T", "CPU Temperature (&deg;C)", _history.GetTemperatures(), TEMP_HISTORY_SIZE);
 
-	html += "</body>";
-	html += "</html>";
+	html += "</body></html>";
 	_wifiManager.server->send(200, "text/html", html.c_str());
 	Serial.printf("\tSent %d bytes\n", html.length());
 }
 
-void WebPortal::GraphArray(std::string &html, std::string divId, const char *pBytes, int length) const
+void WebPortal::GraphArray(std::string &html, std::string divId, std::string title, const char *pBytes, int length) const
 {
 	html += "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
 	html += "<script>";
@@ -282,7 +282,9 @@ void WebPortal::GraphArray(std::string &html, std::string divId, const char *pBy
 		html += StringPrintf("%d", pBytes[n]);
 	}
 	html += "];";
-	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: 'Degrees (Mbps)'});";
+	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '";
+	html += title;
+	html += "'});";
 	html += "</script>\n";
 }
 
@@ -375,9 +377,10 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 	TableRow(html, 3, "Reconnects", server.GetReconnects());
 	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
 	TableRow(html, 3, "Queue overflows", server.GetQueueOverflows());
+	TableRow(html, 3, "Send timeouts", server.GetTotalTimeouts());
 	TableRow(html, 3, "Expired packets", server.GetExpiredPackets());
-	TableRow(html, 3, "Speed (Mbps)", server.AverageSendTime());
-	TableRow(html, 3, "Max send (us)", server.GetMaxSendTime());
+	TableRow(html, 3, "Avg. Send (&micro;s)", server.AverageSendTime());
+	TableRow(html, 3, "Max send (&#181;s)", server.GetMaxSendTime());
 	TableRow(html, 3, "Max Stack Height", server.GetMaxStackHeight());
 	html += "</td></Table>";
 }

@@ -26,9 +26,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-
-#include "driver/temp_sensor.h"
-
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 
 void SaveBaseLocation(std::string newBaseLocation);
@@ -44,15 +41,14 @@ void LoadBaseLocation();
 #include <WebPortal.h>
 #include "WifiBusyTask.h"
 #include "WiFiEvents.h"
+#include "History.h"
 
 WiFiManager _wifiManager;
 
 unsigned long _loopWaitTime = 0;	// Time of last second
 int _loopPersSecondCount = 0;		// Number of times the main loops runs in a second
 unsigned long _lastButtonPress = 0; // Time of last button press to turn off display on T-Display-S3
-
-// Temperature history
-char _tempHistory[TEMP_HISTORY_SIZE];
+History _history;					// Temperature history
 
 WebPortal _webPortal;
 
@@ -107,10 +103,6 @@ void setup(void)
 	pinMode(DISPLAY_POWER_PIN, OUTPUT);
 	digitalWrite(DISPLAY_POWER_PIN, HIGH);
 #endif
-
-	// Zero out the temperature history
-	for (size_t i = 0; i < TEMP_HISTORY_SIZE; i++)
-		_tempHistory[i] = 0;
 
 	Logln("Enable WIFI");
 	tft.println("Enable WIFI");
@@ -186,34 +178,21 @@ void loop()
 		for (int i = 0; i < RTK_SERVERS; i++)
 			_display.RefreshRtk(i);
 
-			// Check memory pressure
-			auto free = ESP.getFreeHeap();
-			auto total = ESP.getHeapSize();
+		// Check memory pressure
+		auto free = ESP.getFreeHeap();
+		auto total = ESP.getHeapSize();
 
-		// Enable temperature sensor
-		if ((temp_sensor_start()) != ESP_OK)
-			Logln("E100 - Failed to start temperature sensor");
-		// Get converted sensor data
-		float tsens_out;
-		if (temp_sensor_read_celsius(&tsens_out))
-			Logln("E101 - Failed to read temperature sensor");
-		// Disable the temperature sensor if it is not needed and save the power
-		if (temp_sensor_stop())
-			Logln("E102 - Failed to stop temperature sensor");
+		auto temperature = _history.CheckTemperatureLoop();
 
-		// Save the temperature history once per 60 seconds
-		auto tempIndex = (millis() / (60 * 1000)) % TEMP_HISTORY_SIZE;
-		_tempHistory[tempIndex] = (char)tsens_out;
-
-				// Update the loop performance counter
-				// Serial.printf("Loop %d G:%ld 1:%ld, 2:%ld 3:%ld Heap:%d%% %.1f°C\n",
-				// 	_loopPersSecondCount,
-				// 	_gpsParser.GetGpsBytesRec(),
-				// 	_ntripServer0.GetPacketsSent(),
-				// 	_ntripServer1.GetPacketsSent(),
-				// 	_ntripServer2.GetPacketsSent(),
-				// 	(int)(100.0 * free / total),
-				// 	tsens_out); 
+		// Update the loop performance counter
+		// Serial.printf("Loop %d G:%ld 1:%ld, 2:%ld 3:%ld Heap:%d%% %.1f°C\n",
+		// 	_loopPersSecondCount,
+		// 	_gpsParser.GetGpsBytesRec(),
+		// 	_ntripServer0.GetPacketsSent(),
+		// 	_ntripServer1.GetPacketsSent(),
+		// 	_ntripServer2.GetPacketsSent(),
+		// 	(int)(100.0 * free / total),
+		// 	temperature);
 	}
 
 	// Check for push buttons

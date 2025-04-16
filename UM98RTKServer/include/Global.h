@@ -1,6 +1,6 @@
 #pragma once
 
-#define APP_VERSION "2.208"
+#define APP_VERSION "2.228.8"
 
 // Disables logging to serial
 #define SERIAL_LOG
@@ -22,9 +22,7 @@
 
 #define MAX_LOG_LENGTH (200)
 #define MAX_LOG_SIZE (MAX_LOG_LENGTH * 80)
-#define MAX_LOG_ROW_LENGTH 127
-
-#define TEMP_HISTORY_SIZE (24*60) // 1 day of history at 60 second intervals
+#define MAX_LOG_ROW_LENGTH (128 +24)
 
 #define RTK_SERVERS 3
 

@@ -74,7 +74,7 @@ std::string HexAsciDump(const unsigned char *data, int len)
 		return "";
 	std::string lines;
 	const int SIZE = 4 * 16 + 1;
-	char szText[SIZE+1];
+	char szText[SIZE + 1];
 	for (int n = 0; n < len; n++)
 	{
 		auto index = n % 16;
@@ -92,7 +92,12 @@ std::string HexAsciDump(const unsigned char *data, int len)
 		auto offset = 3 * index;
 		snprintf(szText + offset, 3, "%02x", data[n]);
 		szText[offset + 2] = ' ';
-		szText[3 * 16 + index] = data[n] < 0x20 ? 0xfa : data[n];
+
+		auto asciiIndex = 3 * 16 + index;
+		if (data[n] < 0x20)
+			szText[asciiIndex] = 0xB7;
+		else
+			szText[asciiIndex] = data[n];
 	}
 	szText[SIZE] = '\0';
 	lines += std::string(szText);

@@ -36,6 +36,7 @@ public:
 	inline UBaseType_t GetMaxStackHeight() const { return _maxStackHeight; }
 	inline unsigned long GetQueueOverflows() const { return _queueOverflows; }
 	inline unsigned long GetExpiredPackets() const { return _expiredPackets; }
+	inline unsigned long GetTotalTimeouts() const { return _totalTimeouts; }
 	void TaskFunction();
 
 	enum class ConnectionState
@@ -63,7 +64,9 @@ private:
 	unsigned long _expiredPackets = 0;					// Number of packets that were expired
 	int _overflowSetSize = 0;							// Number of times the overflow set was used in single set
 	int _timeOutIndex = 0;								// Index even increasing timeout periods
-
+	int _totalTimeouts = 0;								// Total number of timeouts
+ 	int _consecutiveTimeouts = 0;						// Number of consecutive timeouts
+	
 	std::string _sAddress;
 	int _port;
 	std::string _sCredential;

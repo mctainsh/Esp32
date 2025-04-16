@@ -19,7 +19,7 @@ NTRIPServer::NTRIPServer(int index)
 	  _logMutex(xSemaphoreCreateMutex()),
 	  _queMutex(xSemaphoreCreateMutex())
 {
-	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);	  // Reserve space for the send times
+	_sendMicroSeconds.reserve(AVERAGE_SEND_TIMERS);			 // Reserve space for the send times
 	_wifiConnectTime = 10000 - WIFI_TIMEOUTS[_timeOutIndex]; // Start the connection process after 10 seconds
 
 	// Check mutexs
@@ -196,13 +196,24 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 
 		int errorCode = errno;
 		const char *errorMsg = strerror(errno);
-		LogX(StringPrintf(" --- Error: %d - %s", errorCode, errorMsg));
+		// LogX(StringPrintf(" --- Error: %d - %s", errorCode, errorMsg));
+
+		if (errorCode == EWOULDBLOCK)
+		{
+			LogX(StringPrintf(" --- Socket would block - buffer full. Try %d", _consecutiveTimeouts));
+			_totalTimeouts++;
+			vTaskDelay(100 / portTICK_PERIOD_MS);
+			_consecutiveTimeouts++;
+			if (_consecutiveTimeouts < 3)
+				return;
+		}
+		_consecutiveTimeouts = 0;
 
 		// Check specific error conditions
-		if (errorCode == EWOULDBLOCK)
-			LogX(" --- Socket would block - buffer full");
-		else if (errorCode == ENOTCONN)
+		if (errorCode == ENOTCONN)
 			LogX(" --- Socket not connected");
+		else if (errorCode == EWOULDBLOCK)
+			LogX(" --- Socket would block - buffer full");
 		else if (errorCode == ECONNRESET)
 			LogX(" --- Connection reset by peer");
 		else if (errorCode == ETIMEDOUT)
@@ -213,12 +224,15 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 			LogX(" --- Broken pipe - connection closed by peer");
 		else if (errorCode == EINVAL)
 			LogX(" --- Invalid argument - check socket options");
+		else
+			LogX(StringPrintf(" --- Error: %d - %s", errorCode, errorMsg));
 
 		_client.stop();
 		_status = ConnectionState::Disconnected;
 	}
 	else
 	{
+		_consecutiveTimeouts = 0;
 		// Record max send time
 		if (_maxSendTime == 0)
 			_maxSendTime = time;
@@ -311,7 +325,7 @@ bool NTRIPServer::Reconnect()
 	// Get next timeout period
 	_timeOutIndex++;
 	if (_timeOutIndex >= WIFI_TIMEOUT_SIZE)
-			_timeOutIndex = WIFI_TIMEOUT_SIZE - 1;
+		_timeOutIndex = WIFI_TIMEOUT_SIZE - 1;
 
 	_wifiConnectTime = millis();
 
@@ -328,7 +342,7 @@ bool NTRIPServer::Reconnect()
 		LogX(StringPrintf("E500 - RTK %s Not connected %d. (%dms)", _sAddress.c_str(), status, millis() - _wifiConnectTime));
 		return false;
 	}
-	auto s= StringPrintf("Connected %s OK. (%dms)", _sAddress.c_str(), millis() - _wifiConnectTime);
+	auto s = StringPrintf("Connected %s OK. (%dms)", _sAddress.c_str(), millis() - _wifiConnectTime);
 	LogX(s);
 	Logln(s.c_str());
 
@@ -384,6 +398,11 @@ const char *NTRIPServer::GetStatus() const
 // If memory allocation for QueueData fails, the method returns false.
 bool NTRIPServer::EnqueueData(const byte *pBytes, int length)
 {
+	// Don't queue if disabled
+	if (_status == ConnectionState::Disabled)
+		return false;
+
+	// Lock the queue mutex
 	if (xSemaphoreTake(_queMutex, portMAX_DELAY))
 	{
 		bool overflowed = false;
@@ -441,7 +460,7 @@ QueueData *NTRIPServer::DequeueData()
 			QueueData *pItem = _dataQueue[0];
 			_dataQueue.erase(_dataQueue.begin());
 
-			// CHeck for null item (This should never happen)
+			// Check for null item (This should never happen)
 			if (pItem == nullptr)
 			{
 				LogX("DequeueData: Null item in queue");
