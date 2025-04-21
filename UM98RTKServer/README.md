@@ -1,6 +1,6 @@
 # UM982 RTK Server with TTGO T-Display-S3 (Multi miner)
 
-This project connects a UM980 or UM982 RTK GNSS receiver to a TTGO T-Display/-S3 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
+This project connects a LC29HDA, UM980 or UM982 RTK GNSS receiver to a TTGO T-Display-S3 allowing you to share RTK correction data with up to three networks at one time (Some give mining rewards). The ESP32 will automatically program the UM980/2 so there is no need to mess around with terminals or or the UPrecise software.
 
 All up you it will cost about US$200 to make the station with GNSS receiver, antenna and ESP32 with display. 
 

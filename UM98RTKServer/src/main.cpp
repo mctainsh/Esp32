@@ -86,7 +86,7 @@ void setup(void)
 	tft.fillScreen(TFT_GREEN);
 	tft.setTextColor(TFT_BLACK, TFT_GREEN);
 	tft.setTextFont(2);
-	tft.printf("Starting %. Cores %d\r\n", APP_VERSION, configNUM_CORES);
+	tft.printf("Starting %s. Cores %d\r\n", APP_VERSION, configNUM_CORES);
 
 	SetupLog(); // Call this before any logging
 

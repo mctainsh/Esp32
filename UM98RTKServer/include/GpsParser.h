@@ -487,14 +487,22 @@ public:
 	// Note : No non ASCII characters will be passed into this function (BuildAscii() verifies that)
 	void ProcessLine(const std::string &line)
 	{
-		if (line.length() < 1)
+		if (line.length() < 2)
 		{
 			LogX("W700 - GPS ASCII Too short");
 			return;
 		}
 		_asciiMsgCount++;
-			
-		LogX(StringPrintf("GPS <- '%s'", line.c_str()));
+
+		if (line[0] == '$' && line[1] == 'G')
+			Serial.printf("GPS <- '%s'\n", line.c_str());
+		else
+			LogX(StringPrintf("GPS <- '%s'", line.c_str()));
+
+#ifdef IS_LC29HDA
+		_commandQueue.ProcessLC29H(line);
+		return;
+#endif
 
 		// Check for command responses
 		if (_commandQueue.HasDeviceReset(line))

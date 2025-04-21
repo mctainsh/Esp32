@@ -26,11 +26,15 @@ public:
 	GpsCommandQueue(std::function<void(std::string)> logFunc)
 	{
 		_logToGps = logFunc;
+#ifdef IS_LC29HDA
+		_strings.push_back("PQTMVERNO");
+#else
 		_strings.push_back("MASK");
 		_strings.push_back("MODE");
 		_strings.push_back("CONFIG");
 		_strings.push_back("VERSION"); // Used to determine device type
-									   //_strings.push_back("GPGGA 1");
+//_strings.push_back("GPGGA 1");
+#endif
 	}
 
 	inline const std::string &GetDeviceType() const { return _deviceType; }
@@ -46,6 +50,13 @@ public:
 		_strings.clear();
 
 		// Setup RTCM V3
+
+#ifdef IS_LC29HDA
+		_strings.push_back("PQTMCFGSVIN,W,1,43200,0,0,0,0");
+		_strings.push_back("PAIR432,1");
+		_strings.push_back("PAIR434,1");
+		_strings.push_back("PAIR436,1");
+#else
 		//_strings.push_back("VERSION");	   // Used to determine device type
 		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
 		_strings.push_back("RTCM1033 30"); // Receiver and antenna description
@@ -66,6 +77,7 @@ public:
 
 		// TODO :Only ever save once to protect the flash
 		_strings.push_back("SAVECONFIG");
+#endif
 
 		SendTopCommand();
 	}
@@ -146,7 +158,12 @@ public:
 			return false; // Invalid format
 
 		// Extract the data and the checksum
-		std::string data = str.substr(0, asterisk_pos);
+#ifdef IS_LC29HDA
+		int startIndex = 1; // Skip the first '$' character
+#else
+		int startIndex = 0; // No need to skip the first '$' character
+#endif
+		std::string data = str.substr(startIndex, asterisk_pos - startIndex);
 		std::string provided_checksum_str = str.substr(asterisk_pos + 1, 2);
 
 		// Convert the provided checksum from hex to an integer
@@ -281,6 +298,111 @@ public:
 		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	/// @brief LC29H packet processing
+	/// @param str The input string to process
+	/// @return True if the packet is processed successfully, false otherwise
+	bool ProcessLC29H(const std::string &str)
+	{
+		if (!VerifyChecksum(str))
+		{
+			Logf("ERROR : GPS Checksum error in %s", str.c_str());
+			return false;
+		}
+
+		// Check for command match
+		std::string match = "$" + _strings.front();
+
+		if (StartsWith(str, "$PQTMCFGSVIN,OK"))
+		{
+			Logf("GPS Configured : %s", str.c_str());
+		}
+		else if (StartsWith(str, "$PQTMCFGSVIN"))
+		{
+			Logf("ERROR GPS NOT Configured : %s", str.c_str());
+		}
+		else if (StartsWith(str, "$PQTMVERNO") && str.length() > 30)
+		{
+			if (!ExtractLC29HVersion(str))
+				return false;
+		}
+		else if (StartsWith(str, "$PAIR432"))
+		{
+			if (str.length() < 15)
+			{
+				Logf("ERROR : PAIR432 too short %s", str.c_str());
+				return false;
+			}
+			if (match.length() < 10)
+			{
+				Logf("ERROR : %s too short for PAIR", str.c_str());
+				return false;
+			}
+			if (match[5] != str[9] || match[6] != str[10] || match[7] != str[11])
+			{
+				Logf("ERROR : PAIR432 mismatch %s and %s", str.c_str(), match.c_str());
+				return false;
+			}
+		}
+		else if (StartsWith(str, "$PAIR001"))
+		{
+			if (str.length() < 15)
+			{
+				Logf("ERROR : PAIR001 too short %s", str.c_str());
+				return false;
+			}
+			if (match.length() < 10)
+			{
+				Logf("ERROR : %s too short for PAIR", str.c_str());
+				return false;
+			}
+			if (match[5] != str[9] || match[6] != str[10] || match[7] != str[11])
+			{
+				Logf("ERROR : PAIR001 mismatch %s and %s", str.c_str(), match.c_str());
+				return false;
+			}
+		}
+		else
+		{
+			if (!StartsWith(str, match))
+				return false;
+		}
+
+		_strings.erase(_strings.begin());
+
+		if (_strings.empty())
+			Logln("GPS Startup Commands Complete");
+
+		SendTopCommand();
+		return true;
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Extract the LC29H version information from the string
+	//		'$PQTMVERNO,LC29HDANR11A03S_RSA,2024/03/19,13:55:31*20'
+	bool ExtractLC29HVersion(const std::string &str)
+	{
+		// Get part between the first and second comma
+		auto firstComma = str.find(',');
+		auto secondComma = str.find(',', firstComma + 1);
+		if (firstComma == std::string::npos || secondComma == std::string::npos)
+		{
+			Logf("ERROR : PQTMVERNO format error %s", str.c_str());
+			return false;
+		}
+		auto part = str.substr(firstComma + 1, secondComma - firstComma - 1);
+		if (part.length() < 10)
+		{
+			Logf("ERROR : PQTMVERNO part too short %s", str.c_str());
+			return false;
+		}
+		_deviceType = part.substr(0, 7);
+		Logf("GPS Device Type : %s", _deviceType.c_str());
+		_deviceFirmware = part.substr(7);
+		Logf("GPS Firmware Version : %s", _deviceFirmware.c_str());
+		return true;
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////
 	// Send the command and check set timeouts
 	void SendTopCommand()
@@ -288,7 +410,18 @@ public:
 		if (_strings.empty())
 			return;
 		_logToGps("GPS -> " + _strings.front());
+
+#ifdef IS_LC29HDA
+		std::string command = _strings.front();
+		unsigned char checksum = CalculateChecksum(command);
+		std::stringstream ss;
+		ss << std::hex << std::uppercase << (checksum < 16 ? "0" : "") << static_cast<int>(checksum);
+		std::string checksumHex = ss.str();
+		std::string finalCommand = "$" + command + "*" + checksumHex + "\r\n";
+		Serial2.print(finalCommand.c_str());
+#else
 		Serial2.println(_strings.front().c_str());
+#endif
 		_timeSent = millis();
 	}
 };
