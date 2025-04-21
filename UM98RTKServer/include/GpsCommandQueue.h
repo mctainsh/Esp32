@@ -28,6 +28,11 @@ public:
 		_logToGps = logFunc;
 #ifdef IS_LC29HDA
 		_strings.push_back("PQTMVERNO");
+		_strings.push_back("PQTMCFGMSGRATE,R,GGA"); // Read output rate
+		_strings.push_back("PQTMCFGMSGRATE,R,GSV"); // ..
+		_strings.push_back("PQTMCFGCNST,R");		// Get command set
+		_strings.push_back("PQTMCFGPROT,R,1,1");	// Get output protocol
+		_strings.push_back("PQTMUNIQID");			// Get unique ID
 #else
 		_strings.push_back("MASK");
 		_strings.push_back("MODE");
@@ -56,6 +61,7 @@ public:
 		_strings.push_back("PAIR432,1");
 		_strings.push_back("PAIR434,1");
 		_strings.push_back("PAIR436,1");
+		_strings.push_back("PQTMCFGMSGRATE,W,GGA,1");
 #else
 		//_strings.push_back("VERSION");	   // Used to determine device type
 		_strings.push_back("RTCM1005 30"); // Base station antenna reference point (ARP) coordinates
@@ -280,7 +286,11 @@ public:
 	// Issue RESET command
 	void IssueFReset()
 	{
+#ifdef IS_LC29HDA
+		_strings.push_back("PQTMSRR");
+#else
 		_strings.push_back("FRESET");
+#endif
 		SendTopCommand();
 	}
 
@@ -313,7 +323,11 @@ public:
 		// Check for command match
 		std::string match = "$" + _strings.front();
 
-		if (StartsWith(str, "$PQTMCFGSVIN,OK"))
+		if (StartsWith(str, "$PQTMCFGSVIN,OK") ||
+			StartsWith(str, "$PQTMCFGMSGRATE,OK,") ||
+			StartsWith(str, "$PQTMCFGCNST,OK") ||
+			StartsWith(str, "$PQTMCFGPROT,") ||
+			StartsWith(str, "$PQTMUNIQID,"))
 		{
 			Logf("GPS Configured : %s", str.c_str());
 		}
