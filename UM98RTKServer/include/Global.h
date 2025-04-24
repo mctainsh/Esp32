@@ -6,7 +6,7 @@
 #define SERIAL_LOG
 
 // Enables the LC29HDA code (Comment out for UM980 and UM982)
-#define IS_LC29HDA
+//#define IS_LC29HDA
 
 // The TTGO T-Display has the following pins
 #if USER_SETUP_ID == 25
