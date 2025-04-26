@@ -46,6 +46,11 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | RTK Server | A server that processes and distributes RTK correction data to clients. (This project builds a RTK Server) |
 | RTK Caster | A service that broadcasts RTK correction data over the internet using the NTRIP protocol. |
 
+
+
+
+
+
 ## Hardware 
 
 ### Components 
@@ -79,6 +84,35 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 4. **Fan** - Used a 5V fan cos the UM982 get hot in the sun. Not always necessary.
  
 
+
+
+
+
+### Shopping list
+
+Note :  These links only get you to the page. You still need to pick the "Color:" of each itesm. Meaning the actual item. (Again, these are not affiliate links. Shop around to get the best deal for you. Double check shipping of each selection)
+
+|Part|Supplier|Cost|Note|
+|-|-|-|-|
+|T-Display-S3|https://www.aliexpress.com/item/1005006460796454.html|US$22|Get with mins soldered|
+|USB A to C|Data cable for programming the T-Display-S3|US$5|Don't use USB C to C|
+|UM980 c/w Antenna|https://www.aliexpress.com/item/1005007338871850.html|US$166|UM980 with Antenna|
+|Fan|https://www.aliexpress.com/item/1005004832141450.html|US$3|3010, 5V, NO RGB|
+|PCB Headers|https://www.aliexpress.com/item/4000873858801.html|US$2||
+|Cap screws|https://www.aliexpress.com/item/1005005879037174.html|US$2|M3 x 12mm|
+|Testing cables|https://www.aliexpress.com/item/1005003219096948.html|US$5|40pin Ribbon F-F|
+|PCB|JLCPCB or PCBWay|$5|(Shipping is expensive)|
+|Housing|JLCPCB or PCBWay|$10|(Shipping is expensive)|
+
+Be sure to combine the PCB and housing into one order to save on shipping
+
+[PCB and 3D files can be found here]("https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Hardware)
+
+Use the Gerber files for the PCB and the STEP files for the housing. I'd recommend printing the housing in PETG or ABS if the housing is likely to get above 30°C. Otherwise PLA is fine.
+
+[CAD model for the housing can be found here](https://cad.onshape.com/documents/74fb209b99d44f491024cad5/w/d695f66a36f4f125a0ac2fbd/e/87e432215d8df56d6e5c41c9?renderMode=0&uiState=680d5e0b9650f900c65faf0c)
+
+
 ## Wiring Diagram
 
 ### TTGO T-Display-S3
@@ -97,7 +131,7 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 	<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/Wiring.png?raw=true" Height="320" />
 </div>
 
-### TTGO T-Display
+### TTGO T-Display (NOT recommended)
 
 | TTGO T-Display Pin | Use | UM982 pin | Use |
 | --- | --- | --- | --- |
@@ -108,6 +142,17 @@ This project enables an TTGO T-Display to act as an RTK server sending RTK corre
 | 25 | RX | 4 | TX |
 
 <img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/TTGO-Display/T-DIsplay_Schematic.jpg?raw=true" width="400" />
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## Software 
@@ -134,6 +179,9 @@ Depending on the device you will need to upload the binary
  - [Upload Binary for TTGO T-Display](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/README_Upload_T-Display.md)
 
 
+
+
+
 ### Connect WIFI
 
 - Connect ESP32 to your HOME WiFi
@@ -146,6 +194,7 @@ Depending on the device you will need to upload the binary
 	- Select your HOME WiFi network and enter credential
 - Connect your phone or computer to you HOME WiFi 
 	- You should be able to browse to the WiFi address shown on the ESP32 screen (NOT 192.168.4.1)
+
 
 
 

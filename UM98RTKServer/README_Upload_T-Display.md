@@ -1,7 +1,9 @@
-## Upload the binary to the TTGO T-Display
+## Upload the binary to the TTGO T-Display (NOT recomemded)
 
 ```
-IMPORTANT : This applies to ESP32 only. Not other devices like ESP32-S2 or ESP32-S3
+IMPORTANT : This applies to ESP32 only. Not other devices like ESP32-S2 or ESP32-S3.
+
+MOST IMPORTANT : This is a single core ship it may work with several casters but I'd recommend the S3 based CPU for best performance. I do not plan to support this into the future. 
 ```
 
 - Download the files from [TTGO T-Display Binaries](https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Deploy/T-Display)
