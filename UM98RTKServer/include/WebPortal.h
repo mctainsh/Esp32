@@ -461,6 +461,7 @@ void WebPortal::ShowStatusHtml()
 #endif
 #endif
 	TableRow(html, 1, "Uptime", Uptime(millis()));
+	TableRow(html, 1, "WIFI Signal", WiFi.RSSI());
 	// TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
 	TableRow(html, 0, "GPS", "");
 	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());

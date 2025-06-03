@@ -229,11 +229,13 @@ public:
 	// .. reset command looks like "$devicename,COM1*67"
 	bool HasDeviceReset(const std::string &str)
 	{
-		if (_resetProcessed)
-			return false;
-
 		const std::string match = "$devicename,COM";
-		if (str.compare(0, match.size(), match) != 0)
+		bool isReset = str.compare(0, match.size(), match) == 0;
+
+		if (_resetProcessed)
+			return isReset;
+
+		if (!isReset)
 			return false;
 
 		// Depending on the reset count we send different parameters
@@ -324,7 +326,7 @@ public:
 		std::string match = "$" + _strings.front();
 
 		if (StartsWith(str, "$PQTMCFGSVIN,OK") ||
-			StartsWith(str, "$PQTMCFGMSGRATE,OK,") ||
+			StartsWith(str, "$PQTMCFGMSGRATE,OK") ||
 			StartsWith(str, "$PQTMCFGCNST,OK") ||
 			StartsWith(str, "$PQTMCFGPROT,") ||
 			StartsWith(str, "$PQTMUNIQID,"))
