@@ -62,6 +62,7 @@ NTRIPServer _ntripServer0(0);
 NTRIPServer _ntripServer1(1);
 NTRIPServer _ntripServer2(2);
 std::string _baseLocation = "";
+HandyTime _handyTime;
 
 // WiFi monitoring states
 #define WIFI_STARTUP_TIMEOUT 20000
@@ -98,7 +99,7 @@ void setup(void)
 	Logf("GPS Buffer size %d", Serial2.setRxBufferSize(GPS_BUFFER_SIZE));
 
 	tft.println("Enable Display pins");
-#if T_DISPLAY_S3 == true
+#ifdef T_DISPLAY_S3
 	// Turn on display power for the TTGO T-Display-S3 (Needed for battery operation or if powered from 5V pin)
 	pinMode(DISPLAY_POWER_PIN, OUTPUT);
 	digitalWrite(DISPLAY_POWER_PIN, HIGH);
@@ -148,7 +149,7 @@ void setup(void)
 	_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
 	while (WiFi.status() != WL_CONNECTED)
 	{
-		Logln("Try WIFI Connection");
+		Logf("Try WIFI Connection on %s", MakeHostName().c_str());
 		wifiBusy.StartCountDown(wifiTimeoutSeconds);
 		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
 		// ESP.restart();
@@ -157,6 +158,7 @@ void setup(void)
 
 	// Connected
 	_webPortal.Setup();
+	_handyTime.EnableTimeSync();
 	Logln("Setup complete");
 }
 
@@ -193,6 +195,7 @@ void loop()
 		// 	_ntripServer2.GetPacketsSent(),
 		// 	(int)(100.0 * free / total),
 		// 	temperature);
+		//Serial.println(_handyTime.LongString().c_str());
 	}
 
 	// Check for push buttons
@@ -211,7 +214,7 @@ void loop()
 
 	// Check if we should turn off the display
 	// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
-#if T_DISPLAY_S3 == true
+#ifdef T_DISPLAY_S3
 	digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
 #endif
 

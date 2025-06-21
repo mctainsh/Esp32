@@ -3,7 +3,7 @@
 #include <Global.h>
 // #include "freertos/semphr.h"
 
-std::string AddToLog(const char *msg);
+std::string AddToLog(const char *msg, bool timePrefix = true);
 
 std::vector<std::string> _mainLog;
 
@@ -54,9 +54,9 @@ const std::string Uptime(unsigned long millis)
 	return uptime;
 }
 
-std::string Logln(const char *msg)
+std::string Logln(const char *msg, bool timePrefix)
 {
-	std::string s = AddToLog(msg);
+	std::string s = AddToLog(msg, timePrefix);
 #ifdef SERIAL_LOG
 	// perror(s.c_str());
 	Serial.print(s.c_str());
@@ -85,12 +85,14 @@ const void TruncateLog(std::vector<std::string> &log)
 	}
 }
 
-std::string AddToLog(const char *msg)
+std::string AddToLog(const char *msg, bool timePrefix)
 {
 	std::string s;
+	std::string time = timePrefix ? _handyTime.LongString() : "\t\t";
 	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
 	{
-		s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
+		//s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
+		s = StringPrintf("%s %s", time.c_str(), msg);
 
 		if (_mainLog.capacity() < MAX_LOG_LENGTH)
 			_mainLog.reserve(MAX_LOG_LENGTH);

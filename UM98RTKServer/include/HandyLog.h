@@ -4,7 +4,7 @@
 #include <vector>
 
 void SetupLog();
-std::string Logln(const char *msg);
+std::string Logln(const char *msg, bool timePrefix = true);
 
 template<typename... Args>
 void Logf(const std::string& format, Args... args);

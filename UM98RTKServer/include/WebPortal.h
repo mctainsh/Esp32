@@ -6,6 +6,7 @@
 #include "NTRIPServer.h"
 #include "GpsParser.h"
 #include "History.h"
+#include "WebPageWrapper.h"
 
 extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
@@ -135,7 +136,7 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on("/Confirm_Reset", HTTP_GET, std::bind(&WebPortal::ConfirmResetHtml, this));
 	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
 	_wifiManager.server->on("/log", HTTP_GET, [this]()
-							{ HtmlLog("System log", CopyMainLog());	});
+							{ HtmlLog("System log", CopyMainLog()); });
 	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
 							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
 	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
@@ -151,14 +152,11 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET, [this]()
 							{ 
 								_gpsParser.GetCommandQueue().IssueFReset();
-								_wifiManager.server->send(200, "text/html", "<html>Done</html>");
-							});
+								_wifiManager.server->send(200, "text/html", "<html>Done</html>"); });
 	_wifiManager.server->on("/RESET_WIFI", HTTP_GET, [this]()
 							{ 
 								_wifiManager.erase();
-								ESP.restart();
-							});
-							
+								ESP.restart(); });
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -188,7 +186,7 @@ void WebPortal::OnSaveParamsCallback()
 	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(), _pCaster1Credential->getValue(), _pCaster1Password->getValue());
 	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(), _pCaster2Credential->getValue(), _pCaster2Password->getValue());
 
-	SaveBaseLocation( _pBaseLocation->getValue());
+	SaveBaseLocation(_pBaseLocation->getValue());
 
 	delay(1000);
 
@@ -296,17 +294,24 @@ void WebPortal::GraphArray(std::string &html, std::string divId, std::string tit
 void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
 {
 	Logf("Show %s", title);
-	std::string html = "<html><head></head><h3>Log ";
-	html += title;
-	html += "</h3>";
-	html += "<pre>";
+
+	WiFiClient client = _wifiManager.server->client();
+
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader(_wifiManager.server->uri().c_str());
+
+	client.print("<h3>");
+	client.print(title);
+	client.println("</h3>");
+	client.print("<pre>");
 	for (const auto &entry : log)
 	{
-		html += (Replace(ReplaceNewlineWithTab(entry), "<", "&lt;") + "\n");
+		client.print(Replace(ReplaceNewlineWithTab(entry), "<", "&lt;").c_str());
+		client.print("\n");
 	}
-	html += "</pre></html>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
-	Serial.printf("\tSent %d bytes\n", html.length());
+	client.println("</pre>");
+
+	p.AddPageFooter();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -329,6 +334,7 @@ std::string I(int n)
 /// @param rightAlign true if the value should be right aligned (Numbers)
 void TableRow(std::string &html, int indent, const std::string &name, const char *value, bool rightAlign)
 {
+	Serial.printf("TR : %s -> %s\r\n", name.c_str(), value);
 	html += "<tr>";
 	switch (indent)
 	{
@@ -386,30 +392,18 @@ void ServerStatsHtml(NTRIPServer &server, std::string &html)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Display a list of possible pages
+/// Show the main index page
 void WebPortal::IndexHtml()
 {
-	Logln("ShowIndexHtml");
-	std::string html = "<head>\
-	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
-	</head>\
-	<body style='padding:10px;'>\
-	<h3>Index</h3>";
+	//	<link rel='stylesheet' href='https://securehub.net/Esp32Rtk.css'>\
 
-	html += "<ul>";
-	html += "<li><a href='/status'>System status</a></li>";
-	html += "<li><a href='/info?'>Device info</a></li>";
-	html += "<li><a href='/log'>System log</a></li>";
-	html += "<li><a href='/gpslog'>GPS log</a></li>";
-	html += "<li><a href='/caster1log'>Caster 1 log</a></li>";
-	html += "<li><a href='/caster2log'>Caster 2 log</a></li>";
-	html += "<li><a href='/caster3log'>Caster 3 log</a></li>";
-	html += "<li><a href='/castergraph'>Caster graph</a></li>";
-	html += "<li><a href='/tempGraph'>Temperature graph</a></li>";
-	html += "<li><a href='/Confirm_Reset'>Reset GPS or WIFI/Config</a></li>";
-	html += "</ul>";
-	html += "</body>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
+
+	Logln("ShowIndexHtml");
+
+	WiFiClient client = _wifiManager.server->client();
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader("/info?");
+	p.AddPageFooter();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -417,23 +411,48 @@ void WebPortal::IndexHtml()
 void WebPortal::ConfirmResetHtml()
 {
 	Logln("ShowConfirmReset");
-	std::string html = "<body style='padding:10px;'>\
-	<h3>CONFIRM RESET</h3>";
 
-	html += "<ul>";
-	html += "<li><a href='/FRESET_GPS_CONFIRMED'>Confirm GPS RESET</a></li>";	
-	html += "<li></li>";	
-	html += "<li></li>";	
-	html += "<li></li>";	
-	html += "<li><a href='/RESET_WIFI'>Confirm WIFI and Settings RESET</a></li>";	
-	html += "<li></li>";	
-	html += "<li></li>";	
-	html += "<li></li>";	
-	html += "<li><a href='/i'>Cancel</a></li>";
-	html += "</ul>";
-	html += "</body>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
+	WiFiClient client = _wifiManager.server->client();
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader("/info?");
+
+	std::string html = "<h3>CONFIRM RESET</h3>";
+
+	// html += "<ul>";
+	// html += "<li><a href='/FRESET_GPS_CONFIRMED'>Confirm GPS RESET</a></li>";
+	// html += "<li></li>";
+	// html += "<li></li>";
+	// html += "<li></li>";
+	// html += "<li><a href='/RESET_WIFI'>Confirm WIFI and Settings RESET</a></li>";
+	// html += "<li></li>";
+	// html += "<li></li>";
+	// html += "<li></li>";
+	// html += "<li><a href='/i'>Cancel</a></li>";
+	// html += "</ul>";
+	// client.println(html.c_str());
+
+	// client.println("<div class='container py-4'>\
+	// 		<h3 class='mb-4 text-center'>Confirm Reset</h3>\
+	// 		<div class='d-grid gap-3 col-6 mx-auto'>\
+	// 		<a href='/FRESET_GPS_CONFIRMED' class='btn btn-warning btn-lg'>Confirm GPS Reset</a>\
+	// 		<a href='/RESET_WIFI' class='btn btn-danger btn-lg'>Confirm Wi-Fi & Settings Reset</a>\
+	// 		<a href='/i' class='btn btn-secondary btn-lg'>Cancel</a>\
+	// 		</div>\
+	// 	</div>");
+	client.println(R"rawliteral(
+	<div class="container py-4">
+		<h3 class="mb-4 text-center">Confirm Reset</h3>
+		<div class="d-grid gap-3 col-6 mx-auto">
+		<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
+		<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
+		<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
+		</div>
+	</div>
+)rawliteral");
+
+	p.AddPageFooter();
 }
+
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
@@ -497,7 +516,7 @@ void WebPortal::ShowStatusHtml()
 	ServerStatsHtml(_ntripServer2, html);
 	html += "</tr></Table>";
 
-		// Memory stuff
+	// Memory stuff
 	html += "<table class='striped'>";
 	auto free = ESP.getFreeHeap();
 	auto total = ESP.getHeapSize();
@@ -515,6 +534,7 @@ void WebPortal::ShowStatusHtml()
 
 	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
 	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
+#ifdef T_DISPLAY_S3
 	TableRow(html, 1, "spiram size", esp_spiram_get_size());
 
 	TableRow(html, 1, "Free", "");
@@ -524,14 +544,10 @@ void WebPortal::ShowStatusHtml()
 	size_t internal_ram_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
 	TableRow(html, 2, "Internal RAM (MALLOC_CAP_INTERNAL)", internal_ram_free);
 
-	size_t spiram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-	TableRow(html, 2, "SPIRAM (MALLOC_CAP_SPIRAM)", spiram_free);
-
-	size_t default_free = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-	TableRow(html, 2, "Default Memory (MALLOC_CAP_DEFAULT)", default_free);
-
-	size_t iram_free = heap_caps_get_free_size(MALLOC_CAP_EXEC);
-	TableRow(html, 2, "IRAM (MALLOC_CAP_EXEC)", iram_free);
+	TableRow(html, 2, "SPIRAM (MALLOC_CAP_SPIRAM)", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+	TableRow(html, 2, "Default Memory (MALLOC_CAP_DEFAULT)", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+	TableRow(html, 2, "IRAM (MALLOC_CAP_EXEC)", heap_caps_get_free_size(MALLOC_CAP_EXEC));
+#endif
 
 	// TableRow(html, 1, "himem free", esp_himem_get_free_size());
 	// TableRow(html, 1, "himem phys", esp_himem_get_phys_size());
