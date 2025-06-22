@@ -30,9 +30,9 @@ private:
 	void ConfirmResetHtml();
 	void ShowStatusHtml();
 	void GraphHtml() const;
-	void GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const;
+	void GraphDetail(WiFiClient& client, std::string divId, const NTRIPServer &server) const;
 	void GraphTemperature() const;
-	void GraphArray(std::string &html, std::string divId, std::string title, const char *pBytes, int length) const;
+	void GraphArray(WiFiClient &client, std::string divId, std::string title, const char *pBytes, int length) const;
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
 	void OnSaveParamsCallback();
 
@@ -110,16 +110,16 @@ void WebPortal::Setup()
 	macAddress.replace(":", "");
 	apName += macAddress.c_str();
 
-	Logf("Start AP %s", apName.c_str());
-
-	// First parameter is name of access point, second is the password
+		// First parameter is name of access point, second is the password
 	// Don't know why this is called again
 	//_wifiManager.resetSettings();
-	auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
-	if (!res)
-	{
-		Logln("WiFi : Failed to connect OR is running in non-blocking mode");
-	}
+	//Logf("Start AP %s", apName.c_str());
+	//auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
+	//if (!res)
+	//	Logln("WiFi : Failed to connect OR is running in non-blocking mode");
+
+	//
+	//_wifiManager.startWebPortal();
 
 	Logln("WebPortal setup complete");
 }
@@ -131,10 +131,8 @@ void WebPortal::OnBindServerCallback()
 	Logln("Binding server callback");
 
 	// Our main pages
-	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
-	_wifiManager.server->on("/index", HTTP_GET, std::bind(&WebPortal::IndexHtml, this));
 	_wifiManager.server->on("/Confirm_Reset", HTTP_GET, std::bind(&WebPortal::ConfirmResetHtml, this));
-	_wifiManager.server->on("/status", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
+	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
 	_wifiManager.server->on("/log", HTTP_GET, [this]()
 							{ HtmlLog("System log", CopyMainLog()); });
 	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
@@ -197,19 +195,19 @@ void WebPortal::OnSaveParamsCallback()
 /// @brief Plot a single graph
 void WebPortal::GraphHtml() const
 {
-	std::string html = "<!DOCTYPE html><html><head>\
-	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
-	<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>\
-	</head>\n\
-	<body style='padding:10px;'>\
-	<h3>Graphs of send speed</h3>";
-	GraphDetail(html, "1", _ntripServer0);
-	GraphDetail(html, "2", _ntripServer1);
-	GraphDetail(html, "3", _ntripServer2);
-	html += "</body>";
-	html += "</html>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
-	Serial.printf("\tSent %d bytes\n", html.length());
+		WiFiClient client = _wifiManager.server->client();
+
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader(_wifiManager.server->uri().c_str());
+
+
+	client.print("<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>");
+	client.print("<h3>Graphs of send time per packet</h3>");
+	GraphDetail(client, "1", _ntripServer0);
+	GraphDetail(client, "2", _ntripServer1);
+	GraphDetail(client, "3", _ntripServer2);
+
+	p.AddPageFooter();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,12 +215,14 @@ void WebPortal::GraphHtml() const
 /// @param html Where to append the graph
 /// @param divId Id of the div to plot the graph in
 /// @param server The server to plot. Source of title and data
-void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPServer &server) const
+void WebPortal::GraphDetail(WiFiClient& client, std::string divId, const NTRIPServer &server) const
 {
 	auto sendMicrosecondList = _history.GetNtripSendTime(server.GetIndex());
-	html += "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
+	std::string html = "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
 	html += "<script>";
-	html += "const xValues" + divId + " = [";
+	client.print(html.c_str());
+
+	html = "const xValues" + divId + " = [";
 	for (int n = 0; n < sendMicrosecondList.size(); n++)
 	{
 		if (n != 0)
@@ -230,7 +230,9 @@ void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPSer
 		html += StringPrintf("%d", n);
 	}
 	html += "];";
-	html += "const yValues" + divId + " = [";
+	client.print(html.c_str());
+
+	html = "const yValues" + divId + " = [";
 	for (int n = 0; n < sendMicrosecondList.size(); n++)
 	{
 		if (n != 0)
@@ -239,51 +241,51 @@ void WebPortal::GraphDetail(std::string &html, std::string divId, const NTRIPSer
 	}
 	html += "];";
 	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '" + server.GetAddress() + " (&#181;s)'});";
-	html += "</script>\n";
+	html += "</script>";
+	client.print(html.c_str());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Plot a single graph
 void WebPortal::GraphTemperature() const
 {
-	std::string html PROGMEM = "<!DOCTYPE html><html><head>\
-	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
-	<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>\
-	</head>\n\
-	<body style='padding:10px;'>\
-	<h3>Temperature &deg;C</h3>";
+	WiFiClient client = _wifiManager.server->client();
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader(_wifiManager.server->uri().c_str());	
+	client.print("<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>");
+	client.print("<h3>24 hour Temperature</h3>");
 
-	GraphArray(html, "T", "CPU Temperature (&deg;C)", _history.GetTemperatures(), TEMP_HISTORY_SIZE);
+	GraphArray(client, "T", "CPU Temperature (&deg;C)", _history.GetTemperatures(), TEMP_HISTORY_SIZE);
 
-	html += "</body></html>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
-	Serial.printf("\tSent %d bytes\n", html.length());
+	p.AddPageFooter();
 }
 
-void WebPortal::GraphArray(std::string &html, std::string divId, std::string title, const char *pBytes, int length) const
+void WebPortal::GraphArray(WiFiClient& client, std::string divId, std::string title, const char *pBytes, int length) const
 {
-	html += "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
-	html += "<script>";
-	html += "const xValues" + divId + " = [";
+	client.print(std::string("<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div><script>").c_str());
+	std::string html = "const xValues" + divId + " = [";
 	for (int n = 0; n < length; n++)
 	{
 		if (n != 0)
 			html += ",";
 		html += StringPrintf("%d", n);
 	}
-	html += "];";
-	html += "const yValues" + divId + " = [";
+	html += "];";	
+	client.print(html.c_str());
+
+	html = "const yValues" + divId + " = [";
 	for (int n = 0; n < length; n++)
 	{
 		if (n != 0)
 			html += ",";
 		html += StringPrintf("%d", pBytes[n]);
 	}
-	html += "];";
-	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '";
-	html += title;
-	html += "'});";
-	html += "</script>\n";
+	client.print(html.c_str());
+
+	html = "]; Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '";
+	client.print(html.c_str());
+	client.print(title.c_str());
+	client.print("'});</script>\n");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -296,7 +298,6 @@ void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) 
 	Logf("Show %s", title);
 
 	WiFiClient client = _wifiManager.server->client();
-
 	auto p = WebPageWrapper(client);
 	p.AddPageHeader(_wifiManager.server->uri().c_str());
 
@@ -315,94 +316,15 @@ void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Create a string with n spaces
-/// @param n Number of spaces
-std::string I(int n)
-{
-	std::string repeatedString;
-	for (int i = 0; i < n; ++i)
-		repeatedString += "&nbsp; &nbsp; ";
-	return repeatedString;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Add a table row to the html
-/// @param html where to append the data
-/// @param indent how many spaces to indent
-/// @param name title of the row
-/// @param value content of the row
-/// @param rightAlign true if the value should be right aligned (Numbers)
-void TableRow(std::string &html, int indent, const std::string &name, const char *value, bool rightAlign)
-{
-	Serial.printf("TR : %s -> %s\r\n", name.c_str(), value);
-	html += "<tr>";
-	switch (indent)
-	{
-	case 0:
-		html += "<td class='i1'>";
-		break;
-	case 2:
-		html += "<td class='i2'>";
-		break;
-
-	default:
-		html += "<td>";
-		break;
-	}
-
-	html += I(indent);
-	html += name;
-	html += "</td><td";
-	if (rightAlign)
-		html += " class='r'";
-	html += ">";
-	html += value;
-	html += "</td></tr>\n";
-}
-
-void TableRow(std::string &html, int indent, const std::string &name, const char *value)
-{
-	TableRow(html, indent, name, value, false);
-}
-void TableRow(std::string &html, int indent, const std::string &name, const std::string &value)
-{
-	TableRow(html, indent, name, value.c_str());
-}
-void TableRow(std::string &html, int indent, const std::string &name, int32_t value)
-{
-	TableRow(html, indent, name, ToThousands(value).c_str(), true);
-}
-
-void ServerStatsHtml(NTRIPServer &server, std::string &html)
-{
-	html += "<td><Table class='striped'>";
-	TableRow(html, 2, "Address", server.GetAddress());
-	TableRow(html, 3, "Port", server.GetPort());
-	TableRow(html, 3, "Credential", server.GetCredential());
-	TableRow(html, 3, "Status", server.GetStatus());
-	TableRow(html, 3, "Reconnects", server.GetReconnects());
-	TableRow(html, 3, "Packets sent", server.GetPacketsSent());
-	TableRow(html, 3, "Queue overflows", server.GetQueueOverflows());
-	TableRow(html, 3, "Send timeouts", server.GetTotalTimeouts());
-	TableRow(html, 3, "Expired packets", server.GetExpiredPackets());
-	TableRow(html, 3, "Median Send (&micro;s)", _history.MedianSendTime(server.GetIndex()));
-	TableRow(html, 3, "Max send (&#181;s)", server.GetMaxSendTime());
-	TableRow(html, 3, "Max Stack Height", server.GetMaxStackHeight());
-	html += "</td></Table>";
-}
-
-///////////////////////////////////////////////////////////////////////////////
 /// Show the main index page
 void WebPortal::IndexHtml()
 {
 	//	<link rel='stylesheet' href='https://securehub.net/Esp32Rtk.css'>\
-
-
 	Logln("ShowIndexHtml");
 
 	WiFiClient client = _wifiManager.server->client();
 	auto p = WebPageWrapper(client);
-	p.AddPageHeader("/info?");
+	p.AddPageHeader(_wifiManager.server->uri().c_str());
 	p.AddPageFooter();
 }
 
@@ -414,148 +336,165 @@ void WebPortal::ConfirmResetHtml()
 
 	WiFiClient client = _wifiManager.server->client();
 	auto p = WebPageWrapper(client);
-	p.AddPageHeader("/info?");
+	p.AddPageHeader(_wifiManager.server->uri().c_str());
 
-	std::string html = "<h3>CONFIRM RESET</h3>";
-
-	// html += "<ul>";
-	// html += "<li><a href='/FRESET_GPS_CONFIRMED'>Confirm GPS RESET</a></li>";
-	// html += "<li></li>";
-	// html += "<li></li>";
-	// html += "<li></li>";
-	// html += "<li><a href='/RESET_WIFI'>Confirm WIFI and Settings RESET</a></li>";
-	// html += "<li></li>";
-	// html += "<li></li>";
-	// html += "<li></li>";
-	// html += "<li><a href='/i'>Cancel</a></li>";
-	// html += "</ul>";
-	// client.println(html.c_str());
-
-	// client.println("<div class='container py-4'>\
-	// 		<h3 class='mb-4 text-center'>Confirm Reset</h3>\
-	// 		<div class='d-grid gap-3 col-6 mx-auto'>\
-	// 		<a href='/FRESET_GPS_CONFIRMED' class='btn btn-warning btn-lg'>Confirm GPS Reset</a>\
-	// 		<a href='/RESET_WIFI' class='btn btn-danger btn-lg'>Confirm Wi-Fi & Settings Reset</a>\
-	// 		<a href='/i' class='btn btn-secondary btn-lg'>Cancel</a>\
-	// 		</div>\
-	// 	</div>");
 	client.println(R"rawliteral(
-	<div class="container py-4">
-		<h3 class="mb-4 text-center">Confirm Reset</h3>
-		<div class="d-grid gap-3 col-6 mx-auto">
-		<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
-		<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
-		<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
-		</div>
-	</div>
-)rawliteral");
+		<div class="container py-4">
+			<h3 class="mb-4 text-center">Confirm Reset</h3>
+			<div class="d-grid gap-3 col-6 mx-auto">
+			<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
+			<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
+			<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
+			</div>
+		</div>)rawliteral");
 
 	p.AddPageFooter();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void ServerStatsHtml(NTRIPServer &server, WebPageWrapper &p)
+{
+	p.GetClient().print("<td><Table class='table table-striped w-auto'>");
+	p.TableRow( 2, "Address", server.GetAddress());
+	p.TableRow( 3, "Port", server.GetPort());
+	p.TableRow( 3, "Credential", server.GetCredential());
+	p.TableRow( 3, "Status", server.GetStatus());
+	p.TableRow( 3, "Reconnects", server.GetReconnects());
+	p.TableRow( 3, "Packets sent", server.GetPacketsSent());
+	p.TableRow( 3, "Queue overflows", server.GetQueueOverflows());
+	p.TableRow( 3, "Send timeouts", server.GetTotalTimeouts());
+	p.TableRow( 3, "Expired packets", server.GetExpiredPackets());
+	p.TableRow( 3, "Median Send (&micro;s)", _history.MedianSendTime(server.GetIndex()));
+	p.TableRow( 3, "Max send (&#181;s)", server.GetMaxSendTime());
+	p.TableRow( 3, "Max Stack Height", server.GetMaxStackHeight());
+	p.GetClient().print("</td></Table>");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Show the status of the system
 void WebPortal::ShowStatusHtml()
 {
 	Logln("ShowStatusHtml");
-	std::string html = "<head>\
-	<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css'>\
-	</head>\
-	<body style='padding:10px;'>\
-	<h3>System Status</h3>";
-	html += "<style>\
+
+	WiFiClient client = _wifiManager.server->client();
+	auto p = WebPageWrapper(client);
+	p.AddPageHeader(_wifiManager.server->uri().c_str());
+
+	client.print("<h3>System Status</h3>");
+	client.print("<style>\
 	.r{text-align:right;}\
-	.i1{color:red;}\
-	.i2{color:blue;}\
-	table{border-spacing: 0; width:fit-content;}\
-	</style>";
-	html += "<table class='striped'>";
-	TableRow(html, 0, "General", "");
-	TableRow(html, 1, "Version", APP_VERSION);
+	.i1{color:red !important;}\
+	.i2{color:blue !important;}\
+	</style>");;
+	client.print("<table class='table table-striped w-auto'>");
+	p.TableRow( 0, "General", "");
+	p.TableRow( 1, "Version", APP_VERSION);
 #if USER_SETUP_ID == 25
-	TableRow(html, 1, "Device", "TTGO T-Display");
+	p.TableRow( 1, "Device", "TTGO T-Display");
 #else
 #if USER_SETUP_ID == 206
-	TableRow(html, 1, "Device", "TTGO T-Display-S3");
+	p.TableRow( 1, "Device", "TTGO T-Display-S3");
 #else
-	TableRow(html, 1, "Device", "Generic ESP32");
+	p.TableRow( 1, "Device", "Generic ESP32");
 #endif
 #endif
-	TableRow(html, 1, "Uptime", Uptime(millis()));
-	TableRow(html, 1, "WIFI Signal", WiFi.RSSI());
-	// TableRow(html, 1, "Free Heap", ESP.getFreeHeap());
-	TableRow(html, 0, "GPS", "");
-	TableRow(html, 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
-	TableRow(html, 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
-	TableRow(html, 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
+	p.TableRow( 1, "Uptime", Uptime(millis()));
+	p.TableRow( 1, "Time", _handyTime.LongString());
 
+	// Wifi stuff
+	p.TableRow( 0, "WI-FI", "");
+	auto strength = WiFi.RSSI();
+	std::string strengthTitle = "Unusable";
+	if( WiFi.RSSI() > -30 )
+		strengthTitle = "Excellent";
+	else if( WiFi.RSSI() > -67 )
+		strengthTitle = "Very Good";
+	else if( WiFi.RSSI() > -70 )
+		strengthTitle = "Okay";
+	else if( WiFi.RSSI() > -80 )
+		strengthTitle = "Not Good";
+
+	p.TableRow( 1, "WIFI Signal", std::to_string(strength) + "dBm " + strengthTitle);
+	p.TableRow( 1, "Mac Address", WiFi.macAddress().c_str());
+	p.TableRow( 1, "A/P name", WiFi.getHostname());
+	p.TableRow( 1, "IP Address", WiFi.localIP().toString().c_str());
+	p.TableRow( 1, "WiFi Mode", WiFi.getMode() == WIFI_STA ? "Station" :
+		(WiFi.getMode() == WIFI_AP ? "Access Point" :
+		 (WiFi.getMode() == WIFI_AP_STA ? "Access Point + Station" : "Unknown")));
+
+	// p.TableRow( 1, "Free Heap", ESP.getFreeHeap());
+	p.TableRow( 0, "GPS", "");
+	p.TableRow( 1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
+	p.TableRow( 1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
+	p.TableRow( 1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
+
+	// Counters and stats
 	int32_t resetCount, reinitialize, messageCount;
 	_display.GetGpsStats(resetCount, reinitialize, messageCount);
-	TableRow(html, 1, "Reset count", resetCount);
-	TableRow(html, 1, "Reinitialize count", reinitialize);
+	p.TableRow( 1, "Reset count", resetCount);
+	p.TableRow( 1, "Reinitialize count", reinitialize);
 
-	TableRow(html, 1, "Bytes received", _gpsParser.GetGpsBytesRec());
-	TableRow(html, 1, "Reset count", _gpsParser.GetGpsResetCount());
-	TableRow(html, 1, "Reinitialize count", _gpsParser.GetGpsReinitialize());
+	p.TableRow( 1, "Bytes received", _gpsParser.GetGpsBytesRec());
+	p.TableRow( 1, "Reset count", _gpsParser.GetGpsResetCount());
+	p.TableRow( 1, "Reinitialize count", _gpsParser.GetGpsReinitialize());
 
-	TableRow(html, 1, "Read errors", _gpsParser.GetReadErrorCount());
-	TableRow(html, 1, "Max buffer size", _gpsParser.GetMaxBufferSize());
+	p.TableRow( 1, "Read errors", _gpsParser.GetReadErrorCount());
+	p.TableRow( 1, "Max buffer size", _gpsParser.GetMaxBufferSize());
 
-	TableRow(html, 0, "Message counts", "");
-	TableRow(html, 1, "ASCII", _gpsParser.GetAsciiMsgCount());
+	p.TableRow( 0, "Message counts", "");
+	p.TableRow( 1, "ASCII", _gpsParser.GetAsciiMsgCount());
 	int totalRtkMessages = 0;
 	for (const auto &pair : _gpsParser.GetMsgTypeTotals())
 	{
-		TableRow(html, 1, std::to_string(pair.first), pair.second);
+		p.TableRow( 1, std::to_string(pair.first), pair.second);
 		totalRtkMessages += pair.second;
 	}
-	TableRow(html, 1, "Total messages", totalRtkMessages);
-	html += "</table>";
+	p.TableRow( 1, "Total messages", totalRtkMessages);
+	client.println("</table>");
 
-	html += "<Table><tr>";
-	ServerStatsHtml(_ntripServer0, html);
-	ServerStatsHtml(_ntripServer1, html);
-	ServerStatsHtml(_ntripServer2, html);
-	html += "</tr></Table>";
+	client.println("<Table><tr>");
+	ServerStatsHtml(_ntripServer0, p);
+	ServerStatsHtml(_ntripServer1, p);
+	ServerStatsHtml(_ntripServer2, p);
+	client.println("</tr></Table>");
 
 	// Memory stuff
-	html += "<table class='striped'>";
+	client.println("<table class='table table-striped w-auto'>");
 	auto free = ESP.getFreeHeap();
 	auto total = ESP.getHeapSize();
-	TableRow(html, 0, "Memory", "");
-	TableRow(html, 1, "Stack High", uxTaskGetStackHighWaterMark(nullptr));
-	TableRow(html, 1, "Free Sketch Space", ESP.getFreeSketchSpace());
-	TableRow(html, 1, "Port free heap", xPortGetFreeHeapSize());
-	TableRow(html, 1, "Free heap", esp_get_free_heap_size());
-	TableRow(html, 1, "Heap", "");
-	TableRow(html, 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
-	TableRow(html, 2, "Free (Min)", ESP.getMinFreeHeap());
-	TableRow(html, 2, "Free (now)", free);
-	TableRow(html, 2, "Free (Max)", ESP.getMaxAllocHeap());
-	TableRow(html, 2, "Total", total);
+	p.TableRow( 0, "Memory", "");
+	p.TableRow( 1, "Stack High", uxTaskGetStackHighWaterMark(nullptr));
+	p.TableRow( 1, "Free Sketch Space", ESP.getFreeSketchSpace());
+	p.TableRow( 1, "Port free heap", xPortGetFreeHeapSize());
+	p.TableRow( 1, "Free heap", esp_get_free_heap_size());
+	p.TableRow( 1, "Heap", "");
+	p.TableRow( 2, "Free %", StringPrintf("%d%%", (int)(100.0 * free / total)));
+	p.TableRow( 2, "Free (Min)", ESP.getMinFreeHeap());
+	p.TableRow( 2, "Free (now)", free);
+	p.TableRow( 2, "Free (Max)", ESP.getMaxAllocHeap());
+	p.TableRow( 2, "Total", total);
 
-	TableRow(html, 1, "Total PSRAM", ESP.getPsramSize());
-	TableRow(html, 1, "Free PSRAM", ESP.getFreePsram());
+	p.TableRow( 1, "Total PSRAM", ESP.getPsramSize());
+	p.TableRow( 1, "Free PSRAM", ESP.getFreePsram());
 #ifdef T_DISPLAY_S3
-	TableRow(html, 1, "spiram size", esp_spiram_get_size());
+	p.TableRow( 1, "spiram size", esp_spiram_get_size());
 
-	TableRow(html, 1, "Free", "");
+	p.TableRow( 1, "Free", "");
 	size_t dram_free = heap_caps_get_free_size(MALLOC_CAP_DMA);
-	TableRow(html, 2, "DRAM (MALLOC_CAP_DMA)", dram_free);
+	p.TableRow( 2, "DRAM (MALLOC_CAP_DMA)", dram_free);
 
 	size_t internal_ram_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-	TableRow(html, 2, "Internal RAM (MALLOC_CAP_INTERNAL)", internal_ram_free);
+	p.TableRow( 2, "Internal RAM (MALLOC_CAP_INTERNAL)", internal_ram_free);
 
-	TableRow(html, 2, "SPIRAM (MALLOC_CAP_SPIRAM)", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-	TableRow(html, 2, "Default Memory (MALLOC_CAP_DEFAULT)", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
-	TableRow(html, 2, "IRAM (MALLOC_CAP_EXEC)", heap_caps_get_free_size(MALLOC_CAP_EXEC));
+	p.TableRow( 2, "SPIRAM (MALLOC_CAP_SPIRAM)", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+	p.TableRow( 2, "Default Memory (MALLOC_CAP_DEFAULT)", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+	p.TableRow( 2, "IRAM (MALLOC_CAP_EXEC)", heap_caps_get_free_size(MALLOC_CAP_EXEC));
 #endif
 
-	// TableRow(html, 1, "himem free", esp_himem_get_free_size());
-	// TableRow(html, 1, "himem phys", esp_himem_get_phys_size());
-	// TableRow(html, 1, "himem reserved", esp_himem_reserved_area_size());
+	// p.TableRow( 1, "himem free", esp_himem_get_free_size());
+	// p.TableRow( 1, "himem phys", esp_himem_get_phys_size());
+	// p.TableRow( 1, "himem reserved", esp_himem_reserved_area_size());
 
-	html += "</table>";
-
-	html += "</body>";
-	_wifiManager.server->send(200, "text/html", html.c_str());
-	Serial.printf("\tSent %d bytes\n", html.length());
+	client.println("</table>");
+	p.AddPageFooter();
 }

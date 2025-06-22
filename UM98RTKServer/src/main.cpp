@@ -155,6 +155,13 @@ void setup(void)
 		// ESP.restart();
 		// delay(1000);
 	}
+	Logln("WIFI Connected. Now stop AP");
+
+	// Disable Access point mode
+	WiFi.softAPdisconnect(false);			// true = also erase the SSID config
+	_wifiManager.setConfigPortalTimeout(0); // Disable the config portal timeout
+	delay(100);
+	WiFi.mode(WIFI_STA);
 
 	// Connected
 	_webPortal.Setup();
@@ -171,11 +178,6 @@ void loop()
 	_loopPersSecondCount++;
 	if ((t - _loopWaitTime) > 1000)
 	{
-		// Update the loop performance counter
-		_loopWaitTime = t;
-		_display.SetLoopsPerSecond(_loopPersSecondCount, t);
-		_loopPersSecondCount = 0;
-
 		// Refresh RTK Display
 		for (int i = 0; i < RTK_SERVERS; i++)
 			_display.RefreshRtk(i);
@@ -187,15 +189,33 @@ void loop()
 		auto temperature = _history.CheckTemperatureLoop();
 
 		// Update the loop performance counter
-		// Serial.printf("Loop %d G:%ld 1:%ld, 2:%ld 3:%ld Heap:%d%% %.1f°C\n",
-		// 	_loopPersSecondCount,
-		// 	_gpsParser.GetGpsBytesRec(),
-		// 	_ntripServer0.GetPacketsSent(),
-		// 	_ntripServer1.GetPacketsSent(),
-		// 	_ntripServer2.GetPacketsSent(),
-		// 	(int)(100.0 * free / total),
-		// 	temperature);
-		//Serial.println(_handyTime.LongString().c_str());
+		Serial.printf("%s Loop %d G:%ld Heap:%d%% %.1f°C %s\n",
+			_handyTime.LongString().c_str(),
+			_loopPersSecondCount,
+			_gpsParser.GetGpsBytesRec(),
+			(int)(100.0 * free / total),
+			temperature,
+			WiFi.localIP().toString().c_str());
+
+		// Disable Access point mode
+		if (WiFi.getMode() != WIFI_STA)
+		{
+			Logln("E105 - WiFi mode is not WIFI_STA, resetting");
+			WiFi.softAPdisconnect(false);
+			_wifiManager.setConfigPortalTimeout(0);
+			WiFi.mode(WIFI_STA);
+		}
+
+		// Performance text
+		std::string perfText = StringPrintf("%d%% %.0fC %ddBm",	
+			(int)(100.0 * free / total),
+			temperature,
+			WiFi.RSSI());
+		_display.SetPerformance(perfText);
+
+		// Update the loop performance counter
+		_loopWaitTime = t;
+		_loopPersSecondCount = 0;
 	}
 
 	// Check for push buttons
@@ -212,8 +232,8 @@ void loop()
 		_display.ActionButton();
 	}
 
-	// Check if we should turn off the display
-	// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
+// Check if we should turn off the display
+// .. Note : This only work when powered from the GPS unit. WIth ESP32 powered from USB display is always on
 #ifdef T_DISPLAY_S3
 	digitalWrite(DISPLAY_POWER_PIN, ((t - _lastButtonPress) < 30000) ? HIGH : LOW);
 #endif

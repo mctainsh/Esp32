@@ -16,7 +16,7 @@ public:
 	void Setup();
 	void Animate();
 	void SetGpsConnected(bool connected);
-	void SetLoopsPerSecond(int n, uint32_t millis);
+	void SetPerformance(std::string performance);
 	void UpdateGpsStarts(bool restart, bool reinitialize);
 	void IncrementGpsPackets();
 	void ActionButton();
@@ -62,5 +62,5 @@ private:
 	int _httpCode = 0;			  // Last HTTP code
 	std::string _time;			  // GPS time in minutes and seconds
 	int _animationAngle;		  // Animated wheel
-	int _loopsPerSecond;		  // How many loop occur per second
+	std::string _performance;	  // Performance of WIFI, temperature and others
 };

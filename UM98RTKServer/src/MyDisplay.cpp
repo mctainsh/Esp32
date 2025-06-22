@@ -84,12 +84,12 @@ void MyDisplay::SetGpsConnected(bool connected)
 // ************************************************************************//
 // Page 3 - System detail
 // ************************************************************************//
-void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
+void MyDisplay::SetPerformance(std::string performance)
 {
 	// Uptime
 	if (_currentPage == 0)
 	{
-		uint32_t t = millis / 1000;
+		uint32_t t = millis()/ 1000;
 		std::string uptime = StringPrintf(":%02d", t % 60);
 		t /= 60;
 		uptime = StringPrintf(":%02d", t % 60) + uptime;
@@ -101,7 +101,7 @@ void MyDisplay::SetLoopsPerSecond(int n, uint32_t millis)
 	}
 
 	// Loops per second
-	SetValue(0, n, &_loopsPerSecond, COL2_P0, R4F4, COL2_P0_W, 4);
+	SetValue(0, performance, &_performance, COL2_P0, R4F4, COL2_P0_W, 4);
 }
 
 void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
@@ -367,7 +367,7 @@ void MyDisplay::SetValue(int page, T n, T *pMember, int32_t x, int32_t y, int wi
 		return;
 
 	std::string text;
-	if (std::is_same<T, int>::value)
+	if constexpr (std::is_same<T, int>::value)
 	{
 		text = ToThousands(*pMember);
 	}
