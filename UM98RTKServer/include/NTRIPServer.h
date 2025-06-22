@@ -5,9 +5,6 @@
 // Buffer used to grab data to send
 #define SOCKET_IN_BUFFER_MAX 512
 
-// Number of items in the averaging buffer for send time calculation
-#define AVERAGE_SEND_TIMERS 256
-
 #include <string>
 #include <vector>
 #include "QueueData.h"

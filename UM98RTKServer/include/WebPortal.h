@@ -202,7 +202,7 @@ void WebPortal::GraphHtml() const
 
 
 	client.print("<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>");
-	client.print("<h3>Graphs of send time per packet</h3>");
+	client.print("<h3>Average packet send time for the second (5 minutes total)</h3>");
 	GraphDetail(client, "1", _ntripServer0);
 	GraphDetail(client, "2", _ntripServer1);
 	GraphDetail(client, "3", _ntripServer2);

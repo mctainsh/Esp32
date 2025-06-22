@@ -2,15 +2,16 @@
 
 #include "Global.h"
 #ifdef T_DISPLAY_S3
-	#include "driver/temp_sensor.h"
+#include "driver/temp_sensor.h"
 #endif
 #ifdef T_DISPLAY_S2
-//#include "C:\Users\john\.platformio\packages\framework-arduinoespressif32\tools\sdk\esp32s2\include\driver\esp32s2\include\driver\temp_sensor.h"
-//#include "driver/temperature_sensor.h"
+// #include "C:\Users\john\.platformio\packages\framework-arduinoespressif32\tools\sdk\esp32s2\include\driver\esp32s2\include\driver\temp_sensor.h"
+// #include "driver/temperature_sensor.h"
 #endif
 
 #define TEMP_HISTORY_SIZE (24 * 60)	 // 1 day of history at 60 second intervals
 #define TEMP_INTERVAL_MS (60 * 1000) // 1 minute interval
+#define AVERAGE_SEND_TIMERS 300		 // Number of items in the averaging buffer for send time calculation
 
 /////////////////////////////////////////////////////////////////////////////
 // History class hold a collection of all the history records
@@ -84,7 +85,6 @@ public:
 		// Save the temperature history once per 60 seconds
 		_tempHistory[TEMP_HISTORY_SIZE - 1] = (char)tsens_out;
 		return tsens_out;
-
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -102,8 +102,9 @@ public:
 		_totalSendCount[index]++;
 		if (millis() - _lastMeanTimer[index] < 1000)
 			return;
-	
-		int mean = _totalSendTimes[index] / _totalSendCount[index]; // Calculate the mean value
+
+		// Calculate the mean value
+		int mean = _totalSendTimes[index] / _max(_totalSendCount[index], 1);
 
 		// Reset the total send times and count
 		_totalSendTimes[index] = 0;
@@ -112,7 +113,6 @@ public:
 
 		// Add the new mean value
 		_sendMicroSeconds[index].push_back(mean);
-		//_sendMicroSeconds[index].push_back(time);
 		while (_sendMicroSeconds[index].size() > AVERAGE_SEND_TIMERS)
 			_sendMicroSeconds[index].erase(_sendMicroSeconds[index].begin());
 	}
