@@ -16,6 +16,7 @@ public:
 	void Setup();
 	void Animate();
 	void SetGpsConnected(bool connected);
+	void DisplayTime(unsigned long mil);
 	void SetPerformance(std::string performance);
 	void UpdateGpsStarts(bool restart, bool reinitialize);
 	void IncrementGpsPackets();

@@ -45,10 +45,11 @@ void LoadBaseLocation();
 
 WiFiManager _wifiManager;
 
-unsigned long _loopWaitTime = 0;	// Time of last second
-int _loopPersSecondCount = 0;		// Number of times the main loops runs in a second
-unsigned long _lastButtonPress = 0; // Time of last button press to turn off display on T-Display-S3
-History _history;					// Temperature history
+unsigned long _slowLoopWaitTime = 0; // Time of last 10 second
+unsigned long _fastLoopWaitTime = 0; // Time of last second
+int _loopPersSecondCount = 0;		 // Number of times the main loops runs in a second
+unsigned long _lastButtonPress = 0;	 // Time of last button press to turn off display on T-Display-S3
+History _history;					 // Temperature history
 
 WebPortal _webPortal;
 
@@ -158,10 +159,10 @@ void setup(void)
 	Logln("WIFI Connected. Now stop AP");
 
 	// Disable Access point mode
-	WiFi.softAPdisconnect(false);			// true = also erase the SSID config
-	_wifiManager.setConfigPortalTimeout(0); // Disable the config portal timeout
-	delay(100);
-	WiFi.mode(WIFI_STA);
+	//WiFi.softAPdisconnect(false);			// true = also erase the SSID config
+	//_wifiManager.setConfigPortalTimeout(0); // Disable the config portal timeout
+	//delay(100);
+	//WiFi.mode(WIFI_STA);
 
 	// Connected
 	_webPortal.Setup();
@@ -173,15 +174,22 @@ void setup(void)
 // Loop here
 void loop()
 {
-	// Trigger something every second
+	// Trigger something 10 every seconds
 	int t = millis();
 	_loopPersSecondCount++;
-	if ((t - _loopWaitTime) > 1000)
+	if ((t - _fastLoopWaitTime) > 1000)
 	{
 		// Refresh RTK Display
 		for (int i = 0; i < RTK_SERVERS; i++)
 			_display.RefreshRtk(i);
+		_fastLoopWaitTime = t;
+		_loopPersSecondCount = 0;
+		_display.DisplayTime(t);
+	}
 
+	// Run every 10 seconds
+	if( (t - _slowLoopWaitTime) > 10000)
+	{
 		// Check memory pressure
 		auto free = ESP.getFreeHeap();
 		auto total = ESP.getHeapSize();
@@ -190,33 +198,31 @@ void loop()
 
 		// Update the loop performance counter
 		Serial.printf("%s Loop %d G:%ld Heap:%d%% %.1f°C %s\n",
-			_handyTime.LongString().c_str(),
-			_loopPersSecondCount,
-			_gpsParser.GetGpsBytesRec(),
-			(int)(100.0 * free / total),
-			temperature,
-			WiFi.localIP().toString().c_str());
+					  _handyTime.LongString().c_str(),
+					  _loopPersSecondCount,
+					  _gpsParser.GetGpsBytesRec(),
+					  (int)(100.0 * free / total),
+					  temperature,
+					  WiFi.localIP().toString().c_str());
 
 		// Disable Access point mode
 		if (WiFi.getMode() != WIFI_STA)
 		{
 			Logln("E105 - WiFi mode is not WIFI_STA, resetting");
 			WiFi.softAPdisconnect(false);
-			_wifiManager.setConfigPortalTimeout(0);
+			//_wifiManager.setConfigPortalTimeout(60);
 			WiFi.mode(WIFI_STA);
 		}
 
 		// Performance text
-		std::string perfText = StringPrintf("%d%% %.0fC %ddBm",	
-			(int)(100.0 * free / total),
-			temperature,
-			WiFi.RSSI());
+		std::string perfText = StringPrintf("%d%% %.0fC %ddBm",
+											(int)(100.0 * free / total),
+											temperature,
+											WiFi.RSSI());
 		_display.SetPerformance(perfText);
-
-		// Update the loop performance counter
-		_loopWaitTime = t;
-		_loopPersSecondCount = 0;
+		_slowLoopWaitTime = t;
 	}
+
 
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
@@ -325,10 +331,10 @@ bool IsWifiConnected()
 		return false;
 	}
 
-	Logln("Try resetting WIfi");
 	delay(1000);
 
 	// Reset the WIFI
+	//Logln("Try resetting WIfi");
 	//_wifiFullResetTime = t;
 	// We will block here until the WIFI is connected
 	//_wifiManager.autoConnect(WiFi.getHostname(), "JohnIs#1");

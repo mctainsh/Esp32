@@ -84,12 +84,12 @@ void MyDisplay::SetGpsConnected(bool connected)
 // ************************************************************************//
 // Page 3 - System detail
 // ************************************************************************//
-void MyDisplay::SetPerformance(std::string performance)
+void MyDisplay::DisplayTime(unsigned long mil)
 {
 	// Uptime
 	if (_currentPage == 0)
 	{
-		uint32_t t = millis()/ 1000;
+		uint32_t t = mil/ 1000;
 		std::string uptime = StringPrintf(":%02d", t % 60);
 		t /= 60;
 		uptime = StringPrintf(":%02d", t % 60) + uptime;
@@ -99,8 +99,11 @@ void MyDisplay::SetPerformance(std::string performance)
 		uptime = StringPrintf("%dd ", t) + uptime;
 		DrawML(uptime.c_str(), COL2_P0, R3F4, COL2_P0_W, 4);
 	}
+}
 
-	// Loops per second
+
+void MyDisplay::SetPerformance(std::string performance)
+{
 	SetValue(0, performance, &_performance, COL2_P0, R4F4, COL2_P0_W, 4);
 }
 
