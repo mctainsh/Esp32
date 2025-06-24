@@ -239,3 +239,25 @@ void ReplaceCrLfEncode(std::string &str)
 		pos += newline.length();
 	}
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+// Helper function to trim whitespace from both ends of a std::string
+std::string Trim(const std::string &str)
+{
+	size_t first = str.find_first_not_of(" \t\n\r");
+	if (first == std::string::npos)
+		return "";
+	size_t last = str.find_last_not_of(" \t\n\r");
+	return str.substr(first, (last - first + 1));
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+// Make the string lowercase
+std::string ToLower(const std::string &str)
+{
+    std::string result = str;
+    std::transform(result.begin(), result.end(), result.begin(), 
+                   [](unsigned char c) { return std::tolower(c); });
+    return result;
+
+}

@@ -16,7 +16,7 @@ class NTRIPServer
 public:
 	NTRIPServer(int index);
 	void LoadSettings();
-	void Save(const char *address, const char *port, const char *credential, const char *password) const;
+	void Save(const char *address, const char *port, const char *credential, const char *password);
 	bool EnqueueData(const byte *pBytes, int length);
 	std::vector<std::string> GetLogHistory();
 	const char *GetStatus() const;
@@ -33,6 +33,7 @@ public:
 	inline unsigned long GetQueueOverflows() const { return _queueOverflows; }
 	inline unsigned long GetExpiredPackets() const { return _expiredPackets; }
 	inline unsigned long GetTotalTimeouts() const { return _totalTimeouts; }
+	inline bool IsEnabled() const { return _status != ConnectionState::Disabled; }
 	void TaskFunction();
 
 	enum class ConnectionState
@@ -61,6 +62,7 @@ private:
 	int _timeOutIndex = 0;								// Index even increasing timeout periods
 	int _totalTimeouts = 0;								// Total number of timeouts
  	int _consecutiveTimeouts = 0;						// Number of consecutive timeouts
+	bool _forceReconnect = false;						// Force a reconnect on next loop if setting have changed
 
 	std::string _sAddress;
 	int _port;

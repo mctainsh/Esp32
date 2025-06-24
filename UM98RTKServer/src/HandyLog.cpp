@@ -15,13 +15,9 @@ void SetupLog()
 {
 	_serialMutex = xSemaphoreCreateMutex();
 	if (_serialMutex == NULL)
-	{
 		perror("Failed to create serial mutex\n");
-	}
 	else
-	{
 		Logln("Serial Mutex Created");
-	}	
 }
 
 ////////////////////////////////////////////////////////////////////////////

@@ -22,5 +22,7 @@ std::string ReplaceNewlineWithTab(const std::string& input);
 std::string Replace(const std::string &input, const std::string &search, const std::string &replace);
 void RemoveLastLfCr(std::string &str);
 void ReplaceCrLfEncode(std::string &str);
+std::string Trim(const std::string& str);
+std::string ToLower(const std::string& str);
 
 #include "HandyString.tpp"

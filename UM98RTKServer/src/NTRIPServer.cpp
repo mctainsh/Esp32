@@ -51,7 +51,7 @@ void NTRIPServer::LoadSettings()
 	std::string llText;
 	if (_myFiles.ReadFile(fileName.c_str(), llText))
 	{
-		LogX(StringPrintf(" - Read config '%s'", llText.c_str()));
+		LogX(StringPrintf(" - Read config [%d] '%s'", llText.length(), llText.c_str()));
 		auto parts = Split(llText, "\n");
 		if (parts.size() > 3)
 		{
@@ -59,7 +59,7 @@ void NTRIPServer::LoadSettings()
 			_port = atoi(parts[1].c_str());
 			_sCredential = parts[2];
 			_sPassword = parts[3];
-			LogX(StringPrintf(" - Recovered\r\n\t Address  : %s\r\n\t Port     : %d\r\n\t Mid/Cred : %s\r\n\t Pass     : %s", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
+			LogX(StringPrintf(" - Recovered\r\n\t Address  : '%s'\r\n\t Port     : %d\r\n\t Mpt/Cred : '%s'\r\n\t Pass     : '%s'", _sAddress.c_str(), _port, _sCredential.c_str(), _sPassword.c_str()));
 		}
 		else
 		{
@@ -99,11 +99,15 @@ void NTRIPServer::LoadSettings()
 
 //////////////////////////////////////////////////////////////////////////////
 // Save the setting to the file
-void NTRIPServer::Save(const char *address, const char *port, const char *credential, const char *password) const
+void NTRIPServer::Save(const char *address, const char *port, const char *credential, const char *password)
 {
 	std::string llText = StringPrintf("%s\n%s\n%s\n%s", address, port, credential, password);
 	std::string fileName = StringPrintf("/Caster%d.txt", _index);
 	_myFiles.WriteFile(fileName.c_str(), llText.c_str());
+
+	LoadSettings(); // Reload the settings after saving
+
+	_forceReconnect = true; // Force a reconnect to use the new settings
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -118,8 +122,8 @@ void NTRIPServer::TaskFunction()
 		QueueData *pItem = DequeueData();
 		if (pItem == nullptr)
 		{
-			// No data to send so wait a bit
-			vTaskDelay(1 / portTICK_PERIOD_MS);
+			// No data to send so wait 2ms before trying again
+			vTaskDelay(2 / portTICK_PERIOD_MS);
 			continue;
 		}
 
@@ -174,6 +178,16 @@ void NTRIPServer::ConnectedProcessingSend(const byte *pBytes, int length)
 	// Skip if we have no data
 	if (length < 1)
 		return;
+
+	// Check for a forced reconnect
+	if (_forceReconnect)
+	{
+		_forceReconnect = false;
+		LogX(StringPrintf("RTK %s Reconnecting due to forced reconnect", _sAddress.c_str()));
+		_client.stop();
+		_status = ConnectionState::Disconnected;
+		return;
+	}
 
 	// Send and record time
 	unsigned long startT = micros();

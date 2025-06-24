@@ -101,10 +101,13 @@ void MyDisplay::DisplayTime(unsigned long mil)
 	}
 }
 
-
 void MyDisplay::SetPerformance(std::string performance)
 {
-	SetValue(0, performance, &_performance, COL2_P0, R4F4, COL2_P0_W, 4);
+	_performance = performance;
+	if (_currentPage != 0)
+		return;
+	DrawML(performance.c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
+	return;
 }
 
 void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
@@ -370,7 +373,7 @@ void MyDisplay::SetValue(int page, T n, T *pMember, int32_t x, int32_t y, int wi
 		return;
 
 	std::string text;
-	if constexpr (std::is_same<T, int>::value)
+	if (std::is_same<T, int>::value)
 	{
 		text = ToThousands(*pMember);
 	}

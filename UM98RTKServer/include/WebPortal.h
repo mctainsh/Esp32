@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Global.h"
-#include <WiFiManager.h>
-#include "HandyString.h"
-#include "NTRIPServer.h"
 #include "GpsParser.h"
+#include "HandyString.h"
 #include "History.h"
+#include "NTRIPServer.h"
 #include "WebPageWrapper.h"
+#include <WiFiManager.h>
 
 extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
@@ -27,9 +27,9 @@ public:
 private:
 	void OnBindServerCallback();
 	void IndexHtml();
-	void ConfirmResetHtml();
-	void AddCasterForm(WiFiClient &client, const NTRIPServer &server);
-	void AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value, const char *placeholder);
+	void SettingsHtml();
+	void AddCasterForm(WiFiClient &client, NTRIPServer &server);
+	void AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value);
 	void ShowStatusHtml();
 	void GraphHtml() const;
 	void GraphDetail(WiFiClient &client, std::string divId, const NTRIPServer &server) const;
@@ -62,29 +62,43 @@ private:
 void WebPortal::Setup()
 {
 	// Setup callbacks
-	_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
+	_wifiManager.setWebServerCallback(
+		std::bind(&WebPortal::OnBindServerCallback, this));
 	_wifiManager.setSaveParamsCallback([this]()
 									   { OnSaveParamsCallback(); });
 
 	std::string port0String = std::to_string(_ntripServer0.GetPort());
-	_pCaster0Address = new WiFiManagerParameter("address0", "Caster 1 address", _ntripServer0.GetAddress().c_str(), 40);
-	_pCaster0Port = new WiFiManagerParameter("port0", "Caster 1 port [Normally 2101] (0 = off)", port0String.c_str(), 6);
-	_pCaster0Credential = new WiFiManagerParameter("credential0", "Caster 1 credential ", _ntripServer0.GetCredential().c_str(), 40);
-	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password", _ntripServer0.GetPassword().c_str(), 40);
+	_pCaster0Address = new WiFiManagerParameter(
+		"address0", "Caster 1 address", _ntripServer0.GetAddress().c_str(), 40);
+	_pCaster0Port = new WiFiManagerParameter("port0",
+											 "Caster 1 port [Normally 2101] (0 = off)", port0String.c_str(), 6);
+	_pCaster0Credential = new WiFiManagerParameter("credential0",
+												   "Caster 1 credential ", _ntripServer0.GetCredential().c_str(), 40);
+	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password",
+												 _ntripServer0.GetPassword().c_str(), 40);
 
 	std::string port1String = std::to_string(_ntripServer1.GetPort());
-	_pCaster1Address = new WiFiManagerParameter("address1", "Caster 2 address", _ntripServer1.GetAddress().c_str(), 40);
-	_pCaster1Port = new WiFiManagerParameter("port1", "Caster 2 port (0 = off)", port1String.c_str(), 6);
-	_pCaster1Credential = new WiFiManagerParameter("credential1", "Caster 2 credential", _ntripServer1.GetCredential().c_str(), 40);
-	_pCaster1Password = new WiFiManagerParameter("password1", "Caster 2 password", _ntripServer1.GetPassword().c_str(), 40);
+	_pCaster1Address = new WiFiManagerParameter(
+		"address1", "Caster 2 address", _ntripServer1.GetAddress().c_str(), 40);
+	_pCaster1Port = new WiFiManagerParameter(
+		"port1", "Caster 2 port (0 = off)", port1String.c_str(), 6);
+	_pCaster1Credential = new WiFiManagerParameter("credential1",
+												   "Caster 2 credential", _ntripServer1.GetCredential().c_str(), 40);
+	_pCaster1Password = new WiFiManagerParameter("password1", "Caster 2 password",
+												 _ntripServer1.GetPassword().c_str(), 40);
 
 	std::string port2String = std::to_string(_ntripServer2.GetPort());
-	_pCaster2Address = new WiFiManagerParameter("address2", "Caster 3 address", _ntripServer2.GetAddress().c_str(), 40);
-	_pCaster2Port = new WiFiManagerParameter("port2", "Caster 3 port (0 = off)", port2String.c_str(), 6);
-	_pCaster2Credential = new WiFiManagerParameter("credential2", "Caster 3 credential", _ntripServer2.GetCredential().c_str(), 40);
-	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password", _ntripServer2.GetPassword().c_str(), 40);
+	_pCaster2Address = new WiFiManagerParameter(
+		"address2", "Caster 3 address", _ntripServer2.GetAddress().c_str(), 40);
+	_pCaster2Port = new WiFiManagerParameter(
+		"port2", "Caster 3 port (0 = off)", port2String.c_str(), 6);
+	_pCaster2Credential = new WiFiManagerParameter("credential2",
+												   "Caster 3 credential", _ntripServer2.GetCredential().c_str(), 40);
+	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password",
+												 _ntripServer2.GetPassword().c_str(), 40);
 
-	_pBaseLocation = new WiFiManagerParameter("baseLocation", "Base Location (Lat Long Height)", _baseLocation.c_str(), 100);
+	_pBaseLocation = new WiFiManagerParameter("baseLocation",
+											  "Base Location (Lat Long Height)", _baseLocation.c_str(), 100);
 
 	_wifiManager.addParameter(_pCaster0Address);
 	_wifiManager.addParameter(_pCaster0Port);
@@ -133,35 +147,49 @@ void WebPortal::OnBindServerCallback()
 	Logln("Binding server callback");
 
 	// Our main pages
-	_wifiManager.server->on("/i", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
-	_wifiManager.server->on("/log", HTTP_GET, [this]()
-							{ HtmlLog("System log", CopyMainLog()); });
-	_wifiManager.server->on("/gpslog", HTTP_GET, [this]()
+	_wifiManager.server->on(
+		"/i", HTTP_GET, std::bind(&WebPortal::ShowStatusHtml, this));
+	_wifiManager.server->on(
+		"/log", HTTP_GET, [this]()
+		{ HtmlLog("System log", CopyMainLog()); });
+	_wifiManager.server->on("/gpslog", HTTP_GET,
+							[this]()
 							{ HtmlLog("GPS log", _gpsParser.GetLogHistory()); });
-	_wifiManager.server->on("/caster1log", HTTP_GET, [this]()
+	_wifiManager.server->on("/caster1log", HTTP_GET,
+							[this]()
 							{ HtmlLog("Caster 1 log", _ntripServer0.GetLogHistory()); });
-	_wifiManager.server->on("/caster2log", HTTP_GET, [this]()
+	_wifiManager.server->on("/caster2log", HTTP_GET,
+							[this]()
 							{ HtmlLog("Caster 2 log", _ntripServer1.GetLogHistory()); });
-	_wifiManager.server->on("/caster3log", HTTP_GET, [this]()
+	_wifiManager.server->on("/caster3log", HTTP_GET,
+							[this]()
 							{ HtmlLog("Caster 3 log", _ntripServer2.GetLogHistory()); });
 
-	_wifiManager.server->on("/castergraph", std::bind(&WebPortal::GraphHtml, this));
-	_wifiManager.server->on("/tempGraph", std::bind(&WebPortal::GraphTemperature, this));
+	_wifiManager.server->on(
+		"/castergraph", std::bind(&WebPortal::GraphHtml, this));
+	_wifiManager.server->on(
+		"/tempGraph", std::bind(&WebPortal::GraphTemperature, this));
 
-	_wifiManager.server->on("/Confirm_Reset", HTTP_GET, std::bind(&WebPortal::ConfirmResetHtml, this));
+	_wifiManager.server->on(
+		"/settings", HTTP_GET, std::bind(&WebPortal::SettingsHtml, this));
 
-	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET, [this]()
-							{ 
+	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET,
+							[this]()
+							{
 								_gpsParser.GetCommandQueue().IssueFReset();
-								_wifiManager.server->send(200, "text/html", "<html>Done</html>"); });
-	_wifiManager.server->on("/RESET_WIFI", HTTP_GET, [this]()
-							{ 
+								_wifiManager.server->send(200, "text/html", "<html>Done</html>");
+							});
+	_wifiManager.server->on("/RESET_WIFI", HTTP_GET,
+							[this]()
+							{
 								_wifiManager.erase();
-								ESP.restart(); });
+								ESP.restart();
+							});
 }
 
 ////////////////////////////////////////////////////////////////////////////
-/// @brief Process the look actions. This is called every loop only if the WiFi connection is available
+/// @brief Process the look actions. This is called every loop only if the WiFi
+/// connection is available
 void WebPortal::Loop()
 {
 	if (!_wifiManager.getConfigPortalActive())
@@ -183,9 +211,12 @@ void WebPortal::OnSaveParamsCallback()
 {
 	Logf("SaveParamsCallback");
 
-	_ntripServer0.Save(_pCaster0Address->getValue(), _pCaster0Port->getValue(), _pCaster0Credential->getValue(), _pCaster0Password->getValue());
-	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(), _pCaster1Credential->getValue(), _pCaster1Password->getValue());
-	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(), _pCaster2Credential->getValue(), _pCaster2Password->getValue());
+	_ntripServer0.Save(_pCaster0Address->getValue(), _pCaster0Port->getValue(),
+					   _pCaster0Credential->getValue(), _pCaster0Password->getValue());
+	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(),
+					   _pCaster1Credential->getValue(), _pCaster1Password->getValue());
+	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(),
+					   _pCaster2Credential->getValue(), _pCaster2Password->getValue());
 
 	SaveBaseLocation(_pBaseLocation->getValue());
 
@@ -203,8 +234,10 @@ void WebPortal::GraphHtml() const
 	auto p = WebPageWrapper(client);
 	p.AddPageHeader(_wifiManager.server->uri().c_str());
 
-	client.print("<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>");
-	client.print("<h3>Average packet send time for the second (5 minutes total)</h3>");
+	client.print(
+		"<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>");
+	client.print(
+		"<h3>Average packet send time for the second (5 minutes total)</h3>");
 	GraphDetail(client, "1", _ntripServer0);
 	GraphDetail(client, "2", _ntripServer1);
 	GraphDetail(client, "3", _ntripServer2);
@@ -217,7 +250,8 @@ void WebPortal::GraphHtml() const
 /// @param html Where to append the graph
 /// @param divId Id of the div to plot the graph in
 /// @param server The server to plot. Source of title and data
-void WebPortal::GraphDetail(WiFiClient &client, std::string divId, const NTRIPServer &server) const
+void WebPortal::GraphDetail(
+	WiFiClient &client, std::string divId, const NTRIPServer &server) const
 {
 	auto sendMicrosecondList = _history.GetNtripSendTime(server.GetIndex());
 	std::string html = "<div id='myPlot" + divId + "' style='width:100%;max-width:700px'></div>\n";
@@ -242,7 +276,9 @@ void WebPortal::GraphDetail(WiFiClient &client, std::string divId, const NTRIPSe
 		html += StringPrintf("%d", sendMicrosecondList[n]);
 	}
 	html += "];";
-	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '" + server.GetAddress() + " (&#181;s)'});";
+	html += "Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId +
+			", y:yValues" + divId + ", mode:'lines'}], {title: '" +
+			server.GetAddress() + " (&#181;s)'});";
 	html += "</script>";
 	client.print(html.c_str());
 }
@@ -284,7 +320,8 @@ void WebPortal::GraphArray(WiFiClient &client, std::string divId, std::string ti
 	}
 	client.print(html.c_str());
 
-	html = "]; Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId + ", y:yValues" + divId + ", mode:'lines'}], {title: '";
+	html = "]; Plotly.newPlot('myPlot" + divId + "', [{x:xValues" + divId +
+		   ", y:yValues" + divId + ", mode:'lines'}], {title: '";
 	client.print(html.c_str());
 	client.print(title.c_str());
 	client.print("'});</script>\n");
@@ -295,7 +332,8 @@ void WebPortal::GraphArray(WiFiClient &client, std::string divId, std::string ti
 /// @param title Title of the log
 /// @param log The log to display
 /// TODO : Force to DOS Codepage 437
-void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
+void WebPortal::HtmlLog(
+	const char *title, const std::vector<std::string> &log) const
 {
 	Logf("Show '%s'", title);
 
@@ -332,61 +370,146 @@ void WebPortal::IndexHtml()
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Confirm the GPS Reset
-void WebPortal::ConfirmResetHtml()
+void WebPortal::SettingsHtml()
 {
-	Logln("ShowConfirmReset");
-	String saValue = _wifiManager.server->arg("sa1");
-	Logf("\tsa1 : %s", saValue);
+	Logln("ShowSettingsHtml");
 
 	WiFiClient client = _wifiManager.server->client();
 	auto p = WebPageWrapper(client);
 	p.AddPageHeader(_wifiManager.server->uri().c_str());
 
-	client.println(R"rawliteral(
-		<div class="container py-4">
-			<h3 class="mb-4 text-center">Confirm Reset</h3>
-			<div class="d-grid gap-3 col-6 mx-auto">
-			<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
-			<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
-			<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
-			</div>
-		</div>)rawliteral");
+	client.println(
+		"<style>.flex-row { display: flex;flex-wrap: wrap;gap: 1rem;}.flex-item "
+		"{flex: 1 1 300px; min-width: 300px;background-color: "
+		"lightblue;box-sizing: border-box;}</style>");
 
 	// Add the form for the caster 1
+	client.println("<h3 class='mt-4'>NTRIP Caster Settings</h3>"
+				   "<div class='flex-row'>");
 	AddCasterForm(client, _ntripServer0);
 	AddCasterForm(client, _ntripServer1);
 	AddCasterForm(client, _ntripServer2);
-	
+	client.println("</div>");
+
+	// Base location setup
+	const char *BASE_LCN = "baseLocation"; // Actual location
+	if (_wifiManager.server->hasArg(BASE_LCN))
+		SaveBaseLocation(_wifiManager.server->arg(BASE_LCN).c_str());
+	client.printf("<h3 class='mt-4'>Station calibrated location %s</h3>", p.MakeHelpButton("Help", "The precise location of the base station in the "
+																								   "format (ie -27.57012345 153.09912345 35.258). Leave blank for the station to auto calibrate. If provided, tt is critical this is accurate.")
+																			  .c_str());
+	AddInput(client, "text", BASE_LCN, "Latitude(&deg;) Longitude(&deg;) Height(m)", _baseLocation.c_str());
+
+	client.println(R"rawliteral(
+		<div class="form-check form-switch">
+		<input class="form-check-input" type="checkbox" role="switch" id="swCh">
+		<label class="form-check-label" for="swCh">Access reset</label>
+		</div>
+		)rawliteral");
+
+	// Reset section
+	client.println(R"rawliteral(
+		<div class="container py-4">
+			<h3 class="mb-4 text-center">Reset options</h3>
+			<div class="d-grid gap-3 col-6 mx-auto">
+		</div>)rawliteral");
+
+	//			<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
+	//			<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
+	//			<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
+	//			</div>
+	//		</div>)rawliteral");
+
+	p.AddButtonWithEnable("rstCfmGps", "Reset GPS", "/FRESET_GPS_CONFIRMED");
+	p.AddButtonWithEnable("rstCfmWifi", " Wi-Fi & Settings Reset", "/RESET_WIFI");
+
+	client.print("</div></div>");
+
 	p.AddPageFooter();
 }
 
-void WebPortal::AddCasterForm(WiFiClient &client, const NTRIPServer &server)
+void WebPortal::AddCasterForm(WiFiClient &client, NTRIPServer &server)
 {
 	std::string num = std::to_string(server.GetIndex() + 1);
-	client.println("<div class='panel-group'><div class='panel panel-default'>");
-	client.println("<div class='panel-body'>Caster 1</div></div><div class='panel panel-default'>");
-	client.println("<div class='panel-body'>");
+	std::string sa = "sa" + num; // Server address parameter name
+	std::string pr = "pr" + num; // Port parameter name
+	std::string cr = "cr" + num; // Credential parameter name
+	std::string pw = "pw" + num; // Password parameter name
 
-	client.println("<form method='get' class='container py-4'>");
+	// Add wrapper for the card
+	client.println("<div class='card flex-item'>");
+	client.printf("<div class='card-header'>Caster %s %s</div>", num.c_str(),
+				  server.IsEnabled() ? "" : "(Disabled)");
+	client.println("<div class='card-body p-1'>");
 
-	AddInput(client, "text", ("sa" + num).c_str(), "Server Address", server.GetAddress().c_str(), "ie. onocoy");
-	AddInput(client, "number", "p1", "Port (0 to disable)", std::to_string(server.GetPort()).c_str(), "Enter a port number (usually 2101)");
-	AddInput(client, "text", "mp1", "Credential", server.GetCredential().c_str(), "Mount point or credential");
-	AddInput(client, "password", "ps1", "Password", "", "Mount point or credential");
+	// Save the new values if we have them
+	bool saved = false;
+	if (_wifiManager.server->hasArg(sa.c_str()) ||
+		_wifiManager.server->hasArg(cr.c_str()) ||
+		_wifiManager.server->hasArg(pw.c_str()))
+	{
+		// Check for duplicate server addresses
+		std::string newAddress = _wifiManager.server->arg(sa.c_str()).c_str();
 
-	client.println("<button type='submit' class='btn btn-primary'>Save</button></form>");
+		// Remove any address formatting
+		newAddress = Trim(newAddress);
+		newAddress = ToLower(newAddress);
 
-	client.println("</div></div></div>");
+		// If the address is empty, don't check for duplicates
+		if (newAddress.length() > 1)
+		{
+			if ((&server != &_ntripServer0 &&
+				 _ntripServer0.GetAddress() == newAddress) ||
+				(&server != &_ntripServer1 &&
+				 _ntripServer1.GetAddress() == newAddress) ||
+				(&server != &_ntripServer2 &&
+				 _ntripServer2.GetAddress() == newAddress))
+			{
+				client.println("<div class='alert alert-danger' role='alert'>Duplicate server address detected!</div></div></div>");
+				return;
+			}
+		}
+
+		// Save
+		server.Save(newAddress.c_str(),
+					_wifiManager.server->arg(pr.c_str()).c_str(),
+					_wifiManager.server->arg(cr.c_str()).c_str(),
+					_wifiManager.server->arg(pw.c_str()).c_str());
+
+		saved = true;
+	}
+
+	// Add the form
+	{
+		client.println("<form method='get' class='container py-4 m-0 p-0'>");
+
+		AddInput(client, "text", sa, "Server Address", server.GetAddress().c_str());
+		AddInput(client, "number", pr, "Port (0 to disable)", std::to_string(server.GetPort()).c_str());
+		AddInput(client, "text", cr, "Credential", server.GetCredential().c_str());
+		AddInput(client, "password", pw, "Password", server.GetPassword().c_str());
+
+		if (saved)
+			client.printf("<div class='alert alert-success' role='alert'>Caster %s settings saved successfully!</div>", num.c_str());
+
+		client.printf("<button type='submit' class='btn btn-primary'>Save Caster %s</button></form>", num.c_str());
+	}
+
+	client.println("</div></div>");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Add an input field to the HTML page
-void WebPortal::AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value, const char *placeholder)
+void WebPortal::AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value)
 {
 	client.printf("<div class='form-floating mb-3'>");
-	client.printf("<input type='%s' class='form-control' name='%s' id='%s' value='%s' placeholder='%s'>", type, name.c_str(), name.c_str(), value, placeholder);
-	client.printf("<label for='%s' class='form-label'>%s</label>", name.c_str(), label);
+	client.printf("<input type='%s' class='form-control' name='%s' id='%s' value='%s'>",
+				  type, name.c_str(), name.c_str(), value);
+	client.printf(
+		"<label for='%s' class='form-label'>%s</label>", name.c_str(), label);
 	client.println("</div>");
+
+	// TODO : Add font awesome icons
+	// TODO : Add show password option for password fields
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +525,8 @@ void ServerStatsHtml(NTRIPServer &server, WebPageWrapper &p)
 	p.TableRow(3, "Queue overflows", server.GetQueueOverflows());
 	p.TableRow(3, "Send timeouts", server.GetTotalTimeouts());
 	p.TableRow(3, "Expired packets", server.GetExpiredPackets());
-	p.TableRow(3, "Median Send (&micro;s)", _history.MedianSendTime(server.GetIndex()));
+	p.TableRow(
+		3, "Median Send (&micro;s)", _history.MedianSendTime(server.GetIndex()));
 	p.TableRow(3, "Max send (&#181;s)", server.GetMaxSendTime());
 	p.TableRow(3, "Max Stack Height", server.GetMaxStackHeight());
 	p.GetClient().print("</td></Table>");
@@ -453,17 +577,26 @@ void WebPortal::ShowStatusHtml()
 	else if (WiFi.RSSI() > -80)
 		strengthTitle = "Not Good";
 
-	p.TableRow(1, "WIFI Signal", std::to_string(strength) + "dBm " + strengthTitle);
+	p.TableRow(
+		1, "WIFI Signal", std::to_string(strength) + "dBm " + strengthTitle);
 	p.TableRow(1, "Mac Address", WiFi.macAddress().c_str());
 	p.TableRow(1, "A/P name", WiFi.getHostname());
 	p.TableRow(1, "IP Address", WiFi.localIP().toString().c_str());
-	p.TableRow(1, "WiFi Mode", WiFi.getMode() == WIFI_STA ? "Station" : (WiFi.getMode() == WIFI_AP ? "Access Point" : (WiFi.getMode() == WIFI_AP_STA ? "Access Point + Station" : "Unknown")));
+	p.TableRow(1, "WiFi Mode",
+			   WiFi.getMode() == WIFI_STA
+				   ? "Station"
+				   : (WiFi.getMode() == WIFI_AP
+						  ? "Access Point"
+						  : (WiFi.getMode() == WIFI_AP_STA ? "Access Point + Station"
+														   : "Unknown")));
 
 	// p.TableRow( 1, "Free Heap", ESP.getFreeHeap());
 	p.TableRow(0, "GPS", "");
 	p.TableRow(1, "Device type", _gpsParser.GetCommandQueue().GetDeviceType());
-	p.TableRow(1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
-	p.TableRow(1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
+	p.TableRow(
+		1, "Device firmware", _gpsParser.GetCommandQueue().GetDeviceFirmware());
+	p.TableRow(
+		1, "Device serial #", _gpsParser.GetCommandQueue().GetDeviceSerial());
 
 	// Counters and stats
 	int32_t resetCount, reinitialize, messageCount;
@@ -523,9 +656,12 @@ void WebPortal::ShowStatusHtml()
 	size_t internal_ram_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
 	p.TableRow(2, "Internal RAM (MALLOC_CAP_INTERNAL)", internal_ram_free);
 
-	p.TableRow(2, "SPIRAM (MALLOC_CAP_SPIRAM)", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-	p.TableRow(2, "Default Memory (MALLOC_CAP_DEFAULT)", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
-	p.TableRow(2, "IRAM (MALLOC_CAP_EXEC)", heap_caps_get_free_size(MALLOC_CAP_EXEC));
+	p.TableRow(2, "SPIRAM (MALLOC_CAP_SPIRAM)",
+			   heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+	p.TableRow(2, "Default Memory (MALLOC_CAP_DEFAULT)",
+			   heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+	p.TableRow(
+		2, "IRAM (MALLOC_CAP_EXEC)", heap_caps_get_free_size(MALLOC_CAP_EXEC));
 #endif
 
 	// p.TableRow( 1, "himem free", esp_himem_get_free_size());
