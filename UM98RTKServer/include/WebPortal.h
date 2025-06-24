@@ -582,6 +582,7 @@ void WebPortal::ShowStatusHtml()
 	p.TableRow(1, "Mac Address", WiFi.macAddress().c_str());
 	p.TableRow(1, "A/P name", WiFi.getHostname());
 	p.TableRow(1, "IP Address", WiFi.localIP().toString().c_str());
+	p.TableRow(1, "Host name", StringPrintf("%s.local", _mdnsHostName.c_str()).c_str());
 	p.TableRow(1, "WiFi Mode",
 			   WiFi.getMode() == WIFI_STA
 				   ? "Station"

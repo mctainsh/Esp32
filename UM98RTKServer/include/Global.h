@@ -40,3 +40,4 @@
 #define BASE_LOCATION_FILENAME "/BaseLocn.txt"
 
 extern HandyTime _handyTime;
+extern std::string _mdnsHostName;

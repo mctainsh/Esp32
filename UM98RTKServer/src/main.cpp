@@ -27,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <mDNS.h>		 // Setup *.local domain name
 
 void SaveBaseLocation(std::string newBaseLocation);
 void LoadBaseLocation();
@@ -63,6 +64,7 @@ NTRIPServer _ntripServer0(0);
 NTRIPServer _ntripServer1(1);
 NTRIPServer _ntripServer2(2);
 std::string _baseLocation = "";
+std::string _mdnsHostName = "RtkServer"; // Default hostname for mDNS
 HandyTime _handyTime;
 
 // WiFi monitoring states
@@ -159,14 +161,26 @@ void setup(void)
 	Logln("WIFI Connected. Now stop AP");
 
 	// Disable Access point mode
-	//WiFi.softAPdisconnect(false);			// true = also erase the SSID config
+	// WiFi.softAPdisconnect(false);			// true = also erase the SSID config
 	//_wifiManager.setConfigPortalTimeout(0); // Disable the config portal timeout
-	//delay(100);
-	//WiFi.mode(WIFI_STA);
+	// delay(100);
+	// WiFi.mode(WIFI_STA);
 
 	// Connected
 	_webPortal.Setup();
 	_handyTime.EnableTimeSync();
+
+	Logln("MDNS Read");
+
+
+	Logf("MDNS Setup %s", _mdnsHostName.c_str());
+
+	mdns_init();
+	mdns_hostname_set(_mdnsHostName.c_str());
+	mdns_instance_name_set(_mdnsHostName.c_str());
+	Serial.printf("MDNS responder started at http://%s.local\n", _mdnsHostName.c_str());
+	_display.RefreshScreen();
+
 	Logln("Setup complete");
 }
 
@@ -188,7 +202,7 @@ void loop()
 	}
 
 	// Run every 10 seconds
-	if( (t - _slowLoopWaitTime) > 10000)
+	if ((t - _slowLoopWaitTime) > 10000)
 	{
 		// Check memory pressure
 		auto free = ESP.getFreeHeap();
@@ -222,7 +236,6 @@ void loop()
 		_display.SetPerformance(perfText);
 		_slowLoopWaitTime = t;
 	}
-
 
 	// Check for push buttons
 	if (IsButtonReleased(BUTTON_1, &_button1Current))
@@ -334,7 +347,7 @@ bool IsWifiConnected()
 	delay(1000);
 
 	// Reset the WIFI
-	//Logln("Try resetting WIfi");
+	// Logln("Try resetting WIfi");
 	//_wifiFullResetTime = t;
 	// We will block here until the WIFI is connected
 	//_wifiManager.autoConnect(WiFi.getHostname(), "JohnIs#1");

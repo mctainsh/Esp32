@@ -272,10 +272,12 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Wi-Fi", COL1, R1F4, 2);
 		DrawLabel("Version", COL1, R2F4, 2);
 		DrawLabel("Up time", COL1, R3F4, 2);
-		DrawLabel("Speed", COL1, R4F4, 2);
-		DrawLabel("Packets", COL1, R5F4, 2);
+		DrawLabel("Hostname", COL1, R4F4, 2);
+		DrawLabel("Mm T Wi", COL1, R5F4, 2);
 
 		DrawML(StringPrintf("%s-%s", APP_VERSION, _wifiManager.getWiFiSSID()).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		DrawML(StringPrintf("%s.local", _mdnsHostName.c_str()).c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
+		DrawML(_performance.c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
 
 		break;
 	case 1:
@@ -338,7 +340,7 @@ void MyDisplay::RefreshScreen()
 		DrawKeyLine(R3F4, 2);
 		DrawKeyLine(R4F4, 1);
 		DrawKeyLine(R5F4, 0);
-		DrawLabel("Wi-Fi", COL1, R1F4, 4);
+		DrawLabel("Wi-Fi ---(Reset)", COL1, R1F4, 4);
 		DrawLabel("GPS", COL1, R2F4, 4);
 		DrawLabel("RTK Server 1 ", COL1, R3F4, 4);
 		DrawLabel("RTK Server 3 ", COL1, R5F4, 4);
