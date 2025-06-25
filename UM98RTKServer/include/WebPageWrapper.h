@@ -10,7 +10,7 @@ extern NTRIPServer _ntripServer2;
 // Fancy HTML pages for the web portal
 class WebPageWrapper
 {
-private:
+protected:
 	WiFiClient &_client;
 
 public:
@@ -28,6 +28,7 @@ public:
 	///////////////////////////////////////////////////////////////////////////////
 	/// @brief Display a list of possible pages
 	//<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	// <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 	void AddPageHeader(const char *currentUrl)
 	{
 		_client.println(R"rawliteral(
@@ -35,11 +36,29 @@ public:
 			<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
 			<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
 			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
+
+			<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
+
+
 			<script>
 			document.addEventListener("DOMContentLoaded", function () {
 				const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
 				popoverTriggerList.forEach(el => new bootstrap.Popover(el));
 			});
+
+			$(document).ready(function () {
+				$('.toggle-password').on('click', function () {
+					const $wrapper = $(this).closest('.password-wrapper');
+					const $input = $wrapper.find('input[type="password"], input[type="text"]');
+					const $icon = $(this).find('i');
+
+					const isPassword = $input.attr('type') === 'password';
+					$input.attr('type', isPassword ? 'text' : 'password');
+					$icon.toggleClass('bi-eye bi-eye-slash');
+				});
+			});
+
+
 			</script>
 			</head>
 			<body><main>
@@ -50,7 +69,7 @@ public:
 		)rawliteral");
 
 		//<nav class='menu' id='nav'>";
-		AddMenuBarItem(currentUrl, "Status", "/i");
+		AddMenuBarItem(currentUrl, "<i class='bi bi-info-square'></i>", "/i");
 		// AddMenuBarItem(currentUrl, "Device Info", "/info?");
 		AddMenuBarItem(currentUrl, "Log", "/log");
 		AddMenuBarItem(currentUrl, "GPS", "/gpslog");
@@ -61,8 +80,8 @@ public:
 		if (_ntripServer2.IsEnabled())
 			AddMenuBarItem(currentUrl, "Caster 3", "/caster3log");
 		AddMenuBarItem(currentUrl, "Caster Graph", "/castergraph");
-		AddMenuBarItem(currentUrl, "Temperature", "/tempGraph");
-		AddMenuBarItem(currentUrl, "Settings", "/settings");
+		AddMenuBarItem(currentUrl, "<i class='bi bi-thermometer-sun'></i>", "/tempGraph");
+		AddMenuBarItem(currentUrl, "<i class='bi bi-gear'></i>", "/settings");
 		_client.println("</ul></div>");
 
 		// Body of the page
@@ -99,33 +118,6 @@ public:
 		html += "<i class='bi bi-question-circle'></i>";
 		html += "</button>";
 		return html;
-	}
-
-	std::string AddButtonWithEnable(const std::string &name, const std::string &title, const std::string &url)
-	{
-		_client.print("<div class='d-flex align-items-center gap-3'>");
-		_client.printf("<a id='%sLink' href='%s' class='btn btn-warning btn-lg disabled' tabindex='-1' aria-disabled='true'>", name.c_str(), url.c_str());
-		_client.print(title.c_str());
-		_client.printf("</a><div class='form-check form-switch'>\
-    			<input class='form-check-input' type='checkbox' id='%sSwitch'>\
-    			<label class='form-check-label' for='%sSwitch'>Enable</label>\
-  			</div></div>",
-					   name.c_str(), name.c_str());
-
-		_client.printf("\n<script>document.getElementById('%sSwitch').addEventListener('change', function () {const link = document.getElementById('%sLink');",
-					   name.c_str(), name.c_str());
-		_client.println("if (this.checked) {\
-				link.classList.remove('disabled');\
-				link.removeAttribute('aria-disabled');\
-				link.removeAttribute('tabindex');\
-				} else {\
-				link.classList.add('disabled');\
-				link.setAttribute('aria-disabled', 'true');\
-				link.setAttribute('tabindex', '-1');\
-				}\
-				});\
-				</script>)");
-		return name;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -186,4 +178,37 @@ public:
 			repeatedString += "&nbsp; &nbsp; ";
 		return repeatedString;
 	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Restart the device and show a message on the HTML page
+	static void RestartDevice( WiFiClient &client, const char* redirectUrl)
+	{
+		client.printf(R"rawliteral(
+	<div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 1050;">
+		<div class="text-white text-center p-4 bg-secondary rounded shadow">
+			<h3>Restarting</h3>
+			<p>Settings have been changed and RTK Server is restarting.</p>
+			<p>You will be redirected in <span id="countdown">10</span> seconds...</p>
+		</div>
+	</div>
+	<script>
+		let seconds = 10;
+		function updateCountdown() {
+			$('#countdown').text(seconds);
+			if (seconds > 0) {
+				seconds--;
+				setTimeout(updateCountdown, 1000);
+			} else {
+				window.location.href = "%s";
+			}
+		}
+		updateCountdown();
+	</script>
+		)rawliteral", redirectUrl);
+
+		client.flush();
+		delay(1000);
+		ESP.restart();
+	}
+
 };

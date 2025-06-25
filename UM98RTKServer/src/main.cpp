@@ -30,7 +30,6 @@
 #include <mDNS.h>		 // Setup *.local domain name
 
 void SaveBaseLocation(std::string newBaseLocation);
-void LoadBaseLocation();
 
 #include "Global.h"
 #include "HandyLog.h"
@@ -64,12 +63,12 @@ NTRIPServer _ntripServer0(0);
 NTRIPServer _ntripServer1(1);
 NTRIPServer _ntripServer2(2);
 std::string _baseLocation = "";
-std::string _mdnsHostName = "RtkServer"; // Default hostname for mDNS
+std::string _mdnsHostName;
 HandyTime _handyTime;
 
 // WiFi monitoring states
-#define WIFI_STARTUP_TIMEOUT 20000
-unsigned long _wifiFullResetTime = -WIFI_STARTUP_TIMEOUT;
+#define WIFI_STARTUP_TIMEOUT 90000
+unsigned long _wifiFullResetTime = 0;
 wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
@@ -125,7 +124,7 @@ void setup(void)
 		Logln("Test file IO");
 	else
 		Logln("E100 - File IO failed");
-	LoadBaseLocation();
+	_myFiles.LoadString(_baseLocation, BASE_LOCATION_FILENAME);
 
 	// Load the NTRIP server settings
 	tft.println("Setup NTRIP Connections");
@@ -158,28 +157,27 @@ void setup(void)
 		// ESP.restart();
 		// delay(1000);
 	}
-	Logln("WIFI Connected. Now stop AP");
-
-	// Disable Access point mode
-	// WiFi.softAPdisconnect(false);			// true = also erase the SSID config
-	//_wifiManager.setConfigPortalTimeout(0); // Disable the config portal timeout
-	// delay(100);
-	// WiFi.mode(WIFI_STA);
 
 	// Connected
 	_webPortal.Setup();
 	_handyTime.EnableTimeSync();
 
+	// Setup the MDNS responder
+	// .. This will allow us to access the server using http://RtkServer.local
 	Logln("MDNS Read");
-
-
+	_myFiles.LoadString(_mdnsHostName, MDNS_HOST_FILENAME);
+	if( _mdnsHostName.empty() )
+		_mdnsHostName = "RtkServer"; // Default hostname for mDNS
+	
 	Logf("MDNS Setup %s", _mdnsHostName.c_str());
-
 	mdns_init();
 	mdns_hostname_set(_mdnsHostName.c_str());
 	mdns_instance_name_set(_mdnsHostName.c_str());
 	Serial.printf("MDNS responder started at http://%s.local\n", _mdnsHostName.c_str());
 	_display.RefreshScreen();
+
+	// Dump the file structure
+	_myFiles.StartupComplete();
 
 	Logln("Setup complete");
 }
@@ -220,7 +218,7 @@ void loop()
 					  WiFi.localIP().toString().c_str());
 
 		// Disable Access point mode
-		if (WiFi.getMode() != WIFI_STA)
+		if (WiFi.getMode() != WIFI_STA && WiFi.status() != WL_DISCONNECTED)
 		{
 			Logln("E105 - WiFi mode is not WIFI_STA, resetting");
 			WiFi.softAPdisconnect(false);
@@ -274,20 +272,6 @@ void loop()
 
 //////////////////////////////////////////////////////////////////////////////
 // Read the base location from the disk
-void LoadBaseLocation()
-{
-	std::string text;
-	if (_myFiles.ReadFile(BASE_LOCATION_FILENAME, text))
-	{
-		Logln(StringPrintf(" - Read config '%s'", text.c_str()).c_str());
-		_baseLocation = text;
-	}
-	else
-	{
-		_baseLocation = "";
-		Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'", BASE_LOCATION_FILENAME).c_str());
-	}
-}
 void SaveBaseLocation(std::string newBaseLocation)
 {
 	_baseLocation = newBaseLocation;
@@ -319,42 +303,49 @@ bool IsWifiConnected()
 		Logf("Wifi Status %d %s", status, WifiStatus(status));
 		//	_display.SetWebStatus(status);
 		_display.RefreshWiFiState();
+		_wifiFullResetTime = millis();
 
 		if (status == WL_CONNECTED)
 		{
 			// Setup the access point to prevend device getting stuck on a nearby network
-			_wifiManager.setConfigPortalTimeout(0);
-			auto res = _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
-			if (!res)
-				Logln("Failed to start config Portal (Maybe cos non-blocked)");
-			else
-				Logln("Config portal started");
+			// auto res = _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
+			// if (!res)
+			//	Logln("Failed to start config Portal (Maybe cos non-blocked)");
+			// else
+			//	Logln("Config portal started");
 		}
 	}
 
 	if (status == WL_CONNECTED)
 		return true;
 
+	if (status != WL_DISCONNECTED)
+		return false;
+
+	// Reset the WIFI if Disconnected (This seems to be unrecoverable)
+	auto delay = millis() - _wifiFullResetTime;
+	auto message = StringPrintf("[X:%d] FORCE RECONNECT", delay / 1000);
+	Serial.println(message.c_str());
+	_display.SetCell(message, DISPLAY_PAGE, DISPLAY_ROW);
+
 	// Start the connection process
 	// Logln("E310 - No WIFI");
 	unsigned long t = millis();
-	unsigned long tDelta = t - _wifiFullResetTime;
-	if (tDelta < WIFI_STARTUP_TIMEOUT)
-	{
+	if (delay < WIFI_STARTUP_TIMEOUT)
 		return false;
-	}
 
-	delay(1000);
+	//_wifiManager.resetSettings();
 
-	// Reset the WIFI
-	// Logln("Try resetting WIfi");
-	//_wifiFullResetTime = t;
-	// We will block here until the WIFI is connected
-	//_wifiManager.autoConnect(WiFi.getHostname(), "JohnIs#1");
+	Logln("E107 - Try resetting WIfi");
+	_wifiFullResetTime = t;
+
+	// We will not block here until the WIFI is connected
+	_wifiManager.setConfigPortalBlocking(false);
+	_wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
 	// WiFi.mode(WIFI_STA);
 	// wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 	// Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
-	//_display.RefreshWiFiState();
+	_display.RefreshWiFiState();
 
 	return false;
 }

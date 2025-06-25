@@ -6,6 +6,7 @@
 #include "History.h"
 #include "NTRIPServer.h"
 #include "WebPageWrapper.h"
+#include "WebPageSettings.h"
 #include <WiFiManager.h>
 
 extern WiFiManager _wifiManager;
@@ -21,124 +22,52 @@ extern History _history;
 class WebPortal
 {
 public:
-	void Setup();
 	void Loop();
 
 private:
 	void OnBindServerCallback();
 	void IndexHtml();
 	void SettingsHtml();
-	void AddCasterForm(WiFiClient &client, NTRIPServer &server);
-	void AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value);
 	void ShowStatusHtml();
 	void GraphHtml() const;
 	void GraphDetail(WiFiClient &client, std::string divId, const NTRIPServer &server) const;
 	void GraphTemperature() const;
 	void GraphArray(WiFiClient &client, std::string divId, std::string title, const char *pBytes, int length) const;
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
-	void OnSaveParamsCallback();
 
 	int _loops = 0;
 
-	WiFiManagerParameter *_pCaster0Address;
-	WiFiManagerParameter *_pCaster0Port;
-	WiFiManagerParameter *_pCaster0Credential;
-	WiFiManagerParameter *_pCaster0Password;
+public:
+	/// @brief Startup the portal
+	void Setup()
+	{
+		// Setup callbacks
+		_wifiManager.setWebServerCallback(
+			std::bind(&WebPortal::OnBindServerCallback, this));
 
-	WiFiManagerParameter *_pCaster1Address;
-	WiFiManagerParameter *_pCaster1Port;
-	WiFiManagerParameter *_pCaster1Credential;
-	WiFiManagerParameter *_pCaster1Password;
+		_wifiManager.setConfigPortalTimeout(60);
+		_wifiManager.setConfigPortalBlocking(false);
 
-	WiFiManagerParameter *_pCaster2Address;
-	WiFiManagerParameter *_pCaster2Port;
-	WiFiManagerParameter *_pCaster2Credential;
-	WiFiManagerParameter *_pCaster2Password;
+		// Make access point name
+		std::string apName = "RtkSvr-";
+		auto macAddress = WiFi.macAddress();
+		macAddress.replace(":", "");
+		apName += macAddress.c_str();
 
-	WiFiManagerParameter *_pBaseLocation;
+		// First parameter is name of access point, second is the password
+		// Don't know why this is called again
+		//_wifiManager.resetSettings();
+		// Logf("Start AP %s", apName.c_str());
+		// auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
+		// if (!res)
+		//	Logln("WiFi : Failed to connect OR is running in non-blocking mode");
+
+		//
+		//_wifiManager.startWebPortal();
+
+		Logln("WebPortal setup complete");
+	}
 };
-
-/// @brief Startup the portal
-void WebPortal::Setup()
-{
-	// Setup callbacks
-	_wifiManager.setWebServerCallback(
-		std::bind(&WebPortal::OnBindServerCallback, this));
-	_wifiManager.setSaveParamsCallback([this]()
-									   { OnSaveParamsCallback(); });
-
-	std::string port0String = std::to_string(_ntripServer0.GetPort());
-	_pCaster0Address = new WiFiManagerParameter(
-		"address0", "Caster 1 address", _ntripServer0.GetAddress().c_str(), 40);
-	_pCaster0Port = new WiFiManagerParameter("port0",
-											 "Caster 1 port [Normally 2101] (0 = off)", port0String.c_str(), 6);
-	_pCaster0Credential = new WiFiManagerParameter("credential0",
-												   "Caster 1 credential ", _ntripServer0.GetCredential().c_str(), 40);
-	_pCaster0Password = new WiFiManagerParameter("password0", "Caster 1 password",
-												 _ntripServer0.GetPassword().c_str(), 40);
-
-	std::string port1String = std::to_string(_ntripServer1.GetPort());
-	_pCaster1Address = new WiFiManagerParameter(
-		"address1", "Caster 2 address", _ntripServer1.GetAddress().c_str(), 40);
-	_pCaster1Port = new WiFiManagerParameter(
-		"port1", "Caster 2 port (0 = off)", port1String.c_str(), 6);
-	_pCaster1Credential = new WiFiManagerParameter("credential1",
-												   "Caster 2 credential", _ntripServer1.GetCredential().c_str(), 40);
-	_pCaster1Password = new WiFiManagerParameter("password1", "Caster 2 password",
-												 _ntripServer1.GetPassword().c_str(), 40);
-
-	std::string port2String = std::to_string(_ntripServer2.GetPort());
-	_pCaster2Address = new WiFiManagerParameter(
-		"address2", "Caster 3 address", _ntripServer2.GetAddress().c_str(), 40);
-	_pCaster2Port = new WiFiManagerParameter(
-		"port2", "Caster 3 port (0 = off)", port2String.c_str(), 6);
-	_pCaster2Credential = new WiFiManagerParameter("credential2",
-												   "Caster 3 credential", _ntripServer2.GetCredential().c_str(), 40);
-	_pCaster2Password = new WiFiManagerParameter("password2", "Caster 3 password",
-												 _ntripServer2.GetPassword().c_str(), 40);
-
-	_pBaseLocation = new WiFiManagerParameter("baseLocation",
-											  "Base Location (Lat Long Height)", _baseLocation.c_str(), 100);
-
-	_wifiManager.addParameter(_pCaster0Address);
-	_wifiManager.addParameter(_pCaster0Port);
-	_wifiManager.addParameter(_pCaster0Credential);
-	_wifiManager.addParameter(_pCaster0Password);
-
-	_wifiManager.addParameter(_pCaster1Address);
-	_wifiManager.addParameter(_pCaster1Port);
-	_wifiManager.addParameter(_pCaster1Credential);
-	_wifiManager.addParameter(_pCaster1Password);
-
-	_wifiManager.addParameter(_pCaster2Address);
-	_wifiManager.addParameter(_pCaster2Port);
-	_wifiManager.addParameter(_pCaster2Credential);
-	_wifiManager.addParameter(_pCaster2Password);
-
-	_wifiManager.addParameter(_pBaseLocation);
-
-	_wifiManager.setConfigPortalTimeout(0);
-	_wifiManager.setConfigPortalBlocking(false);
-
-	// Make access point name
-	std::string apName = "RtkSvr-";
-	auto macAddress = WiFi.macAddress();
-	macAddress.replace(":", "");
-	apName += macAddress.c_str();
-
-	// First parameter is name of access point, second is the password
-	// Don't know why this is called again
-	//_wifiManager.resetSettings();
-	// Logf("Start AP %s", apName.c_str());
-	// auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
-	// if (!res)
-	//	Logln("WiFi : Failed to connect OR is running in non-blocking mode");
-
-	//
-	//_wifiManager.startWebPortal();
-
-	Logln("WebPortal setup complete");
-}
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief Setup all the URL bindings. Called when the server is ready
@@ -173,17 +102,34 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on(
 		"/settings", HTTP_GET, std::bind(&WebPortal::SettingsHtml, this));
 
-	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET,
-							[this]()
-							{
-								_gpsParser.GetCommandQueue().IssueFReset();
-								_wifiManager.server->send(200, "text/html", "<html>Done</html>");
-							});
 	_wifiManager.server->on("/RESET_WIFI", HTTP_GET,
 							[this]()
 							{
+								Logln("Resetting WiFi settings");
+								WiFiClient client = _wifiManager.server->client();
+								auto p = WebPageWrapper(client);
+								p.AddPageHeader(_wifiManager.server->uri().c_str());
 								_wifiManager.erase();
-								ESP.restart();
+								WebPageWrapper::RestartDevice(client, "https://github.com/mctainsh/Esp32/tree/main/UM98RTKServer#connect-wifi");
+							});
+	_wifiManager.server->on("/RESTART_ESP32", HTTP_GET,
+							[this]()
+							{
+								Logln("Restarting");
+								WiFiClient client = _wifiManager.server->client();
+								auto p = WebPageWrapper(client);
+								p.AddPageHeader(_wifiManager.server->uri().c_str());
+								WebPageWrapper::RestartDevice(client, "/i");
+							});
+	_wifiManager.server->on("/FRESET_GPS_CONFIRMED", HTTP_GET,
+							[this]()
+							{
+								Logln("Restarting GPS");
+								_gpsParser.GetCommandQueue().IssueFReset();
+								WiFiClient client = _wifiManager.server->client();
+								auto p = WebPageWrapper(client);
+								p.AddPageHeader(_wifiManager.server->uri().c_str());
+								WebPageWrapper::RestartDevice(client, "/gpslog");
 							});
 }
 
@@ -205,24 +151,6 @@ void WebPortal::Loop()
 			_wifiManager.process();
 		}
 	}
-}
-
-void WebPortal::OnSaveParamsCallback()
-{
-	Logf("SaveParamsCallback");
-
-	_ntripServer0.Save(_pCaster0Address->getValue(), _pCaster0Port->getValue(),
-					   _pCaster0Credential->getValue(), _pCaster0Password->getValue());
-	_ntripServer1.Save(_pCaster1Address->getValue(), _pCaster1Port->getValue(),
-					   _pCaster1Credential->getValue(), _pCaster1Password->getValue());
-	_ntripServer2.Save(_pCaster2Address->getValue(), _pCaster2Port->getValue(),
-					   _pCaster2Credential->getValue(), _pCaster2Password->getValue());
-
-	SaveBaseLocation(_pBaseLocation->getValue());
-
-	delay(1000);
-
-	ESP.restart();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -332,8 +260,7 @@ void WebPortal::GraphArray(WiFiClient &client, std::string divId, std::string ti
 /// @param title Title of the log
 /// @param log The log to display
 /// TODO : Force to DOS Codepage 437
-void WebPortal::HtmlLog(
-	const char *title, const std::vector<std::string> &log) const
+void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) const
 {
 	Logf("Show '%s'", title);
 
@@ -369,147 +296,14 @@ void WebPortal::IndexHtml()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Confirm the GPS Reset
+/// @brief Show the setting page
 void WebPortal::SettingsHtml()
 {
 	Logln("ShowSettingsHtml");
 
 	WiFiClient client = _wifiManager.server->client();
-	auto p = WebPageWrapper(client);
-	p.AddPageHeader(_wifiManager.server->uri().c_str());
-
-	client.println(
-		"<style>.flex-row { display: flex;flex-wrap: wrap;gap: 1rem;}.flex-item "
-		"{flex: 1 1 300px; min-width: 300px;background-color: "
-		"lightblue;box-sizing: border-box;}</style>");
-
-	// Add the form for the caster 1
-	client.println("<h3 class='mt-4'>NTRIP Caster Settings</h3>"
-				   "<div class='flex-row'>");
-	AddCasterForm(client, _ntripServer0);
-	AddCasterForm(client, _ntripServer1);
-	AddCasterForm(client, _ntripServer2);
-	client.println("</div>");
-
-	// Base location setup
-	const char *BASE_LCN = "baseLocation"; // Actual location
-	if (_wifiManager.server->hasArg(BASE_LCN))
-		SaveBaseLocation(_wifiManager.server->arg(BASE_LCN).c_str());
-	client.printf("<h3 class='mt-4'>Station calibrated location %s</h3>", p.MakeHelpButton("Help", "The precise location of the base station in the "
-																								   "format (ie -27.57012345 153.09912345 35.258). Leave blank for the station to auto calibrate. If provided, tt is critical this is accurate.")
-																			  .c_str());
-	AddInput(client, "text", BASE_LCN, "Latitude(&deg;) Longitude(&deg;) Height(m)", _baseLocation.c_str());
-
-	client.println(R"rawliteral(
-		<div class="form-check form-switch">
-		<input class="form-check-input" type="checkbox" role="switch" id="swCh">
-		<label class="form-check-label" for="swCh">Access reset</label>
-		</div>
-		)rawliteral");
-
-	// Reset section
-	client.println(R"rawliteral(
-		<div class="container py-4">
-			<h3 class="mb-4 text-center">Reset options</h3>
-			<div class="d-grid gap-3 col-6 mx-auto">
-		</div>)rawliteral");
-
-	//			<a href="/FRESET_GPS_CONFIRMED" class="btn btn-warning btn-lg">Confirm GPS Reset</a>
-	//			<a href="/RESET_WIFI" class="btn btn-danger btn-lg">Confirm Wi-Fi & Settings Reset</a>
-	//			<a href="/i" class="btn btn-secondary btn-lg">Cancel</a>
-	//			</div>
-	//		</div>)rawliteral");
-
-	p.AddButtonWithEnable("rstCfmGps", "Reset GPS", "/FRESET_GPS_CONFIRMED");
-	p.AddButtonWithEnable("rstCfmWifi", " Wi-Fi & Settings Reset", "/RESET_WIFI");
-
-	client.print("</div></div>");
-
-	p.AddPageFooter();
-}
-
-void WebPortal::AddCasterForm(WiFiClient &client, NTRIPServer &server)
-{
-	std::string num = std::to_string(server.GetIndex() + 1);
-	std::string sa = "sa" + num; // Server address parameter name
-	std::string pr = "pr" + num; // Port parameter name
-	std::string cr = "cr" + num; // Credential parameter name
-	std::string pw = "pw" + num; // Password parameter name
-
-	// Add wrapper for the card
-	client.println("<div class='card flex-item'>");
-	client.printf("<div class='card-header'>Caster %s %s</div>", num.c_str(),
-				  server.IsEnabled() ? "" : "(Disabled)");
-	client.println("<div class='card-body p-1'>");
-
-	// Save the new values if we have them
-	bool saved = false;
-	if (_wifiManager.server->hasArg(sa.c_str()) ||
-		_wifiManager.server->hasArg(cr.c_str()) ||
-		_wifiManager.server->hasArg(pw.c_str()))
-	{
-		// Check for duplicate server addresses
-		std::string newAddress = _wifiManager.server->arg(sa.c_str()).c_str();
-
-		// Remove any address formatting
-		newAddress = Trim(newAddress);
-		newAddress = ToLower(newAddress);
-
-		// If the address is empty, don't check for duplicates
-		if (newAddress.length() > 1)
-		{
-			if ((&server != &_ntripServer0 &&
-				 _ntripServer0.GetAddress() == newAddress) ||
-				(&server != &_ntripServer1 &&
-				 _ntripServer1.GetAddress() == newAddress) ||
-				(&server != &_ntripServer2 &&
-				 _ntripServer2.GetAddress() == newAddress))
-			{
-				client.println("<div class='alert alert-danger' role='alert'>Duplicate server address detected!</div></div></div>");
-				return;
-			}
-		}
-
-		// Save
-		server.Save(newAddress.c_str(),
-					_wifiManager.server->arg(pr.c_str()).c_str(),
-					_wifiManager.server->arg(cr.c_str()).c_str(),
-					_wifiManager.server->arg(pw.c_str()).c_str());
-
-		saved = true;
-	}
-
-	// Add the form
-	{
-		client.println("<form method='get' class='container py-4 m-0 p-0'>");
-
-		AddInput(client, "text", sa, "Server Address", server.GetAddress().c_str());
-		AddInput(client, "number", pr, "Port (0 to disable)", std::to_string(server.GetPort()).c_str());
-		AddInput(client, "text", cr, "Credential", server.GetCredential().c_str());
-		AddInput(client, "password", pw, "Password", server.GetPassword().c_str());
-
-		if (saved)
-			client.printf("<div class='alert alert-success' role='alert'>Caster %s settings saved successfully!</div>", num.c_str());
-
-		client.printf("<button type='submit' class='btn btn-primary'>Save Caster %s</button></form>", num.c_str());
-	}
-
-	client.println("</div></div>");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add an input field to the HTML page
-void WebPortal::AddInput(WiFiClient &client, const char *type, std::string name, const char *label, const char *value)
-{
-	client.printf("<div class='form-floating mb-3'>");
-	client.printf("<input type='%s' class='form-control' name='%s' id='%s' value='%s'>",
-				  type, name.c_str(), name.c_str(), value);
-	client.printf(
-		"<label for='%s' class='form-label'>%s</label>", name.c_str(), label);
-	client.println("</div>");
-
-	// TODO : Add font awesome icons
-	// TODO : Add show password option for password fields
+	auto p = WebPageSettings(client);
+	p.ShowHtml();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

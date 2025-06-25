@@ -1,7 +1,7 @@
 #pragma once
 #include "HandyTime.h"
 
-#define APP_VERSION "2.280.60"
+#define APP_VERSION "2.281.61"
 
 // Disables logging to serial
 #define SERIAL_LOG
@@ -38,6 +38,7 @@
 // WiFi access point password
 #define AP_PASSWORD "John123456"
 #define BASE_LOCATION_FILENAME "/BaseLocn.txt"
+#define MDNS_HOST_FILENAME "/MDNS_HOST_Name.txt"
 
 extern HandyTime _handyTime;
 extern std::string _mdnsHostName;
