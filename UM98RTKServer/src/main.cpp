@@ -39,7 +39,6 @@ void SaveBaseLocation(std::string newBaseLocation);
 #include "NTRIPServer.h"
 #include "MyFiles.h"
 #include <WebPortal.h>
-#include "WifiBusyTask.h"
 #include "WiFiEvents.h"
 #include "History.h"
 
@@ -68,12 +67,11 @@ HandyTime _handyTime;
 
 // WiFi monitoring states
 #define WIFI_STARTUP_TIMEOUT 90000
-unsigned long _wifiFullResetTime = 0;
+// unsigned long _wifiFullResetTime = 0;
 wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
 bool IsWifiConnected();
-String MakeHostName();
 
 ///////////////////////////////////////////////////////////////////////////////
 // Setup
@@ -110,7 +108,6 @@ void setup(void)
 	Logln("Enable WIFI");
 	tft.println("Enable WIFI");
 	SetupWiFiEvents();
-	WiFi.mode(WIFI_AP_STA);
 
 	Logln("Enable Buttons");
 	tft.println("Enable Buttons");
@@ -143,32 +140,33 @@ void setup(void)
 	WiFi.setHostname(MakeHostName().c_str());
 	_display.RefreshScreen();
 
-	// Block here till we have WiFi credentials (good or bad)
-	Logf("Start listening on %s", MakeHostName().c_str());
+	// // Block here till we have WiFi credentials (good or bad)
+	// Logf("Start listening on %s", MakeHostName().c_str());
 
-	const int wifiTimeoutSeconds = 120;
-	WifiBusyTask wifiBusy(_display);
-	_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
-	while (WiFi.status() != WL_CONNECTED)
-	{
-		Logf("Try WIFI Connection on %s", MakeHostName().c_str());
-		wifiBusy.StartCountDown(wifiTimeoutSeconds);
-		_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
-		// ESP.restart();
-		// delay(1000);
-	}
+	// const int wifiTimeoutSeconds = 120;
+	// WifiBusyTask wifiBusy(_display);
+	// _wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
+	// while (WiFi.status() != WL_CONNECTED)
+	// {
+	// 	Logf("Try WIFI Connection on %s", MakeHostName().c_str());
+	// 	wifiBusy.StartCountDown(wifiTimeoutSeconds);
+	// 	_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+	// 	// ESP.restart();
+	// 	// delay(1000);
+	// }
 
-	// Connected
+	// Setup the web portal
 	_webPortal.Setup();
 	_handyTime.EnableTimeSync();
+	_myFiles.StartLogFile();
 
 	// Setup the MDNS responder
 	// .. This will allow us to access the server using http://RtkServer.local
 	Logln("MDNS Read");
 	_myFiles.LoadString(_mdnsHostName, MDNS_HOST_FILENAME);
-	if( _mdnsHostName.empty() )
+	if (_mdnsHostName.empty())
 		_mdnsHostName = "RtkServer"; // Default hostname for mDNS
-	
+
 	Logf("MDNS Setup %s", _mdnsHostName.c_str());
 	mdns_init();
 	mdns_hostname_set(_mdnsHostName.c_str());
@@ -303,7 +301,7 @@ bool IsWifiConnected()
 		Logf("Wifi Status %d %s", status, WifiStatus(status));
 		//	_display.SetWebStatus(status);
 		_display.RefreshWiFiState();
-		_wifiFullResetTime = millis();
+		//_wifiFullResetTime = millis();
 
 		if (status == WL_CONNECTED)
 		{
@@ -322,41 +320,36 @@ bool IsWifiConnected()
 	if (status != WL_DISCONNECTED)
 		return false;
 
-	// Reset the WIFI if Disconnected (This seems to be unrecoverable)
-	auto delay = millis() - _wifiFullResetTime;
-	auto message = StringPrintf("[X:%d] FORCE RECONNECT", delay / 1000);
-	Serial.println(message.c_str());
-	_display.SetCell(message, DISPLAY_PAGE, DISPLAY_ROW);
+	// Block here until we are connected again
+	_webPortal.Setup();
+	return true;
 
-	// Start the connection process
-	// Logln("E310 - No WIFI");
-	unsigned long t = millis();
-	if (delay < WIFI_STARTUP_TIMEOUT)
-		return false;
+	// // Reset the WIFI if Disconnected (This seems to be unrecoverable)
+	// auto delay = millis() - _wifiFullResetTime;
+	// auto message = StringPrintf("[X:%d] FORCE RECONNECT", delay / 1000);
+	// Serial.println(message.c_str());
+	// _display.SetCell(message, DISPLAY_PAGE, DISPLAY_ROW);
 
-	//_wifiManager.resetSettings();
+	// // Start the connection process
+	// // Logln("E310 - No WIFI");
+	// unsigned long t = millis();
+	// if (delay < WIFI_STARTUP_TIMEOUT)
+	// 	return false;
 
-	Logln("E107 - Try resetting WIfi");
-	_wifiFullResetTime = t;
+	// //_wifiManager.resetSettings();
 
-	// We will not block here until the WIFI is connected
-	_wifiManager.setConfigPortalBlocking(false);
-	_wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
-	// WiFi.mode(WIFI_STA);
-	// wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	// Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
-	_display.RefreshWiFiState();
+	// Logln("E107 - Try resetting WIfi");
+	// _wifiFullResetTime = t;
+
+	// // We will not block here until the WIFI is connected
+	// _wifiManager.setConfigPortalBlocking(false);
+	// _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
+	// // WiFi.mode(WIFI_STA);
+	// // wl_status_t beginState = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	// // Logf("WiFi Connecting %d %s\r\n", beginState, WifiStatus(beginState));
+	// _display.RefreshWiFiState();
 
 	return false;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Maker a unique host name based on the MAC address with Rtk prefix
-String MakeHostName()
-{
-	auto mac = WiFi.macAddress();
-	mac.replace(":", "");
-	return "Rtk_" + mac;
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file

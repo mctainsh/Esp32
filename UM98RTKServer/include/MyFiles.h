@@ -11,16 +11,22 @@
 
 #define BOOT_LOG_FILENAME "/bootlog.txt"
 #define BOOT_LOG_MAX_LENGTH 100
+#define LOG_FILE_PREFIX "/logs/Log_"
 
 ///////////////////////////////////////////////////////////////////////////////
 // File access routines
 class MyFiles
 {
+	int _logLength = -1;		 // Length of the log file
+	fs::File _fsLog;			 // Log file
+	SemaphoreHandle_t _mutexLog; // Thread safe access to writing logs
+	SemaphoreHandle_t _mutex;	 // Thread safe access
 public:
 	bool Setup()
 	{
 		// Setup mutex
 		_mutex = xSemaphoreCreateMutex();
+		_mutexLog = xSemaphoreCreateMutex();
 		if (_mutex == NULL)
 			perror("Failed to create FILE mutex\n");
 		else
@@ -33,19 +39,62 @@ public:
 		return false;
 	}
 
+	void StartLogFile()
+	{
+		_logLength = -1; // Reset the log length
+		_fsLog = SPIFFS.open((LOG_FILE_PREFIX + _handyTime.FileSafe() + ".log").c_str(), FILE_WRITE);
+		if (_fsLog)
+			_logLength = 0;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Get a sorted list of all files in the SPIFFS file system.
+	/// @return A vector of fs::File objects sorted by their path.
+	std::vector<fs::File> getAllFilesSorted()
+	{
+		std::vector<fs::File> files;
+		auto root = SPIFFS.open("/");
+		auto file = root.openNextFile();
+		while (file)
+		{
+			files.push_back(file);
+			file = root.openNextFile();
+		}
+		std::sort(files.begin(), files.end(), [](const fs::File &a, const fs::File &b) {
+			return strcmp(a.path(), b.path()) < 0;
+		});
+		return files;
+	}
+
 	////////////////////////////////////////////////////////////////////////////////
 	/// @brief Called when the SPIFFS file system is started to list drive contents
 	void StartupComplete()
 	{
 		// Dump the file system contents
 		Logln("Drive contents");
-		auto root = SPIFFS.open("/");
-		auto file = root.openNextFile();
-		while (file)
+		auto files = getAllFilesSorted();
+		if (files.empty())
 		{
-			Logf("\t %9d - %s", file.size(), file.name());
-			file = root.openNextFile();
+			Logln("\tNo files found in SPIFFS");
 		}
+		else
+		{
+			for (const auto &file : files)
+			{
+				Logf("\t %9d - %s", file.size(), file.path());
+			}
+		}
+
+		// auto root = SPIFFS.open("/");
+		// auto file = root.openNextFile();
+		// std::string fileNames = "";
+		// while (file)
+		// {
+		// 	fileNames += StringPrintf("\t %9d - %s\n", file.size(), file.path());
+		// 	//Logf("\t %9d - %s", file.size(), file.path());
+		// 	file = root.openNextFile();
+		// }
+		// Logf(fileNames.c_str());
 
 		// Check the usage
 		size_t totalBytes = SPIFFS.totalBytes();
@@ -56,7 +105,7 @@ public:
 		Logf("\tTotal:%8u bytes", totalBytes);
 
 		// Record this startup
-		file = SPIFFS.open(BOOT_LOG_FILENAME, FILE_APPEND);
+		auto file = SPIFFS.open(BOOT_LOG_FILENAME, FILE_APPEND);
 		if (file)
 		{
 			file.printf("%s - %s\n", _handyTime.LongString().c_str(), APP_VERSION);
@@ -188,6 +237,28 @@ public:
 		}
 	}
 
-private:
-	SemaphoreHandle_t _mutex; // Thread safe access
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Save the string to the file system.
+	void AppendLog(const char *message)
+	{
+		if (_logLength < 0)
+			return;
+
+		_logLength += strlen(message);
+		if (xSemaphoreTake(_mutexLog, portMAX_DELAY))
+		{
+			if (_logLength > 100000)
+			{
+				if (_fsLog)
+					_fsLog.close();
+				StartLogFile();
+			}
+			if (_fsLog)
+			{
+				_fsLog.println(message);
+				_fsLog.flush();
+			}
+			xSemaphoreGive(_mutexLog);
+		}
+	}
 };

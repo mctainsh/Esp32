@@ -8,6 +8,8 @@
 #include "WebPageWrapper.h"
 #include "WebPageSettings.h"
 #include <WiFiManager.h>
+#include "WifiBusyTask.h"
+#include "WiFiEvents.h"
 
 extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
@@ -41,11 +43,26 @@ public:
 	/// @brief Startup the portal
 	void Setup()
 	{
-		// Setup callbacks
-		_wifiManager.setWebServerCallback(
-			std::bind(&WebPortal::OnBindServerCallback, this));
+		// Block here till we have WiFi credentials (good or bad)
+		Logf("Start listening on %s", MakeHostName().c_str());
+		WiFi.mode(WIFI_AP_STA);
 
-		_wifiManager.setConfigPortalTimeout(60);
+		const int wifiTimeoutSeconds = 120;
+		WifiBusyTask wifiBusy(_display);
+		_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
+		_wifiManager.setConfigPortalBlocking(true);
+		while (WiFi.status() != WL_CONNECTED)
+		{
+			Logf("Try WIFI Connection on %s", MakeHostName().c_str());
+			wifiBusy.StartCountDown(wifiTimeoutSeconds);
+			_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+			// ESP.restart();
+			// delay(1000);
+		}
+
+		// Setup callbacks
+		_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
+		_wifiManager.setConfigPortalTimeout(0);
 		_wifiManager.setConfigPortalBlocking(false);
 
 		// Make access point name
@@ -57,14 +74,12 @@ public:
 		// First parameter is name of access point, second is the password
 		// Don't know why this is called again
 		//_wifiManager.resetSettings();
-		// Logf("Start AP %s", apName.c_str());
-		// auto res = _wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
-		// if (!res)
-		//	Logln("WiFi : Failed to connect OR is running in non-blocking mode");
+		Logf("Start AP %s", apName.c_str());
+		_wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
 
 		//
 		//_wifiManager.startWebPortal();
-
+		_display.RefreshScreen();
 		Logln("WebPortal setup complete");
 	}
 };

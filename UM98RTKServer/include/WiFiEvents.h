@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include "HandyLog.h"
 
+String MakeHostName();
+
 ////////////////////////////////////////////////////////////////////////////////
 // Setup the wifi events
 // SYSTEM_EVENT_WIFI_READY = 0,           /*!< ESP32 WiFi ready */
@@ -149,5 +151,14 @@ void SetupWiFiEvents()
 			break;
 		}
 	});
-	
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Maker a unique host name based on the MAC address with Rtk prefix
+String MakeHostName()
+{
+	auto mac = WiFi.macAddress();
+	mac.replace(":", "");
+	return "Rtk_" + mac;
 }

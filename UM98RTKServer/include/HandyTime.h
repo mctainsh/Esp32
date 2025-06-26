@@ -80,6 +80,22 @@ public:
 	}
 
 	///////////////////////////////////////////////////////////////////////////
+	// Get a compressed format like 2025-06-22 435544
+	std::string	FileSafe()
+	{
+		struct tm timeinfo;
+		if (!ReadTime(&timeinfo))
+			return Uptime(millis());
+
+		// 2025-06-20 22:35:54
+		const int len = 22;
+		char time[len];
+		if (strftime(time, len, "%Y-%02m-%02d %H%M%S", &timeinfo) == 0)
+			return std::string("Error formatting time");
+		return std::string(time);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
 	// Get a short time string HH:MM:SS
 	std::string HH_MM_SS()
 	{
