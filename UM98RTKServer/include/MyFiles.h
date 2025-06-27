@@ -11,7 +11,7 @@
 
 #define BOOT_LOG_FILENAME "/bootlog.txt"
 #define BOOT_LOG_MAX_LENGTH 100
-#define LOG_FILE_PREFIX "/logs/Log_"
+#define LOG_FILE_PREFIX "/logs/"
 
 ///////////////////////////////////////////////////////////////////////////////
 // File access routines
@@ -39,30 +39,109 @@ public:
 		return false;
 	}
 
-	void StartLogFile()
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Start a new logging file or open the existing one
+	void StartLogFile(std::vector<std::string> *pMainLog)
 	{
+		if (!xSemaphoreTake(_mutexLog, portMAX_DELAY))
+			return;
+
 		_logLength = -1; // Reset the log length
-		_fsLog = SPIFFS.open((LOG_FILE_PREFIX + _handyTime.FileSafe() + ".log").c_str(), FILE_WRITE);
+		// Open the current file if already exists
 		if (_fsLog)
-			_logLength = 0;
+		{
+			_fsLog.println("**** CLOSING EXISTING FILE FOR ROLLOVER ****");
+			_fsLog.close(); // Close the existing log file
+		}
+
+		// Remove old log files if too much drive is used
+		Serial.print("DUMP Files\n");
+		auto files = GetAllFilesSorted();
+
+		// Remove non-log files from the list
+		for (int i = files.size()-1; i >= 0; i--)
+			if(files[i].Path.find(LOG_FILE_PREFIX) != 0 || files[i].IsCurrentLog)
+				files.erase(files.begin() + i);
+
+		// Starting at the first item, remove files until we have less than 250kb available
+		size_t totalFree = SPIFFS.totalBytes() - SPIFFS.usedBytes();
+		for (const auto &file : files)
+		{
+			if( totalFree > 250*1000)
+				break;
+			
+			totalFree += file.Size;
+			SPIFFS.remove(file.Path.c_str());
+		}
+
+		// Display the file we are working with
+		for (const auto &file : files)
+			Serial.printf("Log file: %s (%d bytes)\r\n", file.Path.c_str(), file.Size);
+
+		// Open existing or create a new log file
+		auto filename = LOG_FILE_PREFIX + _handyTime.FileSafe() + ".txt";
+		if (SPIFFS.exists(filename.c_str()))
+		{
+			_fsLog = SPIFFS.open(filename.c_str(), FILE_APPEND);
+			_fsLog.println("**** APPENDING EXISTING FILE ****");
+			_logLength = _fsLog.size(); // Get the size of the existing log file
+		}
+		if (!_fsLog)
+		{
+			_fsLog = SPIFFS.open(filename.c_str(), FILE_WRITE);
+			if (_fsLog)
+				_logLength = 0;
+		}
+		xSemaphoreGive(_mutexLog);
+
+		// Copy the main log into the log file
+		if (pMainLog != NULL)
+			for (const auto &line : *pMainLog)
+				AppendLog(line.c_str());
 	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Details of a log file
+	struct LogFileSummary
+	{
+		std::string Path;
+		int Size;
+		bool IsCurrentLog = false; // Indicate if this is the current log file
+
+		LogFileSummary(fs::File f, bool isCurrentLog) : Path(f.path()), Size(f.size()), IsCurrentLog(isCurrentLog) {}
+
+		bool operator<(const LogFileSummary &other) const
+		{
+			return strcmp(Path.c_str(), other.Path.c_str()) < 0;
+		}
+	};
 
 	////////////////////////////////////////////////////////////////////////////////
 	/// @brief Get a sorted list of all files in the SPIFFS file system.
 	/// @return A vector of fs::File objects sorted by their path.
-	std::vector<fs::File> getAllFilesSorted()
+	std::vector<LogFileSummary> GetAllFilesSorted()
 	{
-		std::vector<fs::File> files;
+		const char *logPath = _fsLog ? _fsLog.path() : "";
+		std::vector<LogFileSummary> files;
 		auto root = SPIFFS.open("/");
 		auto file = root.openNextFile();
 		while (file)
 		{
-			files.push_back(file);
+			// Note. If a file is modified during this stage, it will be duplicated in the list
+
+			auto it = std::find_if(files.begin(), files.end(),
+								   [&](const LogFileSummary &log)
+								   { return strcmp(log.Path.c_str(), file.path()) == 0; });
+			if (it == files.end()) // Only add if not already in the list
+			{
+				files.push_back(LogFileSummary(file, strcmp(file.path(), logPath) == 0));
+			}
 			file = root.openNextFile();
 		}
-		std::sort(files.begin(), files.end(), [](const fs::File &a, const fs::File &b) {
-			return strcmp(a.path(), b.path()) < 0;
-		});
+
+		// Sort the list of files by their path
+		std::sort(files.begin(), files.end(), [](const LogFileSummary &a, const LogFileSummary &b)
+				  { return strcmp(a.Path.c_str(), b.Path.c_str()) < 0; });
 		return files;
 	}
 
@@ -72,7 +151,7 @@ public:
 	{
 		// Dump the file system contents
 		Logln("Drive contents");
-		auto files = getAllFilesSorted();
+		auto files = GetAllFilesSorted();
 		if (files.empty())
 		{
 			Logln("\tNo files found in SPIFFS");
@@ -81,20 +160,9 @@ public:
 		{
 			for (const auto &file : files)
 			{
-				Logf("\t %9d - %s", file.size(), file.path());
+				Logf("\t %9d - %s", file.Size, file.Path.c_str());
 			}
 		}
-
-		// auto root = SPIFFS.open("/");
-		// auto file = root.openNextFile();
-		// std::string fileNames = "";
-		// while (file)
-		// {
-		// 	fileNames += StringPrintf("\t %9d - %s\n", file.size(), file.path());
-		// 	//Logf("\t %9d - %s", file.size(), file.path());
-		// 	file = root.openNextFile();
-		// }
-		// Logf(fileNames.c_str());
 
 		// Check the usage
 		size_t totalBytes = SPIFFS.totalBytes();
@@ -116,21 +184,6 @@ public:
 			Logf("E207 - Failed to %s file for appending", BOOT_LOG_FILENAME);
 			return;
 		}
-
-		// Dump the history of startups
-		auto logFile = SPIFFS.open(BOOT_LOG_FILENAME, FILE_READ);
-		String log = "";
-		int count = 0;
-		while (logFile.available())
-		{
-			String line = logFile.readStringUntil('\n');
-			if (line.length())
-			{
-				Serial.printf("\t%3d: %s\n", count, line.c_str());
-				count++;
-			}
-		}
-		logFile.close();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -245,20 +298,32 @@ public:
 			return;
 
 		_logLength += strlen(message);
-		if (xSemaphoreTake(_mutexLog, portMAX_DELAY))
+
+		if (_logLength > 100000)
 		{
-			if (_logLength > 100000)
-			{
-				if (_fsLog)
-					_fsLog.close();
-				StartLogFile();
-			}
-			if (_fsLog)
-			{
-				_fsLog.println(message);
-				_fsLog.flush();
-			}
-			xSemaphoreGive(_mutexLog);
+			std::vector<std::string> logHeader;
+			logHeader.push_back(StringPrintf("***** Rolling over from log file, length %s", _fsLog.path()));
+			StartLogFile(&logHeader);
+		}
+
+		if (!xSemaphoreTake(_mutexLog, portMAX_DELAY))
+			return;
+		if (_fsLog)
+		{
+			_fsLog.println(message);
+			_fsLog.flush();
+		}
+		xSemaphoreGive(_mutexLog);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	/// @brief Close the log file if it is open.
+	void CloseLogFile()
+	{
+		if (_fsLog)
+		{
+			_fsLog.close();
+			_logLength = -1; // Reset the log length
 		}
 	}
 };

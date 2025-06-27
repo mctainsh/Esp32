@@ -1,6 +1,6 @@
 #pragma once
 
-#include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
+#include <TFT_eSPI.h> // Graphics and font library for ST7789 driver chip
 #include <SPI.h>
 #include <WiFi.h>
 

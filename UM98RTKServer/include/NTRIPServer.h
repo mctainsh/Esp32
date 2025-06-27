@@ -78,7 +78,7 @@ private:
 	void ConnectedProcessing(const byte *pBytes, int length);
 	void ConnectedProcessingSend(const byte *pBytes, int length);
 	void ConnectedProcessingReceive();
-	void LogX(std::string text);
+	void LogX(std::string text, bool dualLog = true);
 	bool Reconnect();
 	bool WriteText(const char *str);
 };

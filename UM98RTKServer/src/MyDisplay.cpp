@@ -275,7 +275,7 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Hostname", COL1, R4F4, 2);
 		DrawLabel("Mm T Wi", COL1, R5F4, 2);
 
-		DrawML(StringPrintf("%s-%s", APP_VERSION, _wifiManager.getWiFiSSID()).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		DrawML(_wifiManager.getWiFiSSID().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 		DrawML(StringPrintf("%s.local", _mdnsHostName.c_str()).c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 		DrawML(_performance.c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
 

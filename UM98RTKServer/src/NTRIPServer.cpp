@@ -284,8 +284,11 @@ void NTRIPServer::ConnectedProcessingReceive()
 
 ///////////////////////////////////////////////////////////////////////////////
 // Write to the debug log and keep the last few messages for display
-void NTRIPServer::LogX(std::string text)
+void NTRIPServer::LogX(std::string text, bool dualLog)
 {
+	if (dualLog)
+		Logln(StringPrintf("NTRIP %d:%s", _index, text.c_str()).c_str());
+
 	auto s = Uptime(millis()) + " " + text;
 	if (xSemaphoreTake(_logMutex, portMAX_DELAY))
 	{
@@ -423,7 +426,7 @@ bool NTRIPServer::EnqueueData(const byte *pBytes, int length)
 		// Log the number of overflows
 		if (!overflowed && _overflowSetSize > 0)
 		{
-			LogX(StringPrintf("Queue %d overflow %d", _index, _overflowSetSize));
+			LogX(StringPrintf("Queue %d overflow %d", _index, _overflowSetSize), false);
 			_overflowSetSize = 0;
 		}
 

@@ -7,6 +7,7 @@
 #include "NTRIPServer.h"
 #include "WebPageWrapper.h"
 #include "WebPageSettings.h"
+#include "WebPageFileManager.h"
 #include <WiFiManager.h>
 #include "WifiBusyTask.h"
 #include "WiFiEvents.h"
@@ -28,8 +29,6 @@ public:
 
 private:
 	void OnBindServerCallback();
-	void IndexHtml();
-	void SettingsHtml();
 	void ShowStatusHtml();
 	void GraphHtml() const;
 	void GraphDetail(WiFiClient &client, std::string divId, const NTRIPServer &server) const;
@@ -82,6 +81,34 @@ public:
 		_display.RefreshScreen();
 		Logln("WebPortal setup complete");
 	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// Show the main index page
+	void IndexHtml()
+	{
+		WiFiClient client = _wifiManager.server->client();
+		auto p = WebPageWrapper(client);
+		p.AddPageHeader(_wifiManager.server->uri().c_str());
+		p.AddPageFooter();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// @brief Show the setting page
+	void SettingsHtml()
+	{
+		WiFiClient client = _wifiManager.server->client();
+		auto p = WebPageSettings(client);
+		p.ShowHtml();
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// @brief Show the setting page
+	void FileManagerHtml()
+	{
+		WiFiClient client = _wifiManager.server->client();
+		auto p = WebPageFileManager(client);
+		p.ShowHtml();
+	}
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -114,8 +141,8 @@ void WebPortal::OnBindServerCallback()
 	_wifiManager.server->on(
 		"/tempGraph", std::bind(&WebPortal::GraphTemperature, this));
 
-	_wifiManager.server->on(
-		"/settings", HTTP_GET, std::bind(&WebPortal::SettingsHtml, this));
+	_wifiManager.server->on("/files", HTTP_GET, std::bind(&WebPortal::FileManagerHtml, this));
+	_wifiManager.server->on("/settings", HTTP_GET, std::bind(&WebPortal::SettingsHtml, this));
 
 	_wifiManager.server->on("/RESET_WIFI", HTTP_GET,
 							[this]()
@@ -297,30 +324,6 @@ void WebPortal::HtmlLog(const char *title, const std::vector<std::string> &log) 
 	p.AddPageFooter();
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// Show the main index page
-void WebPortal::IndexHtml()
-{
-	//	<link rel='stylesheet' href='https://securehub.net/Esp32Rtk.css'>\
-	Logln("ShowIndexHtml");
-
-	WiFiClient client = _wifiManager.server->client();
-	auto p = WebPageWrapper(client);
-	p.AddPageHeader(_wifiManager.server->uri().c_str());
-	p.AddPageFooter();
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief Show the setting page
-void WebPortal::SettingsHtml()
-{
-	Logln("ShowSettingsHtml");
-
-	WiFiClient client = _wifiManager.server->client();
-	auto p = WebPageSettings(client);
-	p.ShowHtml();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 void ServerStatsHtml(NTRIPServer &server, WebPageWrapper &p)
 {
@@ -438,13 +441,25 @@ void WebPortal::ShowStatusHtml()
 	ServerStatsHtml(_ntripServer2, p);
 	client.println("</tr></Table>");
 
-	// Memory stuff
+	// Drive details
 	client.println("<table class='table table-striped w-auto'>");
+	p.TableRow(0, "Drives", "");
+	p.TableRow(1, "Sketch size", ESP.getSketchSize());
+	p.TableRow(1, "Free sketch space", ESP.getFreeSketchSpace());
+	p.TableRow(1, "Flash chip size", ESP.getFlashChipSize());
+	size_t totalBytes = SPIFFS.totalBytes();
+	size_t usedBytes = SPIFFS.usedBytes();
+	size_t freeBytes = totalBytes - usedBytes;
+	p.TableRow(1, "SPIFFS used bytes", usedBytes);
+	p.TableRow(1, "SPIFFS free bytes", freeBytes);
+	p.TableRow(1, "SPIFFS total bytes", totalBytes);
+	p.TableRow(1, "SPIFFS used", StringPrintf("%d%%", (int)(100.0 * usedBytes / totalBytes)));
+
+	// Memory stuff
 	auto free = ESP.getFreeHeap();
 	auto total = ESP.getHeapSize();
 	p.TableRow(0, "Memory", "");
 	p.TableRow(1, "Stack High", uxTaskGetStackHighWaterMark(nullptr));
-	p.TableRow(1, "Free Sketch Space", ESP.getFreeSketchSpace());
 	p.TableRow(1, "Port free heap", xPortGetFreeHeapSize());
 	p.TableRow(1, "Free heap", esp_get_free_heap_size());
 	p.TableRow(1, "Heap", "");

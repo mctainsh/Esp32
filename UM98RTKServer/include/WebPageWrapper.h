@@ -5,6 +5,7 @@ extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
 extern NTRIPServer _ntripServer1;
 extern NTRIPServer _ntripServer2;
+extern MyFiles _myFiles;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Fancy HTML pages for the web portal
@@ -81,6 +82,7 @@ public:
 			AddMenuBarItem(currentUrl, "Caster 3", "/caster3log");
 		AddMenuBarItem(currentUrl, "Caster Graph", "/castergraph");
 		AddMenuBarItem(currentUrl, "<i class='bi bi-thermometer-sun'></i>", "/tempGraph");
+		AddMenuBarItem(currentUrl, "<i class='bi bi-folder'></i>", "/files");
 		AddMenuBarItem(currentUrl, "<i class='bi bi-gear'></i>", "/settings");
 		_client.println("</ul></div>");
 
@@ -183,6 +185,7 @@ public:
 	/// @brief Restart the device and show a message on the HTML page
 	static void RestartDevice( WiFiClient &client, const char* redirectUrl)
 	{
+		Logf("*** Restarting device, redirecting to '%s'", redirectUrl);
 		client.printf(R"rawliteral(
 	<div class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center" style="z-index: 1050;">
 		<div class="text-white text-center p-4 bg-secondary rounded shadow">
@@ -207,8 +210,10 @@ public:
 		)rawliteral", redirectUrl);
 
 		client.flush();
+		Logln("*** RESTART DEVICE ***");
+		_myFiles.CloseLogFile(); 
 		delay(1000);
+
 		ESP.restart();
 	}
-
 };

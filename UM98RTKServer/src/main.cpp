@@ -131,7 +131,9 @@ void setup(void)
 	_gpsParser.Setup(&_ntripServer0, &_ntripServer1, &_ntripServer2);
 
 	_display.Setup();
+#ifdef USER_SETUP_ID
 	Logf("Display type %d", USER_SETUP_ID);
+#endif
 
 	// Reset Wifi Setup if needed (Do tis to clear out old wifi credentials)
 	//_wifiManager.erase();
@@ -158,7 +160,8 @@ void setup(void)
 	// Setup the web portal
 	_webPortal.Setup();
 	_handyTime.EnableTimeSync();
-	_myFiles.StartLogFile();
+	auto logCopy = CopyMainLog();
+	_myFiles.StartLogFile(&logCopy);
 
 	// Setup the MDNS responder
 	// .. This will allow us to access the server using http://RtkServer.local
@@ -305,6 +308,7 @@ bool IsWifiConnected()
 
 		if (status == WL_CONNECTED)
 		{
+			Logf("IP:%s Host:%s", WiFi.localIP().toString().c_str(), _mdnsHostName.c_str());
 			// Setup the access point to prevend device getting stuck on a nearby network
 			// auto res = _wifiManager.startConfigPortal(WiFi.getHostname(), AP_PASSWORD);
 			// if (!res)
@@ -353,8 +357,10 @@ bool IsWifiConnected()
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file
+#ifndef USER_SETUP_LOADED
 #if USER_SETUP_ID != 206 && USER_SETUP_ID != 25
 #error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
 #error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
 #error "Error! Please make sure the required LILYGO PCB in .pio\libdeps\lilygo-t-display\TFT_eSPI\User_Setup_Select.h See top of main.cpp for details"
+#endif
 #endif
