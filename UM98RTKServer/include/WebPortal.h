@@ -42,6 +42,8 @@ public:
 	/// @brief Startup the portal
 	void Setup()
 	{
+		// Display thew AP name
+		
 		// Block here till we have WiFi credentials (good or bad)
 		Logf("Start listening on %s", MakeHostName().c_str());
 		WiFi.mode(WIFI_AP_STA);
@@ -55,6 +57,7 @@ public:
 			Logf("Try WIFI Connection on %s", MakeHostName().c_str());
 			wifiBusy.StartCountDown(wifiTimeoutSeconds);
 			_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
+			_display.RefreshScreen();
 			// ESP.restart();
 			// delay(1000);
 		}

@@ -5,6 +5,25 @@
 
 String MakeHostName();
 
+const char *_lastEvent = nullptr; // Pointer to store the last event message
+int _duplicateEventCount = 0;	  // Counter for duplicate events
+
+void LogDuplicateEvents()
+{
+	if (_lastEvent == nullptr)
+		return;
+	if (_duplicateEventCount == 1)
+	{
+		Logf(_lastEvent);
+	}
+	else
+	{
+		Logf(" >>> %s (%d times)", _lastEvent, _duplicateEventCount);
+	}
+	_lastEvent = nullptr;	  // Reset the last event after logging
+	_duplicateEventCount = 0; // Reset the duplicate count
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Setup the wifi events
 // SYSTEM_EVENT_WIFI_READY = 0,           /*!< ESP32 WiFi ready */
@@ -40,119 +59,137 @@ String MakeHostName();
 // SYSTEM_EVENT_ETH_GOT_IP,               /*!< ESP32 ethernet got IP from connected AP */
 // SYSTEM_EVENT_ETH_LOST_IP,              /*!< ESP32 ethernet lost IP and the IP is reset to 0 */
 // SYSTEM_EVENT_MAX                       /*!< Number of members in this enum */
+void OnWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
+{
+	const char *eventMessage = nullptr;
+	switch (event)
+	{
+	case SYSTEM_EVENT_WIFI_READY:
+		eventMessage = "WIFI - Ready";
+		break;
+	case SYSTEM_EVENT_SCAN_DONE:
+		eventMessage = "WIFI - Scan done";
+		break;
+	case SYSTEM_EVENT_STA_START:
+		eventMessage = "WIFI - Start";
+		break;
+	case SYSTEM_EVENT_STA_STOP:
+		eventMessage = "WIFI - Stop";
+		break;
+	case SYSTEM_EVENT_STA_CONNECTED:
+		eventMessage = "WIFI - Connected";
+		break;
+	case SYSTEM_EVENT_STA_DISCONNECTED:
+		eventMessage = "WIFI - Disconnected";
+		break;
+	case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
+		eventMessage = "WIFI - Auth mode change";
+		break;
+	case SYSTEM_EVENT_STA_GOT_IP:
+		eventMessage = "WIFI - Got IP";
+		break;
+	case SYSTEM_EVENT_STA_LOST_IP:
+		eventMessage = "WIFI - Lost IP";
+		break;
+	case SYSTEM_EVENT_STA_BSS_RSSI_LOW:
+		eventMessage = "WIFI - BSS RSSI low";
+		break;
+	case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
+		eventMessage = "WIFI - WPS success";
+		break;
+	case SYSTEM_EVENT_STA_WPS_ER_FAILED:
+		eventMessage = "WIFI - WPS failed";
+		break;
+	case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
+		eventMessage = "WIFI - WPS timeout";
+		break;
+	case SYSTEM_EVENT_STA_WPS_ER_PIN:
+		eventMessage = "WIFI - WPS pin";
+		break;
+	case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
+		eventMessage = "WIFI - WPS PBC overlap";
+		break;
+	case SYSTEM_EVENT_AP_START:
+		eventMessage = "WIFI - AP start";
+		break;
+	case SYSTEM_EVENT_AP_STOP:
+		eventMessage = "WIFI - AP stop";
+		break;
+	case SYSTEM_EVENT_AP_STACONNECTED:
+		eventMessage = "WIFI - AP station connected";
+		break;
+	case SYSTEM_EVENT_AP_STADISCONNECTED:
+		eventMessage = "WIFI - AP station disconnected";
+		break;
+	case SYSTEM_EVENT_AP_STAIPASSIGNED:
+		eventMessage = "WIFI - AP station IP assigned";
+		break;
+	case SYSTEM_EVENT_AP_PROBEREQRECVED:
+		eventMessage = "WIFI - AP probe request received";
+		break;
+	case SYSTEM_EVENT_ACTION_TX_STATUS:
+		eventMessage = "WIFI - Action TX status";
+		break;
+	case SYSTEM_EVENT_ROC_DONE:
+		eventMessage = "WIFI - ROC done";
+		break;
+	case SYSTEM_EVENT_STA_BEACON_TIMEOUT:
+		eventMessage = "WIFI - Beacon timeout";
+		break;
+	case SYSTEM_EVENT_FTM_REPORT:
+		eventMessage = "WIFI - FTM report";
+		break;
+	case SYSTEM_EVENT_GOT_IP6:
+		eventMessage = "WIFI - Got IP6";
+		break;
+	case SYSTEM_EVENT_ETH_START:
+		eventMessage = "WIFI - ETH start";
+		break;
+	case SYSTEM_EVENT_ETH_STOP:
+		eventMessage = "WIFI - ETH stop";
+		break;
+	case SYSTEM_EVENT_ETH_CONNECTED:
+		eventMessage = "WIFI - ETH connected";
+		break;
+	case SYSTEM_EVENT_ETH_DISCONNECTED:
+		eventMessage = "WIFI - ETH disconnected";
+		break;
+	case SYSTEM_EVENT_ETH_GOT_IP:
+		eventMessage = "WIFI - ETH got IP";
+		break;
+	case SYSTEM_EVENT_ETH_LOST_IP:
+		eventMessage = "WIFI - ETH lost IP";
+		break;
+	case SYSTEM_EVENT_MAX:
+		eventMessage = "WIFI - Max";
+		break;
+	default:
+		LogDuplicateEvents();
+		Logf("WIFI - %d", event);
+		return;
+	}
+
+	// Don't log duplicated events
+	if (_lastEvent == eventMessage)
+	{
+		_duplicateEventCount++;
+		if (_duplicateEventCount > 50)
+			LogDuplicateEvents();
+	}
+	else
+	{
+		LogDuplicateEvents();
+		Logln(eventMessage);
+		_lastEvent = eventMessage; // Store the last event message
+		_duplicateEventCount = 1;  // Reset the duplicate count
+	}
+}
+
 void SetupWiFiEvents()
 {
 	// Setup the wifi events
-	WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) 
-	{
-		switch (event)
-		{
-		case SYSTEM_EVENT_WIFI_READY:
-			Logln("WIFI - Ready");
-			break;
-		case SYSTEM_EVENT_SCAN_DONE:
-			Logln("WIFI - Scan done");
-			break;
-		case SYSTEM_EVENT_STA_START:
-			Logln("WIFI - Start");
-			break;
-		case SYSTEM_EVENT_STA_STOP:
-			Logln("WIFI - Stop");
-			break;
-		case SYSTEM_EVENT_STA_CONNECTED:
-			Logln("WIFI - Connected");
-			break;
-		case SYSTEM_EVENT_STA_DISCONNECTED:
-			Logln("WIFI - Disconnected");
-			break;
-		case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:
-			Logln("WIFI - Auth mode change");
-			break;
-		case SYSTEM_EVENT_STA_GOT_IP:
-			Logln("WIFI - Got IP");
-			break;
-		case SYSTEM_EVENT_STA_LOST_IP:	
-			Logln("WIFI - Lost IP");
-			break;
-		case SYSTEM_EVENT_STA_BSS_RSSI_LOW:
-			Logln("WIFI - BSS RSSI low");
-			break;
-		case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
-			Logln("WIFI - WPS success");
-			break;
-		case SYSTEM_EVENT_STA_WPS_ER_FAILED:
-			Logln("WIFI - WPS failed");
-			break;
-		case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
-			Logln("WIFI - WPS timeout");
-			break;
-		case SYSTEM_EVENT_STA_WPS_ER_PIN:
-			Logln("WIFI - WPS pin");
-			break;
-		case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
-			Logln("WIFI - WPS PBC overlap");
-			break;
-		case SYSTEM_EVENT_AP_START:
-			Logln("WIFI - AP start");
-			break;
-		case SYSTEM_EVENT_AP_STOP:
-			Logln("WIFI - AP stop");
-			break;
-		case SYSTEM_EVENT_AP_STACONNECTED:
-			Logln("WIFI - AP station connected");
-			break;
-		case SYSTEM_EVENT_AP_STADISCONNECTED:
-			Logln("WIFI - AP station disconnected");
-			break;
-		case SYSTEM_EVENT_AP_STAIPASSIGNED:
-			Logln("WIFI - AP station IP assigned");
-			break;
-		case SYSTEM_EVENT_AP_PROBEREQRECVED:
-			Logln("WIFI - AP probe request received");
-			break;
-		case SYSTEM_EVENT_ACTION_TX_STATUS:
-			Logln("WIFI - Action TX status");
-			break;
-		case SYSTEM_EVENT_ROC_DONE:
-			Logln("WIFI - ROC done");
-			break;
-		case SYSTEM_EVENT_STA_BEACON_TIMEOUT:
-			Logln("WIFI - Beacon timeout");
-			break;
-		case SYSTEM_EVENT_FTM_REPORT:
-			Logln("WIFI - FTM report");
-			break;
-		case SYSTEM_EVENT_GOT_IP6:
-			Logln("WIFI - Got IP6");
-			break;
-		case SYSTEM_EVENT_ETH_START:
-			Logln("WIFI - ETH start");
-			break;
-		case SYSTEM_EVENT_ETH_STOP:
-			Logln("WIFI - ETH stop");
-			break;
-		case SYSTEM_EVENT_ETH_CONNECTED:
-			Logln("WIFI - ETH connected");
-			break;
-		case SYSTEM_EVENT_ETH_DISCONNECTED:
-			Logln("WIFI - ETH disconnected");
-			break;
-		case SYSTEM_EVENT_ETH_GOT_IP:	
-			Logln("WIFI - ETH got IP");
-			break;
-		case SYSTEM_EVENT_ETH_LOST_IP:
-			Logln("WIFI - ETH lost IP");
-			break;
-		case SYSTEM_EVENT_MAX:
-			Logln("WIFI - Max");
-			break;			
-		default:
-			Logf("WIFI - %d", event);
-			break;
-		}
-	});
+	WiFi.onEvent(OnWifiEvent);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Maker a unique host name based on the MAC address with Rtk prefix

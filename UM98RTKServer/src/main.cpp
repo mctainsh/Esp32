@@ -221,9 +221,10 @@ void loop()
 		// Disable Access point mode
 		if (WiFi.getMode() != WIFI_STA && WiFi.status() != WL_DISCONNECTED)
 		{
-			Logln("E105 - WiFi mode is not WIFI_STA, resetting");
+			Logln("W105 - WiFi mode is not WIFI_STA, resetting");
 			WiFi.softAPdisconnect(false);
 			//_wifiManager.setConfigPortalTimeout(60);
+			Logln("Set WIFI_STA mode");
 			WiFi.mode(WIFI_STA);
 		}
 
