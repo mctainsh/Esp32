@@ -10,11 +10,11 @@ int _duplicateEventCount = 0;	  // Counter for duplicate events
 
 void LogDuplicateEvents()
 {
-	if (_lastEvent == nullptr)
+	if (_lastEvent == nullptr || _duplicateEventCount == 0)
 		return;
 	if (_duplicateEventCount == 1)
 	{
-		Logf(_lastEvent);
+		Logf("%s (earlier)",_lastEvent);
 	}
 	else
 	{
@@ -181,7 +181,7 @@ void OnWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 		LogDuplicateEvents();
 		Logln(eventMessage);
 		_lastEvent = eventMessage; // Store the last event message
-		_duplicateEventCount = 1;  // Reset the duplicate count
+		_duplicateEventCount = 0;  // Reset the duplicate count
 	}
 }
 

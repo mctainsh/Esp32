@@ -160,6 +160,8 @@ void setup(void)
 	// Setup the web portal
 	_webPortal.Setup();
 	_handyTime.EnableTimeSync();
+	Logln("Time sync enabled");
+
 	auto logCopy = CopyMainLog();
 	_myFiles.StartLogFile(&logCopy);
 
