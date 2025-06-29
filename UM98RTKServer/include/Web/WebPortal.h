@@ -37,29 +37,51 @@ private:
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
 
 	int _loops = 0;
+	bool _busyConnecting = false; // Used to prevent multiple connections at the same time
 
 public:
 	/// @brief Startup the portal
 	void Setup()
 	{
-		// Display thew AP name
-		
+		if (_busyConnecting)
+		{
+			Logln("WebPortal already setting up, skipping");
+			return;
+		}
+		_busyConnecting = true;
+
+		// Display the AP name
+
 		// Block here till we have WiFi credentials (good or bad)
 		Logf("Start listening on %s", MakeHostName().c_str());
-		WiFi.mode(WIFI_AP_STA);
+		while (WiFi.getMode() != WIFI_AP_STA)
+		{
+			Logln("Waiting for WiFi mode to be set to AP_STA");
+			WiFi.mode(WIFI_AP_STA);
+			delay(250);
+		}
+		Logln("Mode set to AP_STA");
 
-		const int wifiTimeoutSeconds = 120;
+		const int WIFI_TIMEOUT_MS = 120;
 		WifiBusyTask wifiBusy(_display);
-		_wifiManager.setConfigPortalTimeout(wifiTimeoutSeconds);
+		delay(100);
+		_wifiManager.setConfigPortalTimeout(WIFI_TIMEOUT_MS);
+		delay(100);
 		_wifiManager.setConfigPortalBlocking(true);
+
+		// Wait for WiFi to be ready
+		while( WiFi.status() == WL_NO_SHIELD )
+		{
+			Logln("Waiting for WiFi to be ready");
+			delay(100);
+		}
+
 		while (WiFi.status() != WL_CONNECTED)
 		{
 			Logf("Try WIFI Connection on %s", MakeHostName().c_str());
-			wifiBusy.StartCountDown(wifiTimeoutSeconds);
+			wifiBusy.StartCountDown(WIFI_TIMEOUT_MS);
 			_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
 			_display.RefreshScreen();
-			// ESP.restart();
-			// delay(1000);
 		}
 
 		// Setup callbacks
@@ -83,6 +105,7 @@ public:
 		//_wifiManager.startWebPortal();
 		_display.RefreshScreen();
 		Logln("WebPortal setup complete");
+		_busyConnecting = false;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

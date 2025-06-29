@@ -1,6 +1,6 @@
 #pragma once
 
-#include "WebPageWrapper.h"
+#include "Web\WebPageWrapper.h"
 #include "NTRIPServer.h"
 #include "HandyLog.h"
 #include "HandyString.h"
@@ -33,11 +33,11 @@ public:
 		AddPageHeader(_wifiManager.server->uri().c_str());
 
 		_client.println("<style>.flex-row { display: flex;flex-wrap: wrap;gap: 1rem;}.flex-item "
-			"{flex: 1 1 300px; min-width: 300px;background-color: #0001;box-sizing: border-box;}</style>");
+						"{flex: 1 1 300px; min-width: 300px;background-color: #0001;box-sizing: border-box;}</style>");
 
 		// Add the form for the caster 1
 		_client.print("<h3 class='mt-4'>NTRIP Caster Settings</h3>"
-						"<div class='flex-row'>");
+					  "<div class='flex-row'>");
 		AddCasterForm(_ntripServer0);
 		AddCasterForm(_ntripServer1);
 		AddCasterForm(_ntripServer2);
@@ -48,6 +48,9 @@ public:
 
 		// Add the form to set the station location
 		AddMultiCastDNSForm();
+
+		// Add Timezone offset
+		AddTimezoneOffset();
 
 		// Reset section
 		_client.println(R"rawliteral(
@@ -206,6 +209,86 @@ public:
 				<button class="btn btn-primary" type='submit' id="button-addon2">Apply</button>
 			</div></form>	)rawliteral",
 					   BASE_LCN, BASE_LCN, _mdnsHostName.c_str(), BASE_LCN);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////
+	/// @brief Add the form to set DNS for the ESP32
+	void AddTimezoneOffset()
+	{
+		// Title and help button
+		_client.printf("<h3 class='mt-4'>Timezone offset %s</h3>",
+					   MakeHelpButton("Help",
+									  "Timezone is applied to logs. Dealing with daylight savings is just too hard. Deal with it!")
+						   .c_str());
+
+		// Base location setup
+		const char *TZ_ID = "TZ_ID"; // Actual location
+		if (_wifiManager.server->hasArg(TZ_ID))
+		{
+			auto name = std::string(_wifiManager.server->arg(TZ_ID).c_str());
+
+			_myFiles.WriteFile(TIMEZONE_MINUTES, name.c_str());
+			_client.printf("<div class='alert alert-success' role='alert'>Resetting device to set timezone %s minutes</div>", name.c_str());
+			RestartDevice(_client, "/settings");
+			return;
+		}
+
+		// Main input form
+		_client.printf(R"rawliteral(
+<form method='get' class='container py-4 m-0 p-0'>
+<div class="input-group mb-3">
+	<div class="form-floating">
+		<select class="form-control" id="%s" name="%s">
+		<option value="-720">(UTC-12:00) Baker</option>
+		<option value="-660">(UTC-11:00) Pago</option>
+		<option value="-600">(UTC-10:00) Hilo</option>
+		<option value="-570">(UTC-09:30) Taio</option>
+		<option value="-540">(UTC-09:00) Nome</option>
+		<option value="-480">(UTC-08:00) LA</option>
+		<option value="-420">(UTC-07:00) Denver</option>
+		<option value="-360">(UTC-06:00) Chicago</option>
+		<option value="-300">(UTC-05:00) Argentina</option>
+		<option value="-270">(UTC-04:30) Caracas</option>
+		<option value="-240">(UTC-04:00) Atlantic Time</option>
+		<option value="-210">(UTC-03:30) St Johns</option>
+		<option value="-180">(UTC-03:00) Reo</option>
+		<option value="-120">(UTC-02:00) South Georgia</option>
+		<option value="-60">(UTC-01:00) Azores</option>
+		<option value="0">(UTC 00:00) London</option>
+		<option value="60">(UTC+01:00) Berlin</option>
+		<option value="120">(UTC+02:00) Greece</option>
+		<option value="180">(UTC+03:00) Turkey</option>
+		<option value="210">(UTC+03:30) Tehran</option>
+		<option value="240">(UTC+04:00) Dubai</option>
+		<option value="270">(UTC+04:30) Kabul</option>
+		<option value="300">(UTC+05:00) Karachi</option>
+		<option value="330">(UTC+05:30) India</option>
+		<option value="345">(UTC+05:45) Kathmandu</option>
+		<option value="360">(UTC+06:00) Dhaka</option>
+		<option value="390">(UTC+06:30) Cocos Islands</option>
+		<option value="420">(UTC+07:00) Thailand</option>
+		<option value="480">(UTC+08:00) Singapore</option>
+		<option value="525">(UTC+08:45) Perth</option>
+		<option value="540">(UTC+09:00) South Korea</option>
+		<option value="570">(UTC+09:30) Adelaide</option>
+		<option value="600">(UTC+10:00) Brisbane</option>
+		<option value="630">(UTC+10:30) Lord Howe Island</option>
+		<option value="660">(UTC+11:00) Magadan</option>
+		<option value="720">(UTC+12:00) New Zealand</option>
+		<option value="765">(UTC+12:45) Chatham Islands</option>
+		<option value="780">(UTC+13:00) Nuku</option>
+  		<option value="840">(UTC+14:00) Kiritimati</option>
+	</select>
+		<label for="%s" class="form-label">Timezone</label>
+	</div>
+	<button class="btn btn-primary" type='submit' id="button-addon2">Apply</button>
+</div></form>
+
+<script>
+	document.getElementById('%s').value = '%s';
+</script>
+)rawliteral",
+					   TZ_ID, TZ_ID, TZ_ID, TZ_ID, _myFiles.LoadString(TIMEZONE_MINUTES).c_str());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

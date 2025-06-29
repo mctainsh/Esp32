@@ -173,7 +173,7 @@ void OnWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 	if (_lastEvent == eventMessage)
 	{
 		_duplicateEventCount++;
-		if (_duplicateEventCount > 50)
+		if (_duplicateEventCount > 300)
 			LogDuplicateEvents();
 	}
 	else

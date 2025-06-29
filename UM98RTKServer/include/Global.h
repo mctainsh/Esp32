@@ -1,7 +1,7 @@
 #pragma once
 #include "HandyTime.h"
 
-#define APP_VERSION "2.283.65"
+#define APP_VERSION "2.285.1067"
 
 // Disables logging to serial
 #define SERIAL_LOG
@@ -39,6 +39,7 @@
 #define AP_PASSWORD "John123456"
 #define BASE_LOCATION_FILENAME "/BaseLocn.txt"
 #define MDNS_HOST_FILENAME "/MDNS_HOST_Name.txt"
+#define TIMEZONE_MINUTES "/TIMEZONE_MINUTES.txt"
 
 extern HandyTime _handyTime;
 extern std::string _mdnsHostName;

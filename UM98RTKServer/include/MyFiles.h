@@ -289,6 +289,20 @@ public:
 			Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'", path).c_str());
 		}
 	}
+	std::string LoadString(const char *path, int maxLength = 256)
+	{
+		std::string text;
+		if (ReadFile(path, text))
+		{
+			Logln(StringPrintf(" - Read config '%s'", text.c_str()).c_str());
+			return text;
+		}
+		else
+		{
+			Logln(StringPrintf(" - E742 - Cannot read saved Server setting '%s'", path).c_str());
+			return std::string();
+		}
+	}
 
 	////////////////////////////////////////////////////////////////////////////////
 	/// @brief Save the string to the file system.

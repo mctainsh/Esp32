@@ -4,6 +4,7 @@
 #include "time.h"
 #include "HandyLog.h"
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // Time functions
 // WARNING : This class is called by logger so do not log yourself
@@ -11,16 +12,35 @@ class HandyTime
 {
 private:
 	const char *_ntpServer = "pool.ntp.org";
-	const long _gmtOffset_sec = 0;
-	const int _daylightOffset_sec = 0;
+	long _gmtOffset_sec = 0;
+	int _daylightOffset_sec = 0;
 
 	bool _timeSyncEnabled = false;	 // Indicate if time sync is enabled
 	unsigned long _lastSyncTime = 0; // Last time we synced the time
 	unsigned long _syncInterval = 0; // Default sync interval of 1 hour
 
+
 public:
-	void EnableTimeSync()
+	void EnableTimeSync(std::string tzMinutes)
 	{
+		if (!tzMinutes.empty())
+		{
+			 try 
+			 {
+        		 float minutes = std::stof(tzMinutes);
+				 _gmtOffset_sec = static_cast<long>(minutes * 60); // Convert minutes to seconds
+				 _daylightOffset_sec = 0; // Default to no daylight saving time
+				 Logf("Timezone set to %s minutes (%ld seconds)", tzMinutes.c_str(), _gmtOffset_sec);
+    		} 
+			catch (const std::invalid_argument& e) 
+			{
+				Logf("Invalid timezone minutes: %s", tzMinutes.c_str());
+    		} 
+			catch (const std::out_of_range& e) 
+			{
+				Logf("Timezone minutes out of range: %s", tzMinutes.c_str());
+    		}
+		}
 		_timeSyncEnabled = true;
 	}
 

@@ -38,7 +38,7 @@ void SaveBaseLocation(std::string newBaseLocation);
 #include "GpsParser.h"
 #include "NTRIPServer.h"
 #include "MyFiles.h"
-#include <WebPortal.h>
+#include <Web\WebPortal.h>
 #include "WiFiEvents.h"
 #include "History.h"
 
@@ -159,7 +159,7 @@ void setup(void)
 
 	// Setup the web portal
 	_webPortal.Setup();
-	_handyTime.EnableTimeSync();
+	_handyTime.EnableTimeSync(_myFiles.LoadString(TIMEZONE_MINUTES));
 	Logln("Time sync enabled");
 
 	auto logCopy = CopyMainLog();

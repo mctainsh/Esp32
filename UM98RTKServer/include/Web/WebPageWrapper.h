@@ -1,5 +1,8 @@
 #pragma once
 #include <WiFi.h>
+#include <WiFiManager.h>
+#include <NTRIPServer.h>
+#include <MyFiles.h>
 
 extern WiFiManager _wifiManager;
 extern NTRIPServer _ntripServer0;
@@ -198,7 +201,7 @@ public:
 		let seconds = 10;
 		function updateCountdown() {
 			$('#countdown').text(seconds);
-			if (seconds > 0) {
+			if (seconds > 1) {
 				seconds--;
 				setTimeout(updateCountdown, 1000);
 			} else {
