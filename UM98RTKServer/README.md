@@ -167,6 +167,8 @@ Use the Gerber files for the PCB and the STEP files for the housing. I'd recomme
 
 - Sends correction data to both RTK Casters
 
+- Has nice web interface at http://RtkServer.local/i or http://192.168.1.X/settings
+
 ### ESP32 device setup
 
 Depending on the device you will need to upload the binary
@@ -194,10 +196,9 @@ Depending on the device you will need to upload the binary
 	- Select your HOME WiFi network and enter credential
 - Connect your phone or computer to you HOME WiFi 
 	- You should be able to browse to the WiFi address shown on the ESP32 screen (NOT 192.168.4.1)
+- Browse to the device web interface to setup http://RtkServer.local/i or http://192.168.1.X/settings
 
-
-
-
+<img src="https://github.com/mctainsh/Esp32/blob/main/UM98RTKServer/Photos/WebSettings.png?raw=true" width="400" />
 
 ### Config parameters 
 
