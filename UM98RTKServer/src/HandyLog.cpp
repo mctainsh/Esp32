@@ -8,6 +8,8 @@ std::string AddToLog(const char *msg, bool timePrefix = true);
 
 std::vector<std::string> _mainLog;
 
+bool _processedFirstGoodTime = false; // Indicate if we have got a good time from NTP
+
 static SemaphoreHandle_t _serialMutex;
 extern MyFiles _myFiles;
 
@@ -60,6 +62,18 @@ std::string Logln(const char *msg, bool timePrefix)
 	Serial.print(s.c_str());
 	Serial.print("\r\n");
 #endif
+	if (!_handyTime.GotGoodTime())
+		return s;
+
+	// Start the log if we have a good time
+	if (!_processedFirstGoodTime)
+	{
+		_processedFirstGoodTime = true;
+		auto logCopy = CopyMainLog();
+		_myFiles.StartLogFile(&logCopy);
+	}
+
+	// Write to the log file
 	_myFiles.AppendLog(s.c_str());
 	return s;
 }
@@ -90,7 +104,7 @@ std::string AddToLog(const char *msg, bool timePrefix)
 	std::string time = timePrefix ? _handyTime.LongString() : "\t\t";
 	if (xSemaphoreTake(_serialMutex, portMAX_DELAY))
 	{
-		//s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
+		// s = StringPrintf("%s %s", Uptime(millis()).c_str(), msg);
 		s = StringPrintf("%s %s", time.c_str(), msg);
 
 		if (_mainLog.capacity() < MAX_LOG_LENGTH)

@@ -89,7 +89,7 @@ void MyDisplay::DisplayTime(unsigned long mil)
 	// Uptime
 	if (_currentPage == 0)
 	{
-		uint32_t t = mil/ 1000;
+		uint32_t t = mil / 1000;
 		std::string uptime = StringPrintf(":%02d", t % 60);
 		t /= 60;
 		uptime = StringPrintf(":%02d", t % 60) + uptime;
@@ -154,7 +154,7 @@ void MyDisplay::NextPage()
 	RefreshScreen();
 }
 
-void MyDisplay::RefreshWiFiState()
+void MyDisplay::RefreshWiFiState(unsigned long timeout)
 {
 	auto status = WiFi.status();
 	_graphics.SetWebStatus(status);
@@ -166,7 +166,10 @@ void MyDisplay::RefreshWiFiState()
 	}
 	else
 	{
-		DrawML(WifiStatus(status), COL2_P0, R1F4, COL2_P0_W, 4);
+		std::string statusText = WifiStatus(status);
+		if (timeout != 0)
+			statusText = statusText + " T-" + std::to_string(timeout);
+		DrawML(statusText.c_str(), COL2_P0, R1F4, COL2_P0_W, 4);
 		DrawML("X-192.168.4.1", COL2_P0, R3F4, COL2_P0_W, 4);
 		DrawML(WiFi.getHostname(), COL2_P0, R4F4, COL2_P0_W, 4);
 		DrawML(AP_PASSWORD, COL2_P0, R5F4, COL2_P0_W, 4);
@@ -276,7 +279,7 @@ void MyDisplay::RefreshScreen()
 		DrawLabel("Mm T Wi", COL1, R5F4, 2);
 
 		DrawML(WiFi.SSID().c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
-		//DrawML(_wifiManager.getWiFiSSID(false).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
+		// DrawML(_wifiManager.getWiFiSSID(false).c_str(), COL2_P0, R2F4, COL2_P0_W, 4);
 		DrawML(StringPrintf("%s.local", _mdnsHostName.c_str()).c_str(), COL2_P0, R4F4, COL2_P0_W, 4);
 		DrawML(_performance.c_str(), COL2_P0, R5F4, COL2_P0_W, 4);
 

@@ -67,7 +67,7 @@ public:
 		size_t totalFree = SPIFFS.totalBytes() - SPIFFS.usedBytes();
 		for (const auto &file : files)
 		{
-			if( totalFree > 250*1000)
+			if( totalFree > 1024*1024)
 				break;
 			
 			totalFree += file.Size;

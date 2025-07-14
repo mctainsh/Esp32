@@ -1,7 +1,7 @@
 #pragma once
 #include "HandyTime.h"
 
-#define APP_VERSION "2.285.1067"
+#define APP_VERSION "2.286.1068"
 
 // Disables logging to serial
 #define SERIAL_LOG

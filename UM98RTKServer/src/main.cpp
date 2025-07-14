@@ -44,11 +44,13 @@ void SaveBaseLocation(std::string newBaseLocation);
 
 WiFiManager _wifiManager;
 
-unsigned long _slowLoopWaitTime = 0; // Time of last 10 second
-unsigned long _fastLoopWaitTime = 0; // Time of last second
-int _loopPersSecondCount = 0;		 // Number of times the main loops runs in a second
-unsigned long _lastButtonPress = 0;	 // Time of last button press to turn off display on T-Display-S3
-History _history;					 // Temperature history
+unsigned long _slowLoopWaitTime = 0;  // Time of last 10 second
+unsigned long _fastLoopWaitTime = 0;  // Time of last second
+unsigned long _lastWiFiConnected = 0; // Time of last WiFi connection
+unsigned long _lastLoopTime = 0;	  // Time of last loop
+int _loopPersSecondCount = 0;		  // Number of times the main loops runs in a second
+unsigned long _lastButtonPress = 0;	  // Time of last button press to turn off display on T-Display-S3
+History _history;					  // Temperature history
 
 WebPortal _webPortal;
 
@@ -66,8 +68,7 @@ std::string _mdnsHostName;
 HandyTime _handyTime;
 
 // WiFi monitoring states
-#define WIFI_STARTUP_TIMEOUT 90000
-// unsigned long _wifiFullResetTime = 0;
+#define WIFI_RESTART_TIMEOUT 120000
 wl_status_t _lastWifiStatus = wl_status_t::WL_NO_SHIELD;
 
 bool IsButtonReleased(uint8_t button, uint8_t *pCurrent);
@@ -118,7 +119,7 @@ void setup(void)
 	tft.println("Setup SPIFFS");
 	tft.println("This can take up to 60 seconds ...");
 	if (_myFiles.Setup())
-		Logln("Test file IO");
+		Logln("Test file IO OK");
 	else
 		Logln("E100 - File IO failed");
 	_myFiles.LoadString(_baseLocation, BASE_LOCATION_FILENAME);
@@ -158,12 +159,9 @@ void setup(void)
 	// }
 
 	// Setup the web portal
-	_webPortal.Setup();
-	_handyTime.EnableTimeSync(_myFiles.LoadString(TIMEZONE_MINUTES));
-	Logln("Time sync enabled");
-
-	auto logCopy = CopyMainLog();
-	_myFiles.StartLogFile(&logCopy);
+	//	_webPortal.Setup();
+	//	_handyTime.EnableTimeSync(_myFiles.LoadString(TIMEZONE_MINUTES));
+	//	Logln("Time sync enabled");
 
 	// Setup the MDNS responder
 	// .. This will allow us to access the server using http://RtkServer.local
@@ -183,6 +181,8 @@ void setup(void)
 	_myFiles.StartupComplete();
 
 	Logln("Setup complete");
+	Serial.println(" ========================== Setup done ========================== ");
+	_webPortal.Setup();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -200,6 +200,10 @@ void loop()
 		_fastLoopWaitTime = t;
 		_loopPersSecondCount = 0;
 		_display.DisplayTime(t);
+
+		// Update WiFi timeout if not connected
+		if (WiFi.status() != WL_CONNECTED)
+			_display.RefreshWiFiState((WIFI_RESTART_TIMEOUT - (t - _lastWiFiConnected)) / 1000.0);
 	}
 
 	// Run every 10 seconds
@@ -221,13 +225,25 @@ void loop()
 					  WiFi.localIP().toString().c_str());
 
 		// Disable Access point mode
-		if (WiFi.getMode() != WIFI_STA && WiFi.status() != WL_DISCONNECTED)
+		// if (WiFi.getMode() != WIFI_STA && WiFi.status() != WL_DISCONNECTED)
+		// {
+		// 	Logln("W105 - WiFi mode is not WIFI_STA, resetting");
+		// 	WiFi.softAPdisconnect(false);
+		// 	//_wifiManager.setConfigPortalTimeout(60);
+		// 	Logln("Set WIFI_STA mode");
+		// 	WiFi.mode(WIFI_STA);
+		// }
+		// Disable Access point mode
+		if (WiFi.getMode() != WIFI_STA && WiFi.status() == WL_CONNECTED)
 		{
 			Logln("W105 - WiFi mode is not WIFI_STA, resetting");
 			WiFi.softAPdisconnect(false);
 			//_wifiManager.setConfigPortalTimeout(60);
 			Logln("Set WIFI_STA mode");
 			WiFi.mode(WIFI_STA);
+			//_swipePageGps.RefreshData();
+			//_lvCore.UpdateWiFiIndicator();
+			_display.RefreshWiFiState();
 		}
 
 		// Performance text
@@ -261,14 +277,10 @@ void loop()
 
 	// Check for new data GPS serial data
 	if (IsWifiConnected())
-	{
 		_display.SetGpsConnected(_gpsParser.ReadDataFromSerial(Serial2));
-		_webPortal.Loop();
-	}
 	else
-	{
 		_display.SetGpsConnected(false);
-	}
+	_webPortal.Loop();
 
 	// Update animations
 	_display.Animate();
@@ -318,18 +330,36 @@ bool IsWifiConnected()
 			//	Logln("Failed to start config Portal (Maybe cos non-blocked)");
 			// else
 			//	Logln("Config portal started");
+
+			// TODO : Set the mDNS host name
+			// TODO : Get latest time from the RTC
+			// TODO : Save the SSID name
+			_webPortal.OnConnected();
 		}
 	}
 
 	if (status == WL_CONNECTED)
+	{
+		_lastWiFiConnected = millis();
 		return true;
+	}
 
-	if (status != WL_DISCONNECTED)
-		return false;
+	// if (status != WL_DISCONNECTED && _webPortal.GetConnectCount() > 0)
+	//		return false;
+
+	// If we have been disconnected, we will try to reconnect
+	// if( status == WL_DISCONNECTED && ( millis() - _lastWiFiConnected ) > 120000 )
+	if ((millis() - _lastWiFiConnected) > WIFI_RESTART_TIMEOUT)
+	{
+		Logln("E107 - WIFI connect timeout");
+		_display.RefreshWiFiState();
+		_lastWiFiConnected = millis();
+		_webPortal.Setup(); // Restart the web portal
+	}
 
 	// Block here until we are connected again
-	_webPortal.Setup();
-	return true;
+	//	_webPortal.Setup();
+	return false;
 
 	// // Reset the WIFI if Disconnected (This seems to be unrecoverable)
 	// auto delay = millis() - _wifiFullResetTime;

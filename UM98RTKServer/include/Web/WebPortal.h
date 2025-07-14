@@ -21,11 +21,18 @@ extern MyDisplay _display;
 extern std::string _baseLocation;
 extern History _history;
 
+extern String MakeHostName();
+
 /// @brief Class manages the web pages displayed in the device.
 class WebPortal
 {
+private:
+	int _connectCount = 0; // Number of time we have connected
+	int _loops = 0;		   // Use to prevent the PortalProcessing to take up too much processing time
+
 public:
 	void Loop();
+	int GetConnectCount() const { return _connectCount; } // Get the number of times we have connected
 
 private:
 	void OnBindServerCallback();
@@ -36,24 +43,18 @@ private:
 	void GraphArray(WiFiClient &client, std::string divId, std::string title, const char *pBytes, int length) const;
 	void HtmlLog(const char *title, const std::vector<std::string> &log) const;
 
-	int _loops = 0;
-	bool _busyConnecting = false; // Used to prevent multiple connections at the same time
+	//	int _loops = 0;
+	//	bool _busyConnecting = false; // Used to prevent multiple connections at the same time
 
 public:
 	/// @brief Startup the portal
 	void Setup()
 	{
-		if (_busyConnecting)
-		{
-			Logln("WebPortal already setting up, skipping");
-			return;
-		}
-		_busyConnecting = true;
+		// Make access point name
+		std::string apName = MakeHostName().c_str();
+		Logf("Start listening on %s", apName.c_str());
 
-		// Display the AP name
-
-		// Block here till we have WiFi credentials (good or bad)
-		Logf("Start listening on %s", MakeHostName().c_str());
+		// Loop here until we are in AP_STA mode
 		while (WiFi.getMode() != WIFI_AP_STA)
 		{
 			Logln("Waiting for WiFi mode to be set to AP_STA");
@@ -62,50 +63,51 @@ public:
 		}
 		Logln("Mode set to AP_STA");
 
-		const int WIFI_TIMEOUT_MS = 120;
-		WifiBusyTask wifiBusy(_display);
-		delay(100);
-		_wifiManager.setConfigPortalTimeout(WIFI_TIMEOUT_MS);
-		delay(100);
-		_wifiManager.setConfigPortalBlocking(true);
-
-		// Wait for WiFi to be ready
-		while( WiFi.status() == WL_NO_SHIELD )
-		{
-			Logln("Waiting for WiFi to be ready");
-			delay(100);
-		}
-
-		while (WiFi.status() != WL_CONNECTED)
-		{
-			Logf("Try WIFI Connection on %s", MakeHostName().c_str());
-			wifiBusy.StartCountDown(WIFI_TIMEOUT_MS);
-			_wifiManager.autoConnect(WiFi.getHostname(), AP_PASSWORD);
-			_display.RefreshScreen();
-		}
-
 		// Setup callbacks
 		_wifiManager.setWebServerCallback(std::bind(&WebPortal::OnBindServerCallback, this));
 		_wifiManager.setConfigPortalTimeout(0);
 		_wifiManager.setConfigPortalBlocking(false);
 
-		// Make access point name
-		std::string apName = "RtkSvr-";
-		auto macAddress = WiFi.macAddress();
-		macAddress.replace(":", "");
-		apName += macAddress.c_str();
-
 		// First parameter is name of access point, second is the password
-		// Don't know why this is called again
-		//_wifiManager.resetSettings();
 		Logf("Start AP %s", apName.c_str());
 		_wifiManager.autoConnect(apName.c_str(), AP_PASSWORD);
+	}
 
-		//
-		//_wifiManager.startWebPortal();
+	///////////////////////////////////////////////////////////////////////////////
+	/// Process thee WiFi stuff for the first time
+	void OnConnected()
+	{
+		_connectCount++;
+
+		// If we are connected, process the WiFi stuff
+		if (_connectCount != 1)
+			return;
+
+		//_handyTime.WiFiReady(); // Indicate we have WiFi connection
+
+		// Start the log if not already started
+		// if (!_sdFile.LogStarted())
+		// {
+		// 	auto logCopy = CopyMainLog();
+		// 	_sdFile.StartLogFile(&logCopy);
+		// }
+
+		_handyTime.EnableTimeSync(_myFiles.LoadString(TIMEZONE_MINUTES));
+		Logln("Time sync enabled");
+
+		// Setup the MDNS responder
+		// .. This will allow us to access the server using http://RtkServer.local
+		Logln("MDNS Read");
+		_myFiles.LoadString(_mdnsHostName, MDNS_HOST_FILENAME);
+		if (_mdnsHostName.empty())
+			_mdnsHostName = "RtkServer"; // Default hostname for mDNS
+
+		Logf("MDNS Setup %s", _mdnsHostName.c_str());
+		mdns_init();
+		mdns_hostname_set(_mdnsHostName.c_str());
+		mdns_instance_name_set(_mdnsHostName.c_str());
+		Serial.printf("MDNS responder started at http://%s.local\n", _mdnsHostName.c_str());
 		_display.RefreshScreen();
-		Logln("WebPortal setup complete");
-		_busyConnecting = false;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////
