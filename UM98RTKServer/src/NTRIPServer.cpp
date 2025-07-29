@@ -132,7 +132,7 @@ void NTRIPServer::TaskFunction()
 		{
 			_lastStackCheck = millis();
 			_maxStackHeight = uxTaskGetStackHighWaterMark(NULL);
-			Serial.printf("%d) Stack %d\r\n", _index, _maxStackHeight);
+			//Serial.printf("%d) Stack %d\r\n", _index, _maxStackHeight);
 		}
 
 		// Wifi check interval

@@ -2,7 +2,16 @@
 
 #include <WiFi.h>
 #include "time.h"
+#include <esp_sntp.h> // Include SNTP for time synchronization
+
 #include "HandyLog.h"
+#include "HandyString.h"
+
+#define TIME_SYNC_SHORT 60 * 1000		   // 1 minute
+#define TIME_SYNC_LONG 12 * 60 * 60 * 1000 // 12 hours
+
+class HandyTime;
+extern HandyTime _handyTime;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Time functions
@@ -10,7 +19,6 @@
 class HandyTime
 {
 private:
-	const char *_ntpServer = "pool.ntp.org";
 	long _gmtOffset_sec = 0;
 	int _daylightOffset_sec = 0;
 
@@ -57,36 +65,63 @@ public:
 		if (millis() - _lastSyncTime > _syncInterval)
 		{
 			Logln("Sync NTP time", false);
-			configTime(_gmtOffset_sec, _daylightOffset_sec, _ntpServer);
-			_lastSyncTime = millis();
-			_syncInterval = 60 * 1000; // Set sync interval to 1 minute if sync failed
+			if (WiFi.status() == WL_CONNECTED)
+			{
 
-			// Try to get the local time
-			if (getLocalTime(info))
-			{
-				_gotGoodTime = true; // We got a good time
-				Logln("NTP time synced", false);
-				_syncInterval = 60 * 60 * 1000; // Set sync interval to 1 hour
-				return true;
-			}
-			else
-			{
-				Logln("ERROR : Failed to sync NTP time", false);
-				return false;
+				_lastSyncTime = millis();
+				_syncInterval = TIME_SYNC_SHORT;
+
+				// Register the SNTP sync callback
+				sntp_set_time_sync_notification_cb(HandyTime::OnTimeSyncCallback);
+
+				// This is a non-blocking call
+				configTime(_gmtOffset_sec, _daylightOffset_sec, "pool.ntp.org", "time.nist.gov", "time.google.com");
+
+				// Try to get the local time
+				// if (getLocalTime(info))
+				// {
+				// 	_gotGoodTime = true; // We got a good time
+				// 	Logln("NTP time synced", false);
+				// 	_syncInterval = TIME_SYNC_LONG
+				// 	return true;
+				// }
+				// else
+				// {
+				// 	Logln("ERROR : Failed to sync NTP time", false);
+				// 	return false;
+				// }
 			}
 		}
 
 		// Try to get the local time
-		if (getLocalTime(info))
-		{
-			_gotGoodTime = true; // We got a good time
+		if (_gotGoodTime && getLocalTime(info))
 			return true;
-		}
 
 		// If we failed to get the local time, try again after a short delay
 		// .. program runs real slow here
-		_syncInterval = 60 * 1000; // Set sync interval to 1 minute
-		return false;			   // Failed to get local time
+		_syncInterval = TIME_SYNC_SHORT;
+		return false; // Failed to get local time
+	}
+
+	//////////////////////////////////////////////////////////////////
+	// Callback function for time synchronization
+	// .. This is because the config time function does not block
+	// .. and we need to wait for the time to be set
+	static void OnTimeSyncCallback(struct timeval *tv)
+	{
+		Logln(StringPrintf("Time synchronized via NTP %u", tv->tv_sec).c_str(), false);
+		if (tv == nullptr || tv->tv_sec == 0)
+		{
+			Logln("*** ERROR : HandyTime OnTimeSyncCallback failed", false);
+			return;
+		}
+		tm info;
+		if (!getLocalTime(&info))
+			return;
+		Logln("NTP time synced", false);
+
+		_handyTime._syncInterval = TIME_SYNC_LONG;
+		_handyTime._gotGoodTime = true;
 	}
 
 	///////////////////////////////////////////////////////////////////////////

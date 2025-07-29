@@ -62,6 +62,8 @@ std::string Logln(const char *msg, bool timePrefix)
 	Serial.print(s.c_str());
 	Serial.print("\r\n");
 #endif
+
+#ifdef LOG_TO_FLASH
 	if (!_handyTime.GotGoodTime())
 		return s;
 
@@ -75,6 +77,8 @@ std::string Logln(const char *msg, bool timePrefix)
 
 	// Write to the log file
 	_myFiles.AppendLog(s.c_str());
+#endif
+
 	return s;
 }
 

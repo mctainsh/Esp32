@@ -26,8 +26,9 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <mDNS.h>		 // Setup *.local domain name
+#include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <mDNS.h>		  // Setup *.local domain name
+#include "esp_task_wdt.h" // Include for esp_task_wdt_delete
 
 void SaveBaseLocation(std::string newBaseLocation);
 
@@ -66,6 +67,7 @@ NTRIPServer _ntripServer2(2);
 std::string _baseLocation = "";
 std::string _mdnsHostName;
 HandyTime _handyTime;
+bool _slowLoopFirstHalf;
 
 // WiFi monitoring states
 #define WIFI_RESTART_TIMEOUT 120000
@@ -81,6 +83,10 @@ void setup(void)
 	perror("RTL Server - Starting");
 	perror(APP_VERSION);
 
+	// Disable the watchdog timer
+	esp_task_wdt_delete(NULL); // Delete the default task watchdog
+	esp_task_wdt_deinit();	   // Deinitialize the watchdog timer
+
 	// Setup temporary startup display
 	auto tft = TFT_eSPI();
 	tft.init();
@@ -91,6 +97,10 @@ void setup(void)
 	tft.printf("Starting %s. Cores %d\r\n", APP_VERSION, configNUM_CORES);
 
 	SetupLog(); // Call this before any logging
+
+	// Record reset reason
+	esp_reset_reason_t reason = esp_reset_reason();
+	Logf("RESET Reason : %d - %s", reason, ResetReasonText(reason)); // ESP_RST_TASK_WDT means task watchdog triggered
 
 	// No logging before here
 	Serial.begin(115200); // Using perror() instead
@@ -182,7 +192,12 @@ void setup(void)
 
 	Logln("Setup complete");
 	Serial.println(" ========================== Setup done ========================== ");
-	_webPortal.Setup();
+	_webPortal.SetupWiFi();
+
+	// Start the watch dog timer
+	esp_task_wdt_init(120, true); // 60 seconds timeout, panic on timeout
+	esp_task_wdt_add(NULL);		  // Add the current task to the watchdog
+	esp_task_wdt_reset();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -206,9 +221,15 @@ void loop()
 			_display.RefreshWiFiState((WIFI_RESTART_TIMEOUT - (t - _lastWiFiConnected)) / 1000.0);
 	}
 
+	// Is this the first half of the long loop?
+	_slowLoopFirstHalf = ((t - _slowLoopWaitTime) < 5000);
+
 	// Run every 10 seconds
 	if ((t - _slowLoopWaitTime) > 10000)
 	{
+		// Reset the watchdog timer
+		esp_task_wdt_reset();
+
 		// Check memory pressure
 		auto free = ESP.getFreeHeap();
 		auto total = ESP.getHeapSize();
@@ -354,7 +375,7 @@ bool IsWifiConnected()
 		Logln("E107 - WIFI connect timeout");
 		_display.RefreshWiFiState();
 		_lastWiFiConnected = millis();
-		_webPortal.Setup(); // Restart the web portal
+		_webPortal.SetupWiFi(); // Restart the web portal
 	}
 
 	// Block here until we are connected again
@@ -387,6 +408,13 @@ bool IsWifiConnected()
 	// _display.RefreshWiFiState();
 
 	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// This function is called when the task watchdog timer is triggered
+extern "C" void esp_task_wdt_isr_user_handler(void)
+{
+	Logln("⚠️ Task Watchdog Timer triggered!");
 }
 
 //  Check the Correct TFT Display Type is Selected in the User_Setup.h file

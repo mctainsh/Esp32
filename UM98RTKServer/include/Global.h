@@ -1,10 +1,13 @@
 #pragma once
 #include "HandyTime.h"
 
-#define APP_VERSION "2.286.1068"
+#define APP_VERSION "2.287.1078"
 
 // Disables logging to serial
 #define SERIAL_LOG
+
+// Enables Logging to the flash drive
+//#define LOG_TO_FLASH
 
 // Enables the LC29HDA code (Comment out for UM980 and UM982)
 //#define IS_LC29HDA

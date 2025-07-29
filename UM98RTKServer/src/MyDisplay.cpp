@@ -50,6 +50,7 @@ extern NTRIPServer _ntripServer2;
 extern GpsParser _gpsParser;
 extern WiFiManager _wifiManager;
 extern History _history;
+extern bool _slowLoopFirstHalf;
 
 ////////////////////////////////////////////////////////////////////////
 // Setup this display
@@ -121,7 +122,8 @@ void MyDisplay::UpdateGpsStarts(bool restart, bool reinitialize)
 }
 void MyDisplay::IncrementGpsPackets()
 {
-	SetValue(0, (_gpsMsgCount + 1), &_gpsMsgCount, COL2_P0, R5F4, COL2_P0_W, 4);
+	if (!_slowLoopFirstHalf)
+		SetValue(0, (_gpsMsgCount + 1), &_gpsMsgCount, COL2_P0, R5F4, COL2_P0_W, 4);
 }
 
 /////////////////////////////////////////////////////////////////////////////

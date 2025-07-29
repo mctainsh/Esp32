@@ -48,7 +48,7 @@ private:
 
 public:
 	/// @brief Startup the portal
-	void Setup()
+	void SetupWiFi()
 	{
 		// Make access point name
 		std::string apName = MakeHostName().c_str();
